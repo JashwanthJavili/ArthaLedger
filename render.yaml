@@ -6,8 +6,6 @@ services:
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
     envVars:
-      - key: PYTHON_VERSION
-        value: 3.11.9
       - key: FIREBASE_ADMIN_CREDENTIALS
         sync: false
       - key: FIREBASE_DATABASE_URL
@@ -16,3 +14,5 @@ services:
         sync: false
       - key: ENVIRONMENT
         value: production
+      - key: PYTHON_VERSION
+        value: 3.11.9
