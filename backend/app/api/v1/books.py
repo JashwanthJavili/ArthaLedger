@@ -1,7 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
 from app.api.deps import get_current_user
 from app.services.firebase_service import get_db_ref
+from app.core.rate_limit import check_rate_limit, record_success
 import time
+import hashlib
 
 router = APIRouter(prefix='/projects/{project_id}/books', tags=['books'])
 
@@ -23,6 +25,16 @@ def _validate_str(value, field: str, min_len: int = 0, max_len: int = 500) -> st
     if len(s) > max_len:
         raise HTTPException(status_code=422, detail=f'{field} must be at most {max_len} characters')
     return s
+
+
+def _hash_pin(pin: str) -> str:
+    """Hash a PIN using SHA-256 (matching frontend pin.js)"""
+    return hashlib.sha256(str(pin).encode()).hexdigest()
+
+
+def _verify_pin(pin: str, stored_hash: str) -> bool:
+    """Verify PIN against stored hash"""
+    return _hash_pin(pin) == stored_hash
 
 
 @router.get('/')
@@ -77,8 +89,39 @@ async def update_book(project_id: str, book_id: str, request: Request, user: dic
 
 
 @router.delete('/{book_id}', status_code=204)
-async def delete_book(project_id: str, book_id: str, user: dict = Depends(get_current_user)):
+async def delete_book(project_id: str, book_id: str, request: Request, user: dict = Depends(get_current_user)):
     ref = _book_ref(user['uid'], project_id, book_id)
-    if not ref.get():
+    snap = ref.get()
+    if not snap:
         raise HTTPException(status_code=404, detail='Book not found')
+    
+    book_data = snap
+    has_pin = bool(book_data.get('pinHash'))
+    
+    # If book has PIN, require PIN verification in request body
+    if has_pin:
+        # Get client IP for rate limiting
+        client_ip = request.client.host if request.client else "unknown"
+        
+        try:
+            body = await request.json()
+            pin = body.get('pin', '')
+        except:
+            raise HTTPException(status_code=400, detail='Invalid request body')
+        
+        if not pin:
+            raise HTTPException(status_code=403, detail='This book is PIN-protected. PIN required to delete.')
+        
+        # Check rate limit for this specific operation
+        allowed, seconds_remaining, error_msg = check_rate_limit(client_ip, user['uid'], f'book_delete:{book_id}')
+        if not allowed:
+            raise HTTPException(status_code=429, detail=error_msg)
+        
+        if not _verify_pin(pin, book_data.get('pinHash')):
+            # Failed attempt - rate limit will be tracked
+            raise HTTPException(status_code=403, detail='Incorrect PIN.')
+        
+        # PIN verification succeeded
+        record_success(client_ip, user['uid'], f'book_delete:{book_id}')
+    
     ref.delete()

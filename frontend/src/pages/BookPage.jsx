@@ -2,8 +2,8 @@ import { useEffect, useMemo, useState, useRef } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import {
   Filter, Search, Download, ArrowLeft, MoreVertical,
-  Pencil, Trash2, X, Tag, TrendingUp, TrendingDown,
-  BookOpen, Hash,
+  Pencil, Trash2, X, TrendingUp, TrendingDown,
+  BookOpen, Hash, Lock, Unlock,
 } from 'lucide-react'
 import { Link, useParams, useNavigate } from 'react-router-dom'
 import LayoutShell from '../components/LayoutShell'
@@ -13,9 +13,12 @@ import EntryModal from '../components/forms/EntryModal'
 import BookModal from '../components/forms/BookModal'
 import CategoryManager from '../components/forms/CategoryManager'
 import ConfirmDialog from '../components/common/ConfirmDialog'
+import PinVerificationModal from '../components/common/PinVerificationModal'
+import SetPinModal from '../components/common/SetPinModal'
 import Toast from '../components/common/Toast'
 import { useAppData } from '../context/AppDataContext'
 import { exportBookPdf } from '../lib/pdf'
+import { lockItem } from '../lib/pin'
 
 const defaultCategories = ['Food', 'Travel', 'Temple', 'Bills', 'Donation', 'Shopping', 'Salary', 'Investment']
 
@@ -68,7 +71,7 @@ function EntryMenu({ onEdit, onDelete }) {
 }
 
 /* ── Book header 3-dot menu ── */
-function BookHeaderMenu({ onEdit, onDelete, onCategories }) {
+function BookHeaderMenu({ onEdit, onDelete, onSetPin, hasPin }) {
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
 
@@ -94,13 +97,16 @@ function BookHeaderMenu({ onEdit, onDelete, onCategories }) {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.92, y: -4 }}
             transition={{ duration: 0.12 }}
-            className="absolute right-0 mt-1 w-48 overflow-hidden rounded-2xl border border-amber-100 bg-white shadow-xl z-40"
+            className="absolute right-0 mt-1 w-44 overflow-hidden rounded-2xl border border-amber-100 bg-white shadow-xl z-40"
           >
             <button
-              onClick={() => { onCategories(); setOpen(false) }}
+              onClick={() => { onSetPin(); setOpen(false) }}
               className="flex w-full items-center gap-2 px-3 py-2.5 text-xs text-stone-700 hover:bg-amber-50 transition-colors border-b border-amber-50"
             >
-              <Tag size={12} className="text-amber-600" /> Manage Categories
+              {hasPin
+                ? <><Unlock size={12} className="text-amber-600" /> Change PIN</>
+                : <><Lock size={12} className="text-amber-600" /> Set PIN Lock</>
+              }
             </button>
             <button
               onClick={() => { onEdit(); setOpen(false) }}
@@ -127,7 +133,7 @@ export default function BookPage() {
   const {
     projects, booksByProject, entriesByBook,
     addEntry, deleteEntry, updateCategories, getCategories,
-    updateBook, updateEntry, deleteBook,
+    updateBook, updateEntry, deleteBook, deleteBookWithPin, setPinForBook,
   } = useAppData()
 
   const [modalType, setModalType] = useState(null)
@@ -139,6 +145,9 @@ export default function BookPage() {
   const [editingEntry, setEditingEntry] = useState(null)
   const [deleteEntryTarget, setDeleteEntryTarget] = useState(null)
   const [deleteBookConfirm, setDeleteBookConfirm] = useState(false)
+  const [verifyPinForDelete, setVerifyPinForDelete] = useState(false)
+  const [deletingBook, setDeletingBook] = useState(false)
+  const [setPinOpen, setSetPinOpen] = useState(false)
   const [toast, setToast] = useState({ msg: '', type: 'success', visible: false })
   const [filters, setFilters] = useState({
     type: 'all', mode: 'all', category: 'all', enteredBy: 'all', from: '', to: '',
@@ -153,6 +162,13 @@ export default function BookPage() {
       if (saved?.length) setCategories(saved)
     })
   }, [projectId, bookId, getCategories])
+
+  // Lock the book when navigating away (so PIN is required next visit)
+  useEffect(() => {
+    return () => {
+      if (book?.pinHash) lockItem(bookId)
+    }
+  }, [bookId, book?.pinHash])
 
   const filteredEntries = useMemo(() => {
     return entries
@@ -235,9 +251,10 @@ export default function BookPage() {
                 <span className="hidden sm:inline">PDF</span>
               </button>
               <BookHeaderMenu
-                onCategories={() => setShowCatManager((v) => !v)}
                 onEdit={() => setEditingBook(true)}
                 onDelete={() => setDeleteBookConfirm(true)}
+                onSetPin={() => setSetPinOpen(true)}
+                hasPin={Boolean(book.pinHash)}
               />
             </div>
           </div>
@@ -457,6 +474,10 @@ export default function BookPage() {
         categories={categories}
         initial={editingEntry || null}
         onClose={() => { setModalType(null); setEditingEntry(null) }}
+        onSaveCategories={async (cats) => {
+          setCategories(cats)
+          await updateCategories(projectId, bookId, cats)
+        }}
         onSubmit={async (payload) => {
           try {
             if (editingEntry) {
@@ -464,11 +485,6 @@ export default function BookPage() {
               showToast('Entry updated ✓')
             } else {
               await addEntry(projectId, bookId, payload)
-              if (payload._localCategories?.length > categories.length) {
-                const merged = Array.from(new Set([...categories, ...payload._localCategories]))
-                setCategories(merged)
-                await updateCategories(projectId, bookId, merged)
-              }
               showToast(payload.type === 'income' ? 'Recorded with gratitude 🙏' : 'Entry noted mindfully 🕊️')
             }
           } catch (err) {
@@ -503,18 +519,57 @@ export default function BookPage() {
 
       {/* ── Delete book confirm ── */}
       <ConfirmDialog
-        open={deleteBookConfirm}
+        open={deleteBookConfirm && !book?.pinHash}
         onClose={() => setDeleteBookConfirm(false)}
         onConfirm={async () => {
           await deleteBook(projectId, bookId)
           navigate(`/projects/${projectId}`)
+          showToast('Book deleted', 'info')
         }}
         title="Delete Book?"
         message={`"${book.name}" and all ${entries.length} entries will be permanently deleted. This cannot be undone.`}
         danger
       />
 
+      {/* ── PIN verification for deletion ── */}
+      <PinVerificationModal
+        open={deleteBookConfirm && Boolean(book?.pinHash)}
+        onClose={() => setDeleteBookConfirm(false)}
+        storedHash={book?.pinHash}
+        itemType="book"
+        itemName={book?.name}
+        onVerified={async (pin) => {
+          try {
+            setDeletingBook(true)
+            await deleteBookWithPin(projectId, bookId, pin)
+            navigate(`/projects/${projectId}`)
+            showToast('Book deleted', 'info')
+          } catch (err) {
+            showToast(err.message || 'Failed to delete book', 'error')
+          } finally {
+            setDeletingBook(false)
+          }
+        }}
+      />
+
       <Toast message={toast.msg} type={toast.type} visible={toast.visible} />
+
+      {/* ── Set / change PIN modal (from book page) ── */}
+      <SetPinModal
+        open={setPinOpen}
+        onClose={() => setSetPinOpen(false)}
+        hasPin={Boolean(book.pinHash)}
+        storedHash={book.pinHash}
+        onSet={async (hash) => {
+          await setPinForBook(projectId, bookId, hash)
+          showToast('PIN set 🔒')
+        }}
+        onRemove={async () => {
+          await setPinForBook(projectId, bookId, null)
+          lockItem(bookId)
+          showToast('PIN removed')
+        }}
+      />
     </LayoutShell>
   )
 }

@@ -11,6 +11,7 @@ import Loader from '../components/common/Loader'
 import QuoteCard from '../components/common/QuoteCard'
 import ProjectModal from '../components/forms/ProjectModal'
 import ConfirmDialog from '../components/common/ConfirmDialog'
+import PinVerificationModal from '../components/common/PinVerificationModal'
 import Toast from '../components/common/Toast'
 import { useAppData } from '../context/AppDataContext'
 import { getQuoteOfTheDay } from '../lib/quotes'
@@ -64,10 +65,11 @@ function ProjectMenu({ project, onEdit, onDelete }) {
 }
 
 export default function DashboardPage() {
-  const { loading, projects, booksByProject, entriesByBook, createProject, updateProject, deleteProject } = useAppData()
+  const { loading, projects, booksByProject, entriesByBook, createProject, updateProject, deleteProject, deleteProjectWithPin } = useAppData()
   const [modalOpen, setModalOpen] = useState(false)
   const [editingProject, setEditingProject] = useState(null)
   const [deleteTarget, setDeleteTarget] = useState(null)
+  const [verifyPinForDelete, setVerifyPinForDelete] = useState(false)
   const [search, setSearch] = useState('')
   const { user } = useAuth()
   const [stalled, setStalled] = useState(false)
@@ -186,57 +188,51 @@ export default function DashboardPage() {
                 >
                   <Link
                     to={`/projects/${project.id}`}
-                    className="block rounded-2xl sm:rounded-3xl border border-amber-100/80 bg-white/88 p-4 sm:p-5 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
+                    className="block rounded-2xl border border-amber-100/80 bg-white/88 p-3 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
                   >
                     {/* Card header */}
-                    <div className="flex items-start justify-between gap-2 mb-2.5">
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <div className="flex-shrink-0 rounded-xl bg-gradient-to-br from-amber-100 to-amber-200 p-2 shadow-sm">
-                          <FolderOpen size={14} className="text-amber-700" />
+                    <div className="flex items-center justify-between gap-2 mb-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div className="flex-shrink-0 rounded-lg bg-amber-100 p-1.5">
+                          <FolderOpen size={13} className="text-amber-700" />
                         </div>
-                        <h3 className="text-sm sm:text-base font-semibold text-stone-800 truncate leading-tight">
+                        <h3 className="text-sm font-semibold text-stone-800 truncate leading-tight">
                           {project.name}
                         </h3>
                       </div>
-                      {/* 3-dot menu */}
                       <ProjectMenu
                         project={project}
                         onEdit={() => { setEditingProject(project); setModalOpen(true) }}
-                        onDelete={() => setDeleteTarget(project)}
+                        onDelete={() => {
+                          const books = booksByProject[project.id] || []
+                          const lockedBook = books.find(b => b.pinHash)
+                          setDeleteTarget({
+                            ...project,
+                            hasLockedBooks: lockedBook ? true : false,
+                            lockedBookPin: lockedBook?.pinHash || '',
+                          })
+                        }}
                       />
                     </div>
 
                     {project.description && (
-                      <p className="text-xs text-stone-400 line-clamp-1 mb-3 pl-0.5">{project.description}</p>
+                      <p className="text-[11px] text-stone-400 line-clamp-1 mb-2">{project.description}</p>
                     )}
 
-                    {/* Stats */}
-                    <div className="grid grid-cols-3 gap-2 text-xs">
-                      <div className="rounded-xl bg-amber-50/70 p-2.5 text-center">
-                        <BookOpen size={11} className="mx-auto text-amber-500 mb-1" />
-                        <p className="font-bold text-stone-700 text-sm">{showValues ? books.length : '●'}</p>
-                        <p className="text-[10px] text-stone-400 mt-0.5">Books</p>
-                      </div>
-                      <div className="rounded-xl bg-amber-50/70 p-2.5 text-center">
-                        <TrendingUp size={11} className="mx-auto text-amber-500 mb-1" />
-                        <p className={`font-bold text-sm truncate ${net >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>
-                          {showValues ? `₹${Math.abs(net) >= 1000 ? (Math.abs(net)/1000).toFixed(1)+'k' : Math.abs(net).toFixed(0)}` : '●●'}
-                        </p>
-                        <p className="text-[10px] text-stone-400 mt-0.5">Net</p>
-                      </div>
-                      <div className="rounded-xl bg-amber-50/70 p-2.5 text-center">
-                        <Calendar size={11} className="mx-auto text-amber-500 mb-1" />
-                        <p className="font-bold text-stone-700 text-[11px]">
-                          {project.updatedAt ? format(new Date(project.updatedAt), 'dd MMM') : '-'}
-                        </p>
-                        <p className="text-[10px] text-stone-400 mt-0.5">Updated</p>
-                      </div>
-                    </div>
-
-                    {/* Entry count footer */}
-                    <div className="mt-3 pt-2.5 border-t border-amber-50 flex items-center justify-between">
-                      <span className="text-[10px] text-stone-400">{totalEntries} total entries</span>
-                      <span className="text-[10px] text-amber-600 font-medium">Open →</span>
+                    {/* Stats — inline row */}
+                    <div className="flex items-center gap-2 text-[11px]">
+                      <span className="flex items-center gap-1 text-stone-500">
+                        <BookOpen size={10} className="text-amber-500" />
+                        {showValues ? books.length : '●'} books
+                      </span>
+                      <span className="text-stone-300">·</span>
+                      <span className={`font-semibold ${net >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>
+                        {showValues ? `${net >= 0 ? '+' : '-'}₹${Math.abs(net) >= 1000 ? (Math.abs(net)/1000).toFixed(1)+'k' : Math.abs(net).toFixed(0)}` : '●●●'}
+                      </span>
+                      <span className="text-stone-300">·</span>
+                      <span className="text-stone-400 ml-auto">
+                        {project.updatedAt ? format(new Date(project.updatedAt), 'dd MMM') : '-'}
+                      </span>
                     </div>
                   </Link>
                 </motion.div>
@@ -272,17 +268,39 @@ export default function DashboardPage() {
         }}
       />
 
-      {/* ── Double-confirm delete dialog ── */}
+      {/* ── Double-confirm delete dialog (only if no locked books) ── */}
       <ConfirmDialog
-        open={Boolean(deleteTarget)}
+        open={Boolean(deleteTarget) && !deleteTarget?.hasLockedBooks}
         onClose={() => setDeleteTarget(null)}
         onConfirm={async () => {
-          await deleteProject(deleteTarget.id)
-          showToast('Project deleted', 'info')
+          try {
+            await deleteProject(deleteTarget.id)
+            showToast('Project deleted', 'info')
+          } catch (err) {
+            showToast(err.message || 'Failed to delete project', 'error')
+          }
         }}
         title="Delete Project?"
         message={`"${deleteTarget?.name}" and all its books and entries will be permanently deleted. This cannot be undone.`}
         danger
+      />
+
+      {/* ── PIN verification for project deletion ── */}
+      <PinVerificationModal
+        open={Boolean(deleteTarget?.hasLockedBooks)}
+        onClose={() => setDeleteTarget(null)}
+        storedHash={deleteTarget?.lockedBookPin || ''}
+        itemType="project"
+        itemName={deleteTarget?.name}
+        onVerified={async (pin) => {
+          try {
+            await deleteProjectWithPin(deleteTarget.id, pin)
+            showToast('Project deleted', 'info')
+          } catch (err) {
+            showToast(err.message || 'Failed to delete project', 'error')
+          }
+          setDeleteTarget(null)
+        }}
       />
 
       <Toast message={toast.msg} type={toast.type} visible={toast.visible} />

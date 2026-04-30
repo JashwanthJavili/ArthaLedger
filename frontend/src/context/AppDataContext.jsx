@@ -236,6 +236,83 @@ export function AppDataProvider({ children }) {
     }
   }, [user?.uid])
 
+  // ── PIN lock ──────────────────────────────────────────────────────────────
+
+  const setPinForBook = useCallback(async (projectId, bookId, pinHash) => {
+    const path = `users/${user.uid}/projects/${projectId}/books/${bookId}`
+    if (pinHash) {
+      await update(ref(db, path), { pinHash, updatedAt: Date.now() })
+        .catch((err) => { throw new Error(friendlyDbError(err)) })
+    } else {
+      // Remove pin
+      const snap = await get(ref(db, path))
+      const data = snap.val() || {}
+      delete data.pinHash
+      await set(ref(db, path), { ...data, updatedAt: Date.now() })
+        .catch((err) => { throw new Error(friendlyDbError(err)) })
+    }
+  }, [user?.uid])
+
+  const setPinForProject = useCallback(async (projectId, pinHash) => {
+    const path = `users/${user.uid}/projects/${projectId}`
+    if (pinHash) {
+      await update(ref(db, path), { pinHash, updatedAt: Date.now() })
+        .catch((err) => { throw new Error(friendlyDbError(err)) })
+    } else {
+      const snap = await get(ref(db, path))
+      const data = snap.val() || {}
+      delete data.pinHash
+      await set(ref(db, path), { ...data, updatedAt: Date.now() })
+        .catch((err) => { throw new Error(friendlyDbError(err)) })
+    }
+  }, [user?.uid])
+
+  // ── PIN-verified deletion ─────────────────────────────────────────────────
+
+  const deleteBookWithPin = useCallback(async (projectId, bookId, pin) => {
+    const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+    const token = localStorage.getItem('auth_token')
+    
+    const response = await fetch(
+      `${baseUrl}/api/v1/projects/${projectId}/books/${bookId}`,
+      {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ pin }),
+      }
+    )
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}))
+      throw new Error(errorData.detail || 'Failed to delete book')
+    }
+  }, [])
+
+  const deleteProjectWithPin = useCallback(async (projectId, pin) => {
+    const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+    const token = localStorage.getItem('auth_token')
+    
+    const response = await fetch(
+      `${baseUrl}/api/v1/projects/${projectId}`,
+      {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ pin }),
+      }
+    )
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}))
+      throw new Error(errorData.detail || 'Failed to delete project')
+    }
+  }, [])
+
   const value = useMemo(() => ({
     loading,
     projects,
@@ -247,18 +324,24 @@ export function AppDataProvider({ children }) {
     createBook,
     updateBook,
     deleteBook,
+    deleteBookWithPin,
+    deleteProjectWithPin,
     addEntry,
     deleteEntry,
     updateEntry,
     getBookCurrentBalance,
     updateCategories,
     getCategories,
+    setPinForBook,
+    setPinForProject,
   }), [
     loading, projects, booksByProject, entriesByBook,
     createProject, updateProject, deleteProject,
     createBook, updateBook, deleteBook,
+    deleteBookWithPin, deleteProjectWithPin,
     addEntry, deleteEntry, updateEntry,
     getBookCurrentBalance, updateCategories, getCategories,
+    setPinForBook, setPinForProject,
   ])
 
   return <AppDataContext.Provider value={value}>{children}</AppDataContext.Provider>

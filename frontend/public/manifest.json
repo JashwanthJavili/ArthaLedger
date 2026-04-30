@@ -1,7 +1,7 @@
 {
-  "name": "Cashbook - Santham Ledger",
-  "short_name": "Cashbook",
-  "description": "Mindful, peaceful cashbook and expense tracking progressive web app.",
+  "name": "ArthaLedger — Where every rupee has meaning",
+  "short_name": "ArthaLedger",
+  "description": "ArthaLedger — a peaceful, mindful financial ledger for personal, family and business tracking.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#fdf6e7",
