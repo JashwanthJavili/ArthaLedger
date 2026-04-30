@@ -4,7 +4,7 @@ import {
   ResponsiveContainer, Tooltip, XAxis, YAxis, CartesianGrid, Legend,
 } from 'recharts'
 import { Link } from 'react-router-dom'
-import { ArrowLeft, BarChart3, PieChart as PieIcon, TrendingUp } from 'lucide-react'
+import { ArrowLeft, BarChart3, PieChart as PieIcon, TrendingUp, TrendingDown, Scale } from 'lucide-react'
 import { motion } from 'framer-motion'
 import LayoutShell from '../components/LayoutShell'
 import { useAppData } from '../context/AppDataContext'
@@ -74,7 +74,7 @@ export default function AnalyticsPage() {
 
   return (
     <LayoutShell>
-      <div className="space-y-3 sm:space-y-4">
+      <div className="space-y-3">
         {/* Header */}
         <div className="flex items-center gap-2">
           <Link
@@ -107,27 +107,41 @@ export default function AnalyticsPage() {
           </motion.div>
         ) : (
           <>
-            {/* Summary totals */}
-            <div className="grid grid-cols-3 gap-2">
-              {[
-                { label: 'Total In', value: totals.income, color: 'text-emerald-700', bg: 'bg-emerald-50', border: 'border-emerald-100' },
-                { label: 'Total Out', value: totals.expense, color: 'text-red-600', bg: 'bg-red-50', border: 'border-red-100' },
-                { label: 'Net', value: totals.net, color: totals.net >= 0 ? 'text-amber-700' : 'text-red-600', bg: 'bg-amber-50', border: 'border-amber-100' },
-              ].map((item, i) => (
-                <motion.div
-                  key={item.label}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.07 }}
-                  className={`rounded-2xl border p-3 text-center ${item.bg} ${item.border}`}
-                >
-                  <p className="text-[10px] text-stone-500 mb-1">{item.label}</p>
-                  <p className={`text-sm sm:text-base font-bold font-serif truncate ${item.color}`}>
-                    ₹{Math.abs(item.value).toFixed(0)}
-                  </p>
-                </motion.div>
-              ))}
-            </div>
+            {/* Summary strip — same compact card as BookPage */}
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="rounded-2xl border border-amber-100/80 bg-white/88 shadow-sm overflow-hidden"
+            >
+              <div className={`px-4 py-3 flex items-center justify-between ${totals.net >= 0 ? 'bg-gradient-to-r from-amber-50 to-orange-50' : 'bg-gradient-to-r from-red-50 to-rose-50'}`}>
+                <div className="flex items-center gap-2">
+                  <div className={`rounded-lg p-1.5 ${totals.net >= 0 ? 'bg-amber-100' : 'bg-red-100'}`}>
+                    <Scale size={13} className={totals.net >= 0 ? 'text-amber-600' : 'text-red-500'} />
+                  </div>
+                  <span className="text-xs font-medium text-stone-500 uppercase tracking-wider">Net Balance</span>
+                </div>
+                <span className={`text-lg font-bold font-serif ${totals.net >= 0 ? 'text-stone-800' : 'text-red-600'}`}>
+                  ₹{Math.abs(totals.net).toFixed(2)}
+                </span>
+              </div>
+              <div className="h-px bg-amber-100/60" />
+              <div className="grid grid-cols-2 divide-x divide-amber-100/60">
+                <div className="px-4 py-2.5 flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-1.5">
+                    <TrendingUp size={12} className="text-emerald-500" />
+                    <span className="text-[11px] text-stone-400">Total In</span>
+                  </div>
+                  <span className="text-sm font-semibold text-emerald-700">₹{totals.income.toFixed(2)}</span>
+                </div>
+                <div className="px-4 py-2.5 flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-1.5">
+                    <TrendingDown size={12} className="text-red-400" />
+                    <span className="text-[11px] text-stone-400">Total Out</span>
+                  </div>
+                  <span className="text-sm font-semibold text-red-600">₹{totals.expense.toFixed(2)}</span>
+                </div>
+              </div>
+            </motion.div>
 
             {/* Monthly bar chart */}
             <motion.section

@@ -1,28 +1,32 @@
-# ── Node / Frontend ──────────────────────────────────────────────────────────
-node_modules/
-frontend/node_modules/
-frontend/dist/
+# ── Secrets — NEVER commit these ─────────────────────────────────────────────
 frontend/.env
 frontend/.env.local
 frontend/.env.production
+backend/.env
+backend/firebase-admin-service-account.json
+*service-account*.json
+*serviceAccount*.json
+firebase-adminsdk*.json
+*.pem
+*.key
 
-# ── Python / Backend ─────────────────────────────────────────────────────────
+# ── Node / Frontend ───────────────────────────────────────────────────────────
+node_modules/
+frontend/node_modules/
+frontend/dist/
+
+# ── Python / Backend ──────────────────────────────────────────────────────────
 __pycache__/
 *.py[cod]
 *.pyo
 .venv/
 venv/
 env/
-backend/.env
-backend/firebase-admin-service-account.json
-*.json.key
+*.egg-info/
+dist/
+build/
 
-# ── Firebase credentials (NEVER commit these) ────────────────────────────────
-*service-account*.json
-*serviceAccount*.json
-firebase-adminsdk*.json
-
-# ── OS / Editor ──────────────────────────────────────────────────────────────
+# ── OS / Editor ───────────────────────────────────────────────────────────────
 .DS_Store
 Thumbs.db
 .idea/
@@ -30,7 +34,8 @@ Thumbs.db
 *.swp
 *.swo
 
-# ── Logs ─────────────────────────────────────────────────────────────────────
+# ── Logs ──────────────────────────────────────────────────────────────────────
 *.log
 npm-debug.log*
 yarn-debug.log*
+yarn-error.log*

@@ -8,7 +8,7 @@ import {
 import { Link, useParams, useNavigate } from 'react-router-dom'
 import LayoutShell from '../components/LayoutShell'
 import EntryCard from '../components/cards/EntryCard'
-import SummaryCard from '../components/cards/SummaryCard'
+import SummaryStrip from '../components/cards/SummaryCard'
 import EntryModal from '../components/forms/EntryModal'
 import BookModal from '../components/forms/BookModal'
 import CategoryManager from '../components/forms/CategoryManager'
@@ -202,12 +202,12 @@ export default function BookPage() {
 
   return (
     <LayoutShell>
-      <div className="space-y-4 sm:space-y-5 pb-28">
+      <div className="space-y-3 pb-28">
 
         {/* ── Book header card ── */}
-        <header className="rounded-2xl sm:rounded-3xl border border-amber-100/80 bg-white/88 p-4 sm:p-5 shadow-sm backdrop-blur-sm">
+        <header className="rounded-2xl border border-amber-100/80 bg-white/88 p-3 shadow-sm backdrop-blur-sm">
           {/* Top row: back + title + actions */}
-          <div className="flex items-center justify-between gap-2 mb-4">
+          <div className="flex items-center justify-between gap-2 mb-3">
             <div className="flex items-center gap-2 min-w-0">
               <Link
                 to={`/projects/${projectId}`}
@@ -362,22 +362,23 @@ export default function BookPage() {
           )}
         </AnimatePresence>
 
-        {/* ── Summary cards ── */}
+        {/* ── Summary strip (single compact card) ── */}
         <section>
-          <h2 className="font-serif text-lg font-semibold text-stone-800 mb-3">Summary</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
-            <SummaryCard title="Net Balance" value={summary.net.toFixed(2)} tone="neutral" delay={0} />
-            <SummaryCard title="Total Cash In" value={summary.totalIn.toFixed(2)} tone="income" delay={0.08} />
-            <SummaryCard title="Total Cash Out" value={summary.totalOut.toFixed(2)} tone="expense" delay={0.16} />
-          </div>
+          <h2 className="font-serif text-base font-semibold text-stone-700 mb-2">Summary</h2>
+          <SummaryStrip
+            net={summary.net}
+            totalIn={summary.totalIn}
+            totalOut={summary.totalOut}
+            delay={0}
+          />
         </section>
 
         {/* ── Entries section ── */}
         <section>
-          <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center justify-between mb-2">
             <div>
-              <h2 className="font-serif text-lg font-semibold text-stone-800">Transactions</h2>
-              <p className="text-xs text-stone-400 mt-0.5">
+              <h2 className="font-serif text-base font-semibold text-stone-700">Transactions</h2>
+              <p className="text-[11px] text-stone-400 mt-0.5">
                 {filteredEntries.length === entries.length
                   ? `${entries.length} entr${entries.length !== 1 ? 'ies' : 'y'}`
                   : `${filteredEntries.length} of ${entries.length} entries`}
