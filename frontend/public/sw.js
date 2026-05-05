@@ -18,6 +18,22 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(event.request.url)
 
+  // ── Skip everything in development (localhost) ──────────────────────────
+  // The service worker must not intercept Vite's HMR websocket or module
+  // requests, otherwise hot-reload breaks with network errors.
+  if (url.hostname === 'localhost' || url.hostname === '127.0.0.1') return
+
+  // ── Skip non-http(s) schemes (chrome-extension, etc.) ───────────────────
+  if (!url.protocol.startsWith('http')) return
+
+  // ── Skip Firebase / external API calls ──────────────────────────────────
+  if (
+    url.hostname.includes('firebaseio.com') ||
+    url.hostname.includes('googleapis.com') ||
+    url.hostname.includes('firebaseapp.com') ||
+    url.hostname.includes('identitytoolkit.googleapis.com')
+  ) return
+
   // For navigation requests (HTML pages), always go network-first
   if (event.request.mode === 'navigate') {
     event.respondWith(

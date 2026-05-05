@@ -4,6 +4,7 @@ import { Link, useParams, useNavigate } from 'react-router-dom'
 import {
   Plus, ArrowLeft, BookOpen,
   MoreVertical, Pencil, Trash2, Lock, ShieldAlert, Unlock, ArrowRight,
+  Eye, EyeOff,
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import LayoutShell from '../components/LayoutShell'
@@ -108,6 +109,19 @@ export default function ProjectDetailPage() {
 
   // Transfer state
   const [transferSource, setTransferSource] = useState(null) // book being transferred from
+
+  // Hide/show project summary — persisted per project in localStorage
+  const summaryKey = `al_show_summary_${projectId}`
+  const [showSummary, setShowSummary] = useState(() => {
+    const stored = localStorage.getItem(summaryKey)
+    return stored === null ? true : stored === 'true'
+  })
+  const toggleSummary = () => {
+    setShowSummary(v => {
+      localStorage.setItem(summaryKey, String(!v))
+      return !v
+    })
+  }
 
   // Project PIN state
   const [setPinOpen, setSetPinOpen] = useState(false)
@@ -271,13 +285,34 @@ export default function ProjectDetailPage() {
         {/* Project summary */}
         {books.length > 0 && (
           <section>
-            <h2 className="font-serif text-base font-semibold text-stone-700 mb-2">Project Summary</h2>
-            <SummaryStrip
-              net={projectSummary.net}
-              totalIn={projectSummary.totalIn}
-              totalOut={projectSummary.totalOut}
-              delay={0.05}
-            />
+            <div className="flex items-center justify-between mb-2">
+              <h2 className="font-serif text-base font-semibold text-stone-700">Project Summary</h2>
+              <button
+                onClick={toggleSummary}
+                className="rounded-xl border border-amber-100 p-1.5 text-stone-400 hover:bg-amber-50 hover:text-stone-600 transition-colors"
+                title={showSummary ? 'Hide summary' : 'Show summary'}
+              >
+                {showSummary ? <Eye size={14} /> : <EyeOff size={14} />}
+              </button>
+            </div>
+            {showSummary ? (
+              <SummaryStrip
+                net={projectSummary.net}
+                totalIn={projectSummary.totalIn}
+                totalOut={projectSummary.totalOut}
+                delay={0.05}
+              />
+            ) : (
+              <div className="rounded-2xl border border-amber-100/80 bg-white/88 px-4 py-3 shadow-sm flex items-center justify-between">
+                <span className="text-xs text-stone-400">Summary hidden</span>
+                <button
+                  onClick={toggleSummary}
+                  className="text-xs text-amber-600 hover:text-amber-800 font-medium transition-colors"
+                >
+                  Show
+                </button>
+              </div>
+            )}
           </section>
         )}
 

@@ -13,12 +13,12 @@ import { useRef, useEffect } from 'react'
 export default function PinInput({ length = 4, value = '', onChange, autoFocus = false }) {
   const inputsRef = useRef([])
 
-  // Focus first box on mount if autoFocus
+  // Focus first box on mount if autoFocus, and whenever length changes
   useEffect(() => {
     if (autoFocus) {
       setTimeout(() => inputsRef.current[0]?.focus(), 60)
     }
-  }, [autoFocus])
+  }, [autoFocus, length])
 
   // When length changes, trim or keep value
   useEffect(() => {
