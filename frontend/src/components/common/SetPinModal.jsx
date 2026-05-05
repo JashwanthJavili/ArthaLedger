@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
-import { ShieldCheck, X, Eye, EyeOff, Trash2 } from 'lucide-react'
+import { ShieldCheck, X, Trash2 } from 'lucide-react'
 import { hashPin, verifyPin, validatePin } from '../../lib/pin'
+import PinInput from './PinInput'
+import PinLengthSelector from './PinLengthSelector'
 
 /**
  * Set / change / remove PIN modal.
@@ -12,7 +14,7 @@ import { hashPin, verifyPin, validatePin } from '../../lib/pin'
  * Flow when hasPin === false (setting):
  *   Enter new PIN + confirm directly
  *
- * PIN rules: min 6 characters, alphanumeric allowed.
+ * PIN rules: exactly 4 or 6 numeric digits.
  *
  * Props:
  *   open, onClose, hasPin, storedHash
@@ -22,10 +24,10 @@ import { hashPin, verifyPin, validatePin } from '../../lib/pin'
 export default function SetPinModal({ open, onClose, hasPin, storedHash, onSet, onRemove }) {
   const [step, setStep] = useState('verify')  // 'verify' | 'set'
   const [currentPin, setCurrentPin] = useState('')
+  const [currentPinLength, setCurrentPinLength] = useState(4)
   const [newPin, setNewPin] = useState('')
   const [confirmPin, setConfirmPin] = useState('')
-  const [showCurrent, setShowCurrent] = useState(false)
-  const [showNew, setShowNew] = useState(false)
+  const [pinLength, setPinLength] = useState(4)
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
 
@@ -33,28 +35,28 @@ export default function SetPinModal({ open, onClose, hasPin, storedHash, onSet, 
     if (open) {
       setStep(hasPin ? 'verify' : 'set')
       setCurrentPin('')
+      setCurrentPinLength(4)
       setNewPin('')
       setConfirmPin('')
+      setPinLength(4)
       setError('')
-      setShowCurrent(false)
-      setShowNew(false)
     }
   }, [open, hasPin])
 
   if (!open) return null
 
   // ── Step 1: Verify current PIN ─────────────────────────────────────────────
-  const handleVerify = async (e) => {
-    e.preventDefault()
-      const validation = validatePin(currentPin)
-      if (!validation.valid) { 
-        setError('Incorrect PIN.') 
-        return 
-      }
+  const handleVerify = async (pinValue) => {
+    const pinToVerify = typeof pinValue === 'string' ? pinValue : currentPin
+    const validation = validatePin(pinToVerify)
+    if (!validation.valid) {
+      setError('Incorrect PIN.')
+      return
+    }
     setSaving(true)
     setError('')
     try {
-      const ok = await verifyPin(currentPin, storedHash)
+      const ok = await verifyPin(pinToVerify, storedHash)
       if (ok) {
         setStep('set')
         setCurrentPin('')
@@ -70,17 +72,26 @@ export default function SetPinModal({ open, onClose, hasPin, storedHash, onSet, 
     }
   }
 
+  // Auto-submit verify when all digits entered
+  const handleCurrentPinChange = (val) => {
+    setCurrentPin(val)
+    setError('')
+    if (val.length === currentPinLength && !saving) {
+      handleVerify(val)
+    }
+  }
+
   // ── Step 2: Set new PIN ────────────────────────────────────────────────────
   const handleSet = async (e) => {
     e.preventDefault()
     setError('')
-    
-      const validation = validatePin(newPin)
-      if (!validation.valid) {
-        setError(validation.error)
-        return
-      }
-    
+
+    const validation = validatePin(newPin)
+    if (!validation.valid) {
+      setError(validation.error)
+      return
+    }
+
     if (newPin !== confirmPin) { setError('PINs do not match.'); return }
     if (hasPin && newPin === currentPin) { setError('New PIN must be different from the current one.'); return }
     setSaving(true)
@@ -106,6 +117,9 @@ export default function SetPinModal({ open, onClose, hasPin, storedHash, onSet, 
     }
   }
 
+  // Strength indicator for numeric PINs
+  const pinStrength = pinLength === 6 ? 'strong' : 'weak'
+
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
@@ -125,7 +139,7 @@ export default function SetPinModal({ open, onClose, hasPin, storedHash, onSet, 
             </h3>
             <p className="mt-1 text-xs text-stone-400">
               {!hasPin
-                ? 'Protect this book with a PIN (min. 6 characters)'
+                ? 'Protect this book with a 4 or 6 digit PIN'
                 : step === 'verify'
                   ? 'Enter your current PIN to continue'
                   : 'Choose a new PIN for this book'
@@ -136,84 +150,96 @@ export default function SetPinModal({ open, onClose, hasPin, storedHash, onSet, 
 
         {/* ── Verify current PIN (only when changing) ── */}
         {hasPin && step === 'verify' ? (
-          <form onSubmit={handleVerify} className="space-y-3">
-            <div>
-              <label className="block text-[11px] font-medium text-stone-500 mb-1">Current PIN</label>
-              <div className="relative">
-                <input
-                  type={showCurrent ? 'text' : 'password'}
-                  value={currentPin}
-                  onChange={e => { setCurrentPin(e.target.value); setError('') }}
-                  placeholder="Enter current PIN"
-                  maxLength={20}
-                  autoFocus
-                  className="w-full rounded-xl border border-amber-100 bg-amber-50/40 px-3 py-2.5 pr-9 text-center text-lg font-bold tracking-widest text-stone-800 placeholder-stone-300 placeholder:text-sm placeholder:font-normal placeholder:tracking-normal focus:border-amber-300 focus:bg-white transition-colors"
-                />
-                <button type="button" onClick={() => setShowCurrent(v => !v)}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-stone-400">
-                  {showCurrent ? <EyeOff size={13} /> : <Eye size={13} />}
-                </button>
-              </div>
+          <form onSubmit={e => { e.preventDefault(); handleVerify(currentPin) }} className="space-y-4" autoComplete="off">
+            <input type="text" name="username" style={{ display: 'none' }} readOnly tabIndex={-1} />
+            <input type="text" name="fakepassword" style={{ display: 'none' }} readOnly tabIndex={-1} />
+
+            <div className="space-y-2">
+              <label className="block text-[11px] font-medium text-stone-500 text-center">
+                Current PIN length
+              </label>
+              <PinLengthSelector value={currentPinLength} onChange={(len) => {
+                setCurrentPinLength(len)
+                setCurrentPin('')
+                setError('')
+              }} />
+            </div>
+
+            <div className="space-y-2">
+              <label className="block text-[11px] font-medium text-stone-500 text-center">
+                Current PIN
+              </label>
+              <PinInput
+                length={currentPinLength}
+                value={currentPin}
+                onChange={handleCurrentPinChange}
+                autoFocus
+              />
             </div>
 
             {error && (
               <p className="rounded-xl bg-red-50 border border-red-100 px-3 py-2 text-xs text-red-600 text-center">{error}</p>
             )}
 
-            <button type="submit" disabled={saving || !currentPin}
+            <button type="submit" disabled={saving || currentPin.length < currentPinLength}
               className="w-full rounded-xl bg-amber-600 py-2.5 text-sm font-semibold text-white hover:bg-amber-700 transition-colors disabled:opacity-60">
               {saving ? 'Verifying...' : 'Continue'}
             </button>
-
-            {/* Remove PIN is NOT shown here — user must verify PIN first (step 2) */}
           </form>
         ) : (
-          /* ── Set new PIN ── */
-          <form onSubmit={handleSet} className="space-y-3">
-            <div>
-              <label className="block text-[11px] font-medium text-stone-500 mb-1">
-                New PIN <span className="text-stone-400 font-normal">(min. 6 chars, letters & numbers ok)</span>
+          <form onSubmit={handleSet} className="space-y-4" autoComplete="off">
+            <input type="text" name="username" style={{ display: 'none' }} readOnly tabIndex={-1} />
+            <input type="text" name="fakepassword" style={{ display: 'none' }} readOnly tabIndex={-1} />
+
+            {/* PIN length selector */}
+            <div className="space-y-2">
+              <label className="block text-[11px] font-medium text-stone-500 text-center">
+                PIN length
               </label>
-              <div className="relative">
-                <input
-                  type={showNew ? 'text' : 'password'}
-                  value={newPin}
-                  onChange={e => { setNewPin(e.target.value); setError('') }}
-                  placeholder="e.g. mypin7 or 123456"
-                  maxLength={20}
-                  autoFocus
-                  className="w-full rounded-xl border border-amber-100 bg-amber-50/40 px-3 py-2.5 pr-9 text-sm text-stone-800 placeholder-stone-400 focus:border-amber-300 focus:bg-white transition-colors"
-                />
-                <button type="button" onClick={() => setShowNew(v => !v)}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-stone-400">
-                  {showNew ? <EyeOff size={13} /> : <Eye size={13} />}
-                </button>
-              </div>
+              <PinLengthSelector value={pinLength} onChange={(len) => {
+                setPinLength(len)
+                setNewPin('')
+                setConfirmPin('')
+                setError('')
+              }} />
             </div>
 
-            <div>
-              <label className="block text-[11px] font-medium text-stone-500 mb-1">Confirm PIN</label>
-              <input
-                type="password"
+            <div className="space-y-2">
+              <label className="block text-[11px] font-medium text-stone-500 text-center">
+                New PIN
+              </label>
+              <PinInput
+                length={pinLength}
+                value={newPin}
+                onChange={val => { setNewPin(val); setError('') }}
+                autoFocus
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="block text-[11px] font-medium text-stone-500 text-center">
+                Confirm PIN
+              </label>
+              <PinInput
+                length={pinLength}
                 value={confirmPin}
-                onChange={e => { setConfirmPin(e.target.value); setError('') }}
-                placeholder="Re-enter PIN"
-                maxLength={20}
-                className="w-full rounded-xl border border-amber-100 bg-amber-50/40 px-3 py-2.5 text-sm text-stone-800 placeholder-stone-400 focus:border-amber-300 focus:bg-white transition-colors"
+                onChange={val => { setConfirmPin(val); setError('') }}
               />
             </div>
 
             {/* Strength indicator */}
             {newPin.length > 0 && (
-              <div className="h-1 w-full rounded-full bg-stone-100 overflow-hidden">
-                <div
-                  className={`h-full rounded-full transition-all ${
-                    newPin.length < 6 ? 'bg-red-400 w-1/4' :
-                    newPin.length < 8 ? 'bg-orange-400 w-1/2' :
-                    /[A-Za-z]/.test(newPin) && /[0-9]/.test(newPin) ? 'bg-emerald-500 w-full' :
-                    'bg-yellow-400 w-3/4'
-                  }`}
-                />
+              <div className="space-y-1">
+                <div className="h-1 w-full rounded-full bg-stone-100 overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all ${
+                      pinStrength === 'strong' ? 'bg-emerald-500 w-full' : 'bg-yellow-400 w-1/2'
+                    }`}
+                  />
+                </div>
+                <p className={`text-[10px] text-center ${pinStrength === 'strong' ? 'text-emerald-600' : 'text-yellow-600'}`}>
+                  {pinStrength === 'strong' ? '6-digit PIN — stronger' : '4-digit PIN — consider 6 digits for more security'}
+                </p>
               </div>
             )}
 
@@ -221,7 +247,7 @@ export default function SetPinModal({ open, onClose, hasPin, storedHash, onSet, 
               <p className="rounded-xl bg-red-50 border border-red-100 px-3 py-2 text-xs text-red-600 text-center">{error}</p>
             )}
 
-            <button type="submit" disabled={saving || newPin.length < 6}
+            <button type="submit" disabled={saving || newPin.length < pinLength || confirmPin.length < pinLength}
               className="w-full rounded-xl bg-amber-600 py-2.5 text-sm font-semibold text-white hover:bg-amber-700 transition-colors disabled:opacity-60">
               {saving ? 'Saving...' : hasPin ? 'Update PIN' : 'Set PIN'}
             </button>
@@ -246,4 +272,3 @@ export default function SetPinModal({ open, onClose, hasPin, storedHash, onSet, 
     </div>
   )
 }
-

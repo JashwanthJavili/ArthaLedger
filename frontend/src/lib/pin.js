@@ -1,21 +1,18 @@
 /**
  * PIN utilities — SHA-256 hashing via Web Crypto API.
- * PINs are alphanumeric (a-z, A-Z, 0-9), minimum 6 characters, maximum 20 characters.
+ * PINs are exactly 4 or 6 numeric digits.
  * Never store raw PINs — only hashes go to Firebase.
  */
 
-const PIN_REGEX = /^[a-zA-Z0-9]{6,20}$/
+const PIN_REGEX = /^\d{4}$|^\d{6}$/
 
 export function validatePin(pin) {
   // Validate PIN format. Returns { valid: bool, error?: string }
   if (!pin || typeof pin !== 'string') {
     return { valid: false, error: 'PIN is required' }
   }
-  if (!PIN_REGEX.test(pin)) {
-    return { 
-      valid: false, 
-      error: 'PIN must be 6-20 alphanumeric characters (letters and numbers only)'
-    }
+  if (!/^\d{4}$/.test(pin) && !/^\d{6}$/.test(pin)) {
+    return { valid: false, error: 'PIN must be exactly 4 or 6 digits' }
   }
   return { valid: true }
 }

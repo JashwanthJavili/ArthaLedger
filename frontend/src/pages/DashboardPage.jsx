@@ -3,7 +3,7 @@ import { format } from 'date-fns'
 import { Link } from 'react-router-dom'
 import {
   Plus, Search, Eye, EyeOff, BookOpen, TrendingUp,
-  Calendar, FolderOpen, MoreVertical, Pencil, Trash2,
+  Calendar, FolderOpen, MoreVertical, Pencil, Trash2, Lock,
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import LayoutShell from '../components/LayoutShell'
@@ -16,6 +16,7 @@ import Toast from '../components/common/Toast'
 import { useAppData } from '../context/AppDataContext'
 import { getQuoteOfTheDay } from '../lib/quotes'
 import { useAuth } from '../context/AuthContext'
+import { formatAmount, getCurrencySymbol } from '../lib/format'
 
 function ProjectMenu({ project, onEdit, onDelete }) {
   const [open, setOpen] = useState(false)
@@ -73,7 +74,17 @@ export default function DashboardPage() {
   const [search, setSearch] = useState('')
   const { user } = useAuth()
   const [stalled, setStalled] = useState(false)
-  const [showValues, setShowValues] = useState(true)
+  const [showValues, setShowValues] = useState(() => {
+    const key = `al_show_values_${user?.uid || 'guest'}`
+    const stored = localStorage.getItem(key)
+    return stored === null ? true : stored === 'true'
+  })
+
+  // Persist showValues to localStorage whenever it changes
+  useEffect(() => {
+    const key = `al_show_values_${user?.uid || 'guest'}`
+    localStorage.setItem(key, String(showValues))
+  }, [showValues, user?.uid])
   const [toast, setToast] = useState({ msg: '', type: 'success', visible: false })
 
   useEffect(() => {
@@ -177,6 +188,9 @@ export default function DashboardPage() {
                 return acc + Number(last?.balanceAfter || 0)
               }, 0)
               const totalEntries = books.reduce((acc, b) => acc + (entriesByBook[b.id]?.length || 0), 0)
+              const isProjectPinLocked = Boolean(project.pinHash)
+              const lockedBook = books.find(b => b.pinHash)
+              const symbol = getCurrencySymbol()
 
               return (
                 <motion.div
@@ -193,23 +207,26 @@ export default function DashboardPage() {
                     {/* Card header */}
                     <div className="flex items-center justify-between gap-2 mb-2">
                       <div className="flex items-center gap-2 min-w-0">
-                        <div className="flex-shrink-0 rounded-lg bg-amber-100 p-1.5">
-                          <FolderOpen size={13} className="text-amber-700" />
+                        <div className={`flex-shrink-0 rounded-lg p-1.5 ${isProjectPinLocked ? 'bg-amber-200' : 'bg-amber-100'}`}>
+                          {isProjectPinLocked
+                            ? <Lock size={13} className="text-amber-700" />
+                            : <FolderOpen size={13} className="text-amber-700" />
+                          }
                         </div>
-                        <h3 className="text-sm font-semibold text-stone-800 truncate leading-tight">
-                          {project.name}
-                        </h3>
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <h3 className="text-sm font-semibold text-stone-800 truncate leading-tight">
+                            {project.name}
+                          </h3>
+                        </div>
                       </div>
                       <ProjectMenu
                         project={project}
                         onEdit={() => { setEditingProject(project); setModalOpen(true) }}
                         onDelete={() => {
-                          const books = booksByProject[project.id] || []
-                          const lockedBook = books.find(b => b.pinHash)
                           setDeleteTarget({
                             ...project,
-                            hasLockedBooks: lockedBook ? true : false,
-                            lockedBookPin: lockedBook?.pinHash || '',
+                            hasLockedBooks: Boolean(lockedBook) || isProjectPinLocked,
+                            lockedBookPin: project.pinHash || lockedBook?.pinHash || '',
                           })
                         }}
                       />
@@ -227,7 +244,10 @@ export default function DashboardPage() {
                       </span>
                       <span className="text-stone-300">·</span>
                       <span className={`font-semibold ${net >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>
-                        {showValues ? `${net >= 0 ? '+' : '-'}₹${Math.abs(net) >= 1000 ? (Math.abs(net)/1000).toFixed(1)+'k' : Math.abs(net).toFixed(0)}` : '●●●'}
+                        {showValues
+                          ? `${net >= 0 ? '+' : '-'}${symbol}${formatAmount(Math.abs(net), 0)}`
+                          : '●●●'
+                        }
                       </span>
                       <span className="text-stone-300">·</span>
                       <span className="text-stone-400 ml-auto">

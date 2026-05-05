@@ -20,7 +20,7 @@ import { useAppData } from '../context/AppDataContext'
 import { exportBookPdf } from '../lib/pdf'
 import { lockItem } from '../lib/pin'
 
-const defaultCategories = ['Food', 'Travel', 'Temple', 'Bills', 'Donation', 'Shopping', 'Salary', 'Investment']
+const defaultCategories = []
 
 /* ── Per-entry 3-dot menu ── */
 function EntryMenu({ onEdit, onDelete }) {
@@ -190,8 +190,12 @@ export default function BookPage() {
   }, [entries, search, filters])
 
   const summary = useMemo(() => {
-    const totalIn = entries.filter((e) => e.type === 'income').reduce((acc, e) => acc + Number(e.amount), 0)
-    const totalOut = entries.filter((e) => e.type === 'expense').reduce((acc, e) => acc + Number(e.amount), 0)
+    const totalIn = entries
+      .filter((e) => e.type === 'income' || e.type === 'transfer_in')
+      .reduce((acc, e) => acc + Number(e.amount), 0)
+    const totalOut = entries
+      .filter((e) => e.type === 'expense' || e.type === 'transfer_out')
+      .reduce((acc, e) => acc + Number(e.amount), 0)
     return { totalIn, totalOut, net: totalIn - totalOut }
   }, [entries])
 

@@ -1,19 +1,9 @@
 import { motion } from 'framer-motion'
 import { TrendingUp, TrendingDown, Scale } from 'lucide-react'
+import { formatAmount, getCurrencySymbol } from '../../lib/format'
 
-const currencyMap = { INR: '₹', USD: '$', EUR: '€', GBP: '£', JPY: '¥', AED: 'د.إ', SGD: 'S$' }
-function getSymbol() {
-  if (typeof window === 'undefined') return '₹'
-  return currencyMap[localStorage.getItem('sl_currency') || 'INR'] || '₹'
-}
-
-/**
- * Compact single-card summary strip.
- * Shows Net Balance (prominent) + Cash In + Cash Out side by side.
- * Replaces the old three-card layout to save vertical space.
- */
 export default function SummaryStrip({ net, totalIn, totalOut, delay = 0 }) {
-  const symbol = getSymbol()
+  const symbol = getCurrencySymbol()
   const netPositive = net >= 0
 
   return (
@@ -32,7 +22,7 @@ export default function SummaryStrip({ net, totalIn, totalOut, delay = 0 }) {
           <span className="text-xs font-medium text-stone-500 uppercase tracking-wider">Net Balance</span>
         </div>
         <span className={`text-lg font-bold font-serif ${netPositive ? 'text-stone-800' : 'text-red-600'}`}>
-          {netPositive ? '' : '-'}{symbol}{Math.abs(net).toFixed(2)}
+          {netPositive ? '' : '-'}{symbol}{formatAmount(Math.abs(net))}
         </span>
       </div>
 
@@ -47,7 +37,7 @@ export default function SummaryStrip({ net, totalIn, totalOut, delay = 0 }) {
             <span className="text-[11px] text-stone-400 truncate">Cash In</span>
           </div>
           <span className="text-sm font-semibold text-emerald-700 flex-shrink-0">
-            {symbol}{totalIn.toFixed(2)}
+            {symbol}{formatAmount(totalIn)}
           </span>
         </div>
         <div className="px-4 py-2.5 flex items-center justify-between gap-2">
@@ -56,7 +46,7 @@ export default function SummaryStrip({ net, totalIn, totalOut, delay = 0 }) {
             <span className="text-[11px] text-stone-400 truncate">Cash Out</span>
           </div>
           <span className="text-sm font-semibold text-red-600 flex-shrink-0">
-            {symbol}{totalOut.toFixed(2)}
+            {symbol}{formatAmount(totalOut)}
           </span>
         </div>
       </div>

@@ -4,7 +4,7 @@ import {
   ArrowLeft, Settings, Moon, Sun, DollarSign, Download,
   LogOut, User, Shield, ChevronRight, Lock, Eye, EyeOff,
   CheckCircle, Info, HelpCircle, ChevronDown, ChevronUp,
-  Wallet, Database, Key, Globe, Smartphone, CheckCircle2,
+  Wallet, Database, Key, Globe, Smartphone, CheckCircle2, Trash2, Pencil, Phone, Calendar, Users,
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import LayoutShell from '../components/LayoutShell'
@@ -138,7 +138,7 @@ function FAQItem({ q, a }) {
 }
 
 export default function SettingsPage() {
-  const { user, logout, changePassword } = useAuth()
+  const { user, logout, changePassword, deleteAccount, updateUserProfile, getUserProfile } = useAuth()
   const { projects, booksByProject, entriesByBook } = useAppData()
 
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem('sl_dark') === 'true')
@@ -176,6 +176,40 @@ export default function SettingsPage() {
   const [pwError, setPwError] = useState('')
   const [pwLoading, setPwLoading] = useState(false)
   const [pwSuccess, setPwSuccess] = useState(false)
+
+  // Delete account state
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [deleteStep, setDeleteStep] = useState(1)
+  const [deletePassword, setDeletePassword] = useState('')
+  const [deleteError, setDeleteError] = useState('')
+  const [deleteLoading, setDeleteLoading] = useState(false)
+  const [showDeletePw, setShowDeletePw] = useState(false)
+
+  // Profile edit state
+  const [showEditProfile, setShowEditProfile] = useState(false)
+  const [profileData, setProfileData] = useState({ displayName: '', phone: '', gender: '', dob: '', bio: '' })
+  const [profileLoading, setProfileLoading] = useState(false)
+  const [profileError, setProfileError] = useState('')
+  const [profileFetched, setProfileFetched] = useState(false)
+
+  // Load profile data on mount
+  useEffect(() => {
+    if (user && !profileFetched) {
+      getUserProfile().then(data => {
+        setProfileData({
+          displayName: data?.displayName || user?.displayName || '',
+          phone: data?.phone || '',
+          gender: data?.gender || '',
+          dob: data?.dob || '',
+          bio: data?.bio || '',
+        })
+        setProfileFetched(true)
+      }).catch(() => {
+        setProfileData(p => ({ ...p, displayName: user?.displayName || '' }))
+        setProfileFetched(true)
+      })
+    }
+  }, [user, profileFetched, getUserProfile])
 
   const showToast = (msg, type = 'success') => {
     setToast({ msg, type, visible: true })
@@ -231,6 +265,64 @@ export default function SettingsPage() {
     showToast('Data exported successfully')
   }
 
+  const handleDeleteAccount = async () => {
+    setDeleteError('')
+    setDeleteLoading(true)
+    try {
+      await deleteAccount(isPasswordUser ? deletePassword : undefined)
+      // Account deleted — redirect to login
+      window.location.href = '/login'
+    } catch (err) {
+      setDeleteError(err.message || 'Failed to delete account. Please try again.')
+    } finally {
+      setDeleteLoading(false)
+    }
+  }
+
+  const openDeleteDialog = () => {
+    setDeleteStep(1)
+    setDeletePassword('')
+    setDeleteError('')
+    setShowDeletePw(false)
+    setShowDeleteDialog(true)
+  }
+
+  const openEditProfile = async () => {
+    setProfileError('')
+    if (!profileFetched) {
+      const data = await getUserProfile()
+      setProfileData({
+        displayName: data?.displayName || user?.displayName || '',
+        phone: data?.phone || '',
+        gender: data?.gender || '',
+        dob: data?.dob || '',
+        bio: data?.bio || '',
+      })
+      setProfileFetched(true)
+    }
+    setShowEditProfile(true)
+  }
+  const handleSaveProfile = async (e) => {
+    e.preventDefault()
+    setProfileError('')
+    if (!profileData.displayName.trim()) { setProfileError('Name is required.'); return }
+    if (profileData.phone && !/^\d{10}$/.test(profileData.phone.trim())) {
+      setProfileError('Enter a valid 10-digit mobile number.')
+      return
+    }
+    setProfileLoading(true)
+    try {
+      await updateUserProfile(profileData)
+      setProfileFetched(false) // force re-fetch next time
+      showToast('Profile updated ✓')
+      setShowEditProfile(false)
+    } catch (err) {
+      setProfileError(err.message || 'Failed to update profile.')
+    } finally {
+      setProfileLoading(false)
+    }
+  }
+
   const totalProjects = projects.length
   const totalBooks = Object.values(booksByProject).flat().length
   const totalEntries = Object.values(entriesByBook).flat().length
@@ -254,8 +346,16 @@ export default function SettingsPage() {
         {/* Profile */}
         <motion.section initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
           className="rounded-2xl border border-amber-100/80 bg-white/88 p-4 shadow-sm">
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-stone-400 mb-3">Profile</h2>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-stone-400">Profile</h2>
+            <button
+              onClick={openEditProfile}
+              className="flex items-center gap-1.5 rounded-xl border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-xs font-medium text-amber-700 hover:bg-amber-100 transition-colors"
+            >
+              <Pencil size={11} /> Edit
+            </button>
+          </div>
+          <div className="flex items-center gap-3 mb-3">
             <div className="flex-shrink-0 rounded-2xl bg-gradient-to-br from-amber-100 to-amber-200 p-3">
               <User size={20} className="text-amber-700" />
             </div>
@@ -267,7 +367,35 @@ export default function SettingsPage() {
               </p>
             </div>
           </div>
-          <div className="mt-3 grid grid-cols-3 gap-2">
+
+          {/* Profile details rows — same style as name/email */}
+          <div className="space-y-1.5 mb-3">
+            {profileData.phone && (
+              <div className="flex items-center gap-2.5">
+                <Phone size={12} className="flex-shrink-0 text-amber-600" />
+                <span className="text-xs text-stone-600">+91 {profileData.phone}</span>
+              </div>
+            )}
+            {profileData.gender && (
+              <div className="flex items-center gap-2.5">
+                <Users size={12} className="flex-shrink-0 text-amber-600" />
+                <span className="text-xs text-stone-600 capitalize">{profileData.gender}</span>
+              </div>
+            )}
+            {profileData.dob && (
+              <div className="flex items-center gap-2.5">
+                <Calendar size={12} className="flex-shrink-0 text-amber-600" />
+                <span className="text-xs text-stone-600">
+                  {new Date(profileData.dob).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}
+                </span>
+              </div>
+            )}
+            {profileData.bio && (
+              <p className="text-xs text-stone-400 italic leading-relaxed pl-5">{profileData.bio}</p>
+            )}
+          </div>
+
+          <div className="grid grid-cols-3 gap-2">
             {[{ label: 'Projects', value: totalProjects }, { label: 'Books', value: totalBooks }, { label: 'Entries', value: totalEntries }].map(s => (
               <div key={s.label} className="rounded-xl bg-amber-50/60 p-2 text-center">
                 <p className="text-base font-bold text-stone-700">{s.value}</p>
@@ -443,6 +571,11 @@ export default function SettingsPage() {
             <div className="rounded-lg bg-red-100 p-1.5"><LogOut size={13} className="text-red-600" /></div>
             <span className="flex-1 text-left">Sign Out</span>
           </button>
+          <button onClick={openDeleteDialog}
+            className="w-full flex items-center gap-3 rounded-xl bg-red-50 border border-red-200 px-3 py-2.5 text-sm font-medium text-red-700 hover:bg-red-100 transition-colors">
+            <div className="rounded-lg bg-red-100 p-1.5"><Trash2 size={13} className="text-red-700" /></div>
+            <span className="flex-1 text-left">Delete Account Permanently</span>
+          </button>
         </motion.section>
 
         {/* FAQ */}
@@ -563,6 +696,270 @@ export default function SettingsPage() {
       </div>
 
       <Toast message={toast.msg} type={toast.type} visible={toast.visible} />
+
+      {/* ── Edit Profile Modal ── */}
+      <AnimatePresence>
+        {showEditProfile && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-end sm:items-center justify-center px-4 pb-4 sm:pb-0 bg-black/40 backdrop-blur-sm"
+            onClick={(e) => { if (e.target === e.currentTarget) setShowEditProfile(false) }}
+          >
+            <motion.div
+              initial={{ y: 40, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 40, opacity: 0 }}
+              transition={{ type: 'spring', damping: 22, stiffness: 300 }}
+              className="w-full max-w-sm rounded-3xl border border-amber-100 bg-white p-6 shadow-2xl max-h-[90vh] overflow-y-auto"
+            >
+              <div className="flex items-center justify-between mb-5">
+                <div className="flex items-center gap-2">
+                  <div className="rounded-xl bg-amber-100 p-2"><User size={15} className="text-amber-700" /></div>
+                  <h3 className="font-serif text-lg font-semibold text-stone-800">Edit Profile</h3>
+                </div>
+                <button onClick={() => setShowEditProfile(false)} className="rounded-xl p-1.5 text-stone-400 hover:bg-stone-100 transition-colors">
+                  <ChevronDown size={16} />
+                </button>
+              </div>
+
+              <form onSubmit={handleSaveProfile} className="space-y-3">
+                {/* Name */}
+                <div>
+                  <label className="block text-xs font-medium text-stone-600 mb-1">Full Name <span className="text-red-400">*</span></label>
+                  <div className="relative">
+                    <User size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" />
+                    <input
+                      type="text"
+                      value={profileData.displayName}
+                      onChange={e => setProfileData(p => ({ ...p, displayName: e.target.value }))}
+                      placeholder="Your full name"
+                      className="w-full rounded-xl border border-amber-100 bg-amber-50/40 pl-8 pr-3 py-2.5 text-sm focus:border-amber-300 focus:bg-white transition-colors"
+                      autoComplete="name"
+                    />
+                  </div>
+                </div>
+
+                {/* Email — read only */}
+                <div>
+                  <label className="block text-xs font-medium text-stone-600 mb-1">Email <span className="text-stone-300 text-[10px]">(cannot be changed)</span></label>
+                  <input
+                    type="email"
+                    value={user?.email || ''}
+                    disabled
+                    className="w-full rounded-xl border border-stone-100 bg-stone-50 px-3 py-2.5 text-sm text-stone-400 cursor-not-allowed"
+                  />
+                </div>
+
+                {/* Phone */}
+                <div>
+                  <label className="block text-xs font-medium text-stone-600 mb-1">Mobile Number</label>
+                  <div className="flex gap-2">
+                    <div className="flex-shrink-0 rounded-xl border border-amber-100 bg-amber-50/40 px-3 py-2.5 text-sm text-stone-500 select-none">
+                      +91
+                    </div>
+                    <input
+                      type="tel"
+                      value={profileData.phone}
+                      onChange={e => {
+                        // Strip +91 prefix if user pastes full number
+                        const val = e.target.value.replace(/^\+91\s?/, '').replace(/\D/g, '').slice(0, 10)
+                        setProfileData(p => ({ ...p, phone: val }))
+                      }}
+                      placeholder="98765 43210"
+                      maxLength={10}
+                      className="flex-1 rounded-xl border border-amber-100 bg-amber-50/40 px-3 py-2.5 text-sm focus:border-amber-300 focus:bg-white transition-colors"
+                      autoComplete="off"
+                      inputMode="numeric"
+                    />
+                  </div>
+                </div>
+
+                {/* Gender */}
+                <div>
+                  <label className="block text-xs font-medium text-stone-600 mb-1">Gender</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {['Male', 'Female', 'Other', 'Prefer not to say'].map(g => (
+                      <button
+                        key={g}
+                        type="button"
+                        onClick={() => setProfileData(p => ({ ...p, gender: g === 'Prefer not to say' ? '' : g.toLowerCase() }))}
+                        className={`rounded-xl border px-3 py-2 text-xs font-medium transition-colors ${
+                          (g === 'Prefer not to say' ? profileData.gender === '' : profileData.gender === g.toLowerCase())
+                            ? 'border-amber-400 bg-amber-100 text-amber-800'
+                            : 'border-amber-100 bg-amber-50/40 text-stone-600 hover:bg-amber-50'
+                        }`}
+                      >
+                        {g}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Date of Birth */}
+                <div>
+                  <label className="block text-xs font-medium text-stone-600 mb-1">Date of Birth</label>
+                  <div className="relative">
+                    <Calendar size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" />
+                    <input
+                      type="date"
+                      value={profileData.dob}
+                      onChange={e => setProfileData(p => ({ ...p, dob: e.target.value }))}
+                      max={new Date().toISOString().split('T')[0]}
+                      className="w-full rounded-xl border border-amber-100 bg-amber-50/40 pl-8 pr-3 py-2.5 text-sm focus:border-amber-300 focus:bg-white transition-colors"
+                    />
+                  </div>
+                </div>
+
+                {/* Bio */}
+                <div>
+                  <label className="block text-xs font-medium text-stone-600 mb-1">Short Bio <span className="text-stone-300 text-[10px]">(optional)</span></label>
+                  <textarea
+                    value={profileData.bio}
+                    onChange={e => setProfileData(p => ({ ...p, bio: e.target.value }))}
+                    placeholder="A few words about yourself..."
+                    rows={2}
+                    maxLength={150}
+                    className="w-full rounded-xl border border-amber-100 bg-amber-50/40 px-3 py-2.5 text-sm focus:border-amber-300 focus:bg-white transition-colors resize-none"
+                  />
+                  <p className="text-[10px] text-stone-300 text-right mt-0.5">{profileData.bio.length}/150</p>
+                </div>
+
+                {profileError && (
+                  <motion.p
+                    initial={{ opacity: 0, y: -4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="rounded-xl bg-red-50 border border-red-100 px-3 py-2 text-xs text-red-600"
+                  >
+                    {profileError}
+                  </motion.p>
+                )}
+
+                <div className="flex gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setShowEditProfile(false)}
+                    className="flex-1 rounded-xl border border-stone-200 py-2.5 text-sm text-stone-600 hover:bg-stone-50 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={profileLoading}
+                    className="flex-1 rounded-xl bg-amber-600 py-2.5 text-sm font-medium text-white hover:bg-amber-700 transition-colors disabled:opacity-60"
+                  >
+                    {profileLoading ? 'Saving...' : 'Save Profile'}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── Delete Account Dialog ── */}
+      <AnimatePresence>
+        {showDeleteDialog && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center px-4 bg-black/40 backdrop-blur-sm"
+            onClick={(e) => { if (e.target === e.currentTarget) setShowDeleteDialog(false) }}
+          >
+            <motion.div
+              initial={{ scale: 0.92, opacity: 0, y: 16 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.92, opacity: 0, y: 16 }}
+              transition={{ type: 'spring', damping: 20, stiffness: 300 }}
+              className="w-full max-w-sm rounded-3xl border border-red-100 bg-white p-6 shadow-2xl"
+            >
+              {/* Icon */}
+              <div className="flex justify-center mb-4">
+                <div className="rounded-2xl bg-red-100 p-4">
+                  <Trash2 size={28} className="text-red-600" />
+                </div>
+              </div>
+
+              <h3 className="text-center font-serif text-lg font-semibold text-stone-800 mb-1">
+                Delete Account
+              </h3>
+              <p className="text-center text-xs text-stone-500 leading-relaxed mb-4">
+                This will <span className="font-semibold text-red-600">permanently delete</span> your account
+                and all your data — projects, books, and entries. This cannot be undone.
+              </p>
+
+              {/* Warning box */}
+              <div className="mb-4 rounded-xl bg-red-50 border border-red-100 px-3 py-2.5 space-y-1">
+                {[
+                  `${totalProjects} project${totalProjects !== 1 ? 's' : ''}`,
+                  `${totalBooks} book${totalBooks !== 1 ? 's' : ''}`,
+                  `${totalEntries} entr${totalEntries !== 1 ? 'ies' : 'y'}`,
+                ].map((item) => (
+                  <div key={item} className="flex items-center gap-2 text-xs text-red-700">
+                    <span className="h-1.5 w-1.5 rounded-full bg-red-400 flex-shrink-0" />
+                    {item} will be deleted
+                  </div>
+                ))}
+              </div>
+
+              {/* Password confirmation for password users */}
+              {isPasswordUser && (
+                <div className="mb-4">
+                  <label className="block text-xs font-medium text-stone-600 mb-1">
+                    Enter your password to confirm
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showDeletePw ? 'text' : 'password'}
+                      value={deletePassword}
+                      onChange={(e) => { setDeletePassword(e.target.value); setDeleteError('') }}
+                      placeholder="Your current password"
+                      className="w-full rounded-xl border border-red-200 bg-red-50/40 px-3 py-2.5 pr-10 text-sm placeholder-stone-400 focus:border-red-300 focus:bg-white transition-colors"
+                      autoComplete="current-password"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowDeletePw(v => !v)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600"
+                    >
+                      {showDeletePw ? <EyeOff size={14} /> : <Eye size={14} />}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {deleteError && (
+                <motion.p
+                  initial={{ opacity: 0, y: -4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="mb-3 rounded-xl bg-red-50 border border-red-100 px-3 py-2 text-xs text-red-600"
+                >
+                  {deleteError}
+                </motion.p>
+              )}
+
+              <div className="space-y-2">
+                <button
+                  onClick={handleDeleteAccount}
+                  disabled={deleteLoading || (isPasswordUser && !deletePassword)}
+                  className="w-full rounded-xl bg-red-600 py-2.5 text-sm font-semibold text-white hover:bg-red-700 transition-colors disabled:opacity-50"
+                >
+                  {deleteLoading ? 'Deleting...' : 'Yes, Delete My Account'}
+                </button>
+                <button
+                  onClick={() => setShowDeleteDialog(false)}
+                  disabled={deleteLoading}
+                  className="w-full rounded-xl border border-stone-200 py-2.5 text-sm text-stone-600 hover:bg-stone-50 transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </LayoutShell>
   )
 }

@@ -33,9 +33,7 @@ export default function LoginPage() {
     setLoading(true)
     try {
       const cred = await login(email, password)
-      // If email/password user hasn't verified yet, send them to verify screen
-      if (!cred.user.emailVerified) {
-        // They're signed in but unverified — redirect to verify page
+      if (!cred.user?.emailVerified) {
         navigate('/verify-email', { replace: true })
       } else {
         navigate('/dashboard', { replace: true })
@@ -79,7 +77,7 @@ export default function LoginPage() {
             <CheckCircle size={16} className="flex-shrink-0 text-emerald-600" />
             <div>
               <p className="text-xs font-semibold text-emerald-700">Email verified! 🙏</p>
-              <p className="text-[10px] text-emerald-600">Sign in below to enter ArthaLedger.</p>
+              <p className="text-[10px] text-emerald-600">Sign in again with the same email and password to continue.</p>
             </div>
           </motion.div>
         )}

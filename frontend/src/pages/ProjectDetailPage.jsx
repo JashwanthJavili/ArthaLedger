@@ -1,19 +1,23 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useMemo } from 'react'
 import { format } from 'date-fns'
 import { Link, useParams, useNavigate } from 'react-router-dom'
 import {
   Plus, ArrowLeft, BookOpen,
-  MoreVertical, Pencil, Trash2, Lock, ShieldAlert,
+  MoreVertical, Pencil, Trash2, Lock, ShieldAlert, Unlock, ArrowRight,
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import LayoutShell from '../components/LayoutShell'
 import BookModal from '../components/forms/BookModal'
+import TransferModal from '../components/forms/TransferModal'
 import ConfirmDialog from '../components/common/ConfirmDialog'
 import PinVerificationModal from '../components/common/PinVerificationModal'
 import PinModal from '../components/common/PinModal'
+import SetPinModal from '../components/common/SetPinModal'
 import Toast from '../components/common/Toast'
+import SummaryStrip from '../components/cards/SummaryCard'
 import { useAppData } from '../context/AppDataContext'
-import { isUnlocked, setUnlocked } from '../lib/pin'
+import { isUnlocked, setUnlocked, lockItem } from '../lib/pin'
+import { formatAmount, getCurrencySymbol } from '../lib/format'
 
 /**
  * 3-dot menu for each book card.
@@ -88,24 +92,66 @@ function BookMenu({ book, onEdit, onDelete, onDeleteBlocked }) {
 export default function ProjectDetailPage() {
   const { projectId } = useParams()
   const navigate = useNavigate()
-  const { projects, booksByProject, entriesByBook, createBook, updateBook, deleteBook, deleteProject, deleteProjectWithPin, setPinForBook } = useAppData()
+  const {
+    projects, booksByProject, entriesByBook,
+    createBook, updateBook, deleteBook,
+    deleteProject, deleteProjectWithPin,
+    setPinForBook, setPinForProject,
+    transferBetweenBooks,
+  } = useAppData()
   const [modalOpen, setModalOpen] = useState(false)
   const [editingBook, setEditingBook] = useState(null)
-  const [deleteTarget, setDeleteTarget] = useState(null)       // book to delete (after PIN if needed)
+  const [deleteTarget, setDeleteTarget] = useState(null)
   const [deleteProjectConfirm, setDeleteProjectConfirm] = useState(false)
   const [verifyProjectPinForDelete, setVerifyProjectPinForDelete] = useState(false)
   const [toast, setToast] = useState({ msg: '', type: 'success', visible: false })
 
-  // PIN flow state
-  const [pinTarget, setPinTarget] = useState(null)             // book awaiting PIN to open
-  const [pinForDeleteTarget, setPinForDeleteTarget] = useState(null) // book awaiting PIN to delete
+  // Transfer state
+  const [transferSource, setTransferSource] = useState(null) // book being transferred from
+
+  // Project PIN state
+  const [setPinOpen, setSetPinOpen] = useState(false)
   const [, forceUpdate] = useState(0)
+  // Track whether this project currently has a PIN so unmount can clear its unlock state.
+  const projectPinLockRef = useRef(false)
+
+  // Book PIN flow state
+  const [pinTarget, setPinTarget] = useState(null)
+  const [pinForDeleteTarget, setPinForDeleteTarget] = useState(null)
 
   const project = projects.find((p) => p.id === projectId)
   const books = booksByProject[projectId] || []
 
+  useEffect(() => {
+    projectPinLockRef.current = Boolean(project?.pinHash)
+  }, [project?.pinHash])
+
+  // Clear the project unlock when leaving the page so it prompts again on next visit.
+  useEffect(() => {
+    return () => {
+      if (projectPinLockRef.current) lockItem(projectId)
+    }
+  }, [projectId]) // only projectId — not project?.pinHash to avoid re-running on data load
+
   // Check if any book in this project is PIN-locked
   const hasLockedBooks = books.some(b => Boolean(b.pinHash))
+
+  // Project-level PIN
+  const isProjectLocked = Boolean(project?.pinHash) && !isUnlocked(projectId)
+
+  // Project-level summary across all books — excludes internal transfers
+  const projectSummary = useMemo(() => {
+    let totalIn = 0, totalOut = 0
+    books.forEach(book => {
+      const entries = entriesByBook[book.id] || []
+      entries.forEach(e => {
+        if (e.isTransfer) return // skip transfer entries
+        if (e.type === 'income') totalIn += Number(e.amount)
+        else if (e.type === 'expense') totalOut += Number(e.amount)
+      })
+    })
+    return { totalIn, totalOut, net: totalIn - totalOut }
+  }, [books, entriesByBook])
 
   const showToast = (msg, type = 'success') => {
     setToast({ msg, type, visible: true })
@@ -123,6 +169,44 @@ export default function ProjectDetailPage() {
     )
   }
 
+  // If project is PIN-locked, show PIN modal immediately — no intermediate screen
+  if (isProjectLocked) {
+    return (
+      <LayoutShell>
+        <div className="flex flex-col items-center justify-center py-20 gap-5 text-center">
+          <div className="rounded-2xl bg-gradient-to-br from-amber-50 to-orange-50 p-6 shadow-sm border border-amber-100">
+            <Lock size={36} className="text-amber-500" />
+          </div>
+          <div>
+            <h2 className="font-serif text-lg font-semibold text-stone-800">{project.name}</h2>
+            <p className="text-xs text-stone-400 mt-1">This project is PIN-protected</p>
+          </div>
+          <Link to="/dashboard" className="text-xs text-stone-400 hover:text-stone-600 transition-colors">
+            ← Back to dashboard
+          </Link>
+        </div>
+
+        {/* PIN modal opens automatically */}
+        <PinModal
+          open={true}
+          onClose={() => {
+            if (!isUnlocked(projectId)) navigate('/dashboard', { replace: true })
+          }}
+          storedHash={project.pinHash}
+          itemName={project.name}
+          onUnlock={() => {
+            setUnlocked(projectId)
+            forceUpdate(n => n + 1)
+          }}
+          onRemovePin={async () => {
+            await setPinForProject(projectId, null)
+            showToast('PIN removed')
+          }}
+        />
+      </LayoutShell>
+    )
+  }
+
   return (
     <LayoutShell>
       <div className="space-y-4 sm:space-y-5">
@@ -135,31 +219,43 @@ export default function ProjectDetailPage() {
               <ArrowLeft size={13} />
             </Link>
             <div className="min-w-0">
-              <h1 className="font-serif text-xl sm:text-2xl font-semibold text-stone-800 truncate leading-tight">
-                {project.name}
-              </h1>
+              <div className="flex items-center gap-1.5">
+                <h1 className="font-serif text-xl sm:text-2xl font-semibold text-stone-800 truncate leading-tight">
+                  {project.name}
+                </h1>
+              </div>
               {project.description && (
                 <p className="text-xs text-stone-400 truncate mt-0.5">{project.description}</p>
               )}
             </div>
           </div>
 
-          {/* Delete project — requires PIN if any book is locked */}
-          <button
-            onClick={() => {
-              if (hasLockedBooks) {
-                setVerifyProjectPinForDelete(true)
-              } else {
-                setDeleteProjectConfirm(true)
-              }
-            }}
-            className={`flex-shrink-0 inline-flex items-center gap-1 rounded-xl border px-2.5 py-1.5 text-xs transition-colors ${
-              'border-red-100 text-red-500 hover:bg-red-50'
-            }`}
-          >
-            <Trash2 size={13} />
-            <span className="hidden sm:inline">Delete Project</span>
-          </button>
+          <div className="flex items-center gap-1.5 flex-shrink-0">
+            {/* PIN lock toggle */}
+            <button
+              onClick={() => setSetPinOpen(true)}
+              className="inline-flex items-center gap-1 rounded-xl border border-amber-100 px-2.5 py-1.5 text-xs text-stone-600 hover:bg-amber-50 transition-colors"
+              title={project.pinHash ? 'Change/Remove PIN' : 'Set PIN Lock'}
+            >
+              {project.pinHash ? <Unlock size={13} /> : <Lock size={13} />}
+              <span className="hidden sm:inline">{project.pinHash ? 'PIN' : 'Lock'}</span>
+            </button>
+
+            {/* Delete project */}
+            <button
+              onClick={() => {
+                if (hasLockedBooks || project.pinHash) {
+                  setVerifyProjectPinForDelete(true)
+                } else {
+                  setDeleteProjectConfirm(true)
+                }
+              }}
+              className="inline-flex items-center gap-1 rounded-xl border border-red-100 px-2.5 py-1.5 text-xs text-red-500 hover:bg-red-50 transition-colors"
+            >
+              <Trash2 size={13} />
+              <span className="hidden sm:inline">Delete</span>
+            </button>
+          </div>
         </div>
 
         {/* Locked books warning */}
@@ -171,6 +267,20 @@ export default function ProjectDetailPage() {
             </p>
           </div>
         )}
+
+        {/* Project summary */}
+        {books.length > 0 && (
+          <section>
+            <h2 className="font-serif text-base font-semibold text-stone-700 mb-2">Project Summary</h2>
+            <SummaryStrip
+              net={projectSummary.net}
+              totalIn={projectSummary.totalIn}
+              totalOut={projectSummary.totalOut}
+              delay={0.05}
+            />
+          </section>
+        )}
+
         <div>
           <h2 className="font-serif text-lg font-semibold text-stone-800">Your Books</h2>
           <p className="text-xs text-stone-400 mt-0.5">
@@ -198,11 +308,17 @@ export default function ProjectDetailPage() {
           <div className="grid gap-3 sm:gap-4">
             {books.map((book, idx) => {
               const entries = entriesByBook[book.id] || []
-              const sorted = [...entries].sort((a, b) => a.timestamp - b.timestamp)
-              const balance = sorted.length ? Number(sorted[sorted.length - 1].balanceAfter || 0) : 0
-              const totalIn = entries.filter((e) => e.type === 'income').reduce((s, e) => s + Number(e.amount), 0)
-              const totalOut = entries.filter((e) => e.type === 'expense').reduce((s, e) => s + Number(e.amount), 0)
+              // Calculate balance by summing all entries (same as BookPage)
+              // This avoids timestamp ordering issues with balanceAfter
+              const totalIn = entries
+                .filter((e) => e.type === 'income' || e.type === 'transfer_in')
+                .reduce((s, e) => s + Number(e.amount), 0)
+              const totalOut = entries
+                .filter((e) => e.type === 'expense' || e.type === 'transfer_out')
+                .reduce((s, e) => s + Number(e.amount), 0)
+              const balance = totalIn - totalOut
               const isBookLocked = Boolean(book.pinHash) && !isUnlocked(book.id)
+              const symbol = getCurrencySymbol()
 
               return (
                 <motion.div key={book.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
@@ -244,27 +360,36 @@ export default function ProjectDetailPage() {
                       <div className="flex items-center gap-1.5 flex-shrink-0">
                         <div className="text-right">
                           <p className={`text-sm font-bold ${balance >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>
-                            ₹{balance.toFixed(2)}
+                            {balance < 0 ? '-' : ''}{symbol}{formatAmount(Math.abs(balance))}
                           </p>
                         </div>
+                        {/* Transfer button — only shown when there are other books */}
+                        {books.length > 1 && !isBookLocked && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setTransferSource(book)
+                            }}
+                            className="rounded-lg p-1.5 text-blue-400 hover:bg-blue-50 hover:text-blue-600 transition-colors"
+                            title="Transfer to another book"
+                          >
+                            <ArrowRight size={13} />
+                          </button>
+                        )}
                         <BookMenu
                           book={book}
                           onEdit={() => { setEditingBook(book); setModalOpen(true) }}
                           onDelete={() => setDeleteTarget(book)}
-                          onDeleteBlocked={() => {
-                            // Show PIN modal to unlock first, then proceed to delete
-                            setPinForDeleteTarget(book)
-                          }}
+                          onDeleteBlocked={() => setPinForDeleteTarget(book)}
                         />
                       </div>
                     </div>
-
                     <div className="flex items-center gap-2 text-[11px]">
                       <span className="text-stone-500">{entries.length} entries</span>
                       <span className="text-stone-300">·</span>
-                      <span className="text-emerald-700 font-medium">+₹{totalIn.toFixed(0)}</span>
+                      <span className="text-emerald-700 font-medium">+{symbol}{formatAmount(totalIn, 0)}</span>
                       <span className="text-stone-300">·</span>
-                      <span className="text-red-600 font-medium">-₹{totalOut.toFixed(0)}</span>
+                      <span className="text-red-600 font-medium">-{symbol}{formatAmount(totalOut, 0)}</span>
                       <span className="ml-auto text-stone-400">
                         {book.updatedAt ? format(new Date(book.updatedAt), 'dd MMM') : ''}
                       </span>
@@ -336,7 +461,7 @@ export default function ProjectDetailPage() {
       <PinVerificationModal
         open={verifyProjectPinForDelete}
         onClose={() => setVerifyProjectPinForDelete(false)}
-        storedHash={books.find(b => b.pinHash)?.pinHash || ''}
+        storedHash={project?.pinHash || books.find(b => b.pinHash)?.pinHash || ''}
         itemType="project"
         itemName={project?.name}
         onVerified={async (pin) => {
@@ -351,6 +476,23 @@ export default function ProjectDetailPage() {
       />
 
       <Toast message={toast.msg} type={toast.type} visible={toast.visible} />
+
+      {/* ── Set / Change / Remove project PIN ── */}
+      <SetPinModal
+        open={setPinOpen}
+        onClose={() => setSetPinOpen(false)}
+        hasPin={Boolean(project?.pinHash)}
+        storedHash={project?.pinHash}
+        onSet={async (hash) => {
+          await setPinForProject(projectId, hash)
+          showToast('Project PIN set 🔒')
+        }}
+        onRemove={async () => {
+          await setPinForProject(projectId, null)
+          lockItem(projectId)
+          showToast('Project PIN removed')
+        }}
+      />
 
       {/* ── PIN modal: open book ── */}
       <PinModal
@@ -391,6 +533,28 @@ export default function ProjectDetailPage() {
           showToast('PIN removed')
         }}
       />
+
+      {/* ── Transfer modal — opened from book card → button ── */}
+      {transferSource && (
+        <TransferModal
+          open={true}
+          onClose={() => setTransferSource(null)}
+          currentBook={transferSource}
+          otherBooks={books.filter(b => b.id !== transferSource.id)}
+          currentBalance={(() => {
+            const ents = entriesByBook[transferSource.id] || []
+            if (!ents.length) return 0
+            const sorted = [...ents].sort((a, b) => a.timestamp - b.timestamp)
+            return Number(sorted[sorted.length - 1].balanceAfter || 0)
+          })()}
+          onTransfer={async ({ toBookId, amount, note }) => {
+            await transferBetweenBooks(projectId, transferSource.id, toBookId, amount, note)
+            const symbol = getCurrencySymbol()
+            showToast(`${symbol}${formatAmount(amount, 0)} transferred 🔄`)
+            setTransferSource(null)
+          }}
+        />
+      )}
     </LayoutShell>
   )
 }

@@ -184,3 +184,18 @@ button { user-select: none; -webkit-user-select: none; }
 input[type='number']::-webkit-inner-spin-button,
 input[type='number']::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
 input[type='number'] { appearance: textfield; -moz-appearance: textfield; }
+
+/* ── PIN input masking — uses text-security instead of type=password
+   so Chrome's password manager never triggers ── */
+.pin-input {
+  -webkit-text-security: disc;
+  text-security: disc;
+  font-family: monospace;
+  letter-spacing: 0.25em;
+}
+.pin-input::placeholder {
+  -webkit-text-security: none;
+  text-security: none;
+  font-family: inherit;
+  letter-spacing: normal;
+}

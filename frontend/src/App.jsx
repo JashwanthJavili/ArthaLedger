@@ -21,14 +21,13 @@ import Loader from './components/common/Loader'
  * - Logged in + already verified → /dashboard
  * - Has pending verification (just registered, signed out) → show page
  * - Logged in but unverified → show page
- * - No user and no pending email → /login (nothing to verify)
+ * - No user and no pending email → /login
  */
 function VerifyEmailRoute({ children }) {
   const { user, loading, isEmailVerified, needsEmailVerification } = useAuth()
   if (loading) return <Loader text="Preparing your space..." />
   if (user && isEmailVerified) return <Navigate to="/dashboard" replace />
   if (needsEmailVerification) return children
-  // No user, no pending email — nothing to verify
   return <Navigate to="/login" replace />
 }
 

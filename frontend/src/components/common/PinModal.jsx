@@ -1,9 +1,11 @@
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Lock, X, Eye, EyeOff, KeyRound, ShieldAlert, Clock } from 'lucide-react'
 import { verifyPin, validatePin, getPinAttemptData, recordPinAttempt, clearPinAttempts } from '../../lib/pin'
 import { useAuth } from '../../context/AuthContext'
 import { EmailAuthProvider, reauthenticateWithCredential } from 'firebase/auth'
 import { auth } from '../../lib/firebase'
+import PinInput from './PinInput'
+import PinLengthSelector from './PinLengthSelector'
 
 /**
  * PIN entry modal with progressive rate limiting.
@@ -34,7 +36,7 @@ export default function PinModal({ open, onClose, onUnlock, storedHash, itemName
   const { user } = useAuth()
   const [mode, setMode] = useState('pin')   // 'pin' | 'forgot'
   const [pin, setPin] = useState('')
-  const [showPin, setShowPin] = useState(false)
+  const [pinLength, setPinLength] = useState(4)
   const [accountPw, setAccountPw] = useState('')
   const [showPw, setShowPw] = useState(false)
   const [error, setError] = useState('')
@@ -46,7 +48,6 @@ export default function PinModal({ open, onClose, onUnlock, storedHash, itemName
   const [lockedUntil, setLockedUntil] = useState(0)   // timestamp ms
   const [countdown, setCountdown] = useState(0)        // seconds remaining
 
-  const inputRef = useRef(null)
   const timerRef = useRef(null)
   const itemIdRef = useRef(itemName) // Stable ref for rate limiting key
 
@@ -68,7 +69,6 @@ export default function PinModal({ open, onClose, onUnlock, storedHash, itemName
         setCountdown(0)
         setLockedUntil(0)
         clearInterval(timerRef.current)
-        setTimeout(() => inputRef.current?.focus(), 50)
       } else {
         setCountdown(remaining)
       }
@@ -82,14 +82,13 @@ export default function PinModal({ open, onClose, onUnlock, storedHash, itemName
     if (open) {
       setMode('pin')
       setPin('')
+      setPinLength(4)
       setAccountPw('')
       setError('')
       setPinRemoved(false)
-      setShowPin(false)
       setShowPw(false)
       clearInterval(timerRef.current)
       // Load current lockout state (already done in separate effect above)
-      setTimeout(() => inputRef.current?.focus(), 80)
     } else {
       clearInterval(timerRef.current)
     }
@@ -105,11 +104,11 @@ export default function PinModal({ open, onClose, onUnlock, storedHash, itemName
   }
 
   // ── Enter PIN ──────────────────────────────────────────────────────────────
-  const handlePinSubmit = async (e) => {
-    e.preventDefault()
+  const handlePinSubmit = async (pinValue) => {
     if (isLocked) return
+    const pinToVerify = typeof pinValue === 'string' ? pinValue : pin
     
-    const validation = validatePin(pin)
+    const validation = validatePin(pinToVerify)
     if (!validation.valid) {
       setError('Incorrect PIN.')
       return
@@ -118,7 +117,7 @@ export default function PinModal({ open, onClose, onUnlock, storedHash, itemName
     setLoading(true)
     setError('')
     try {
-      const ok = await verifyPin(pin, storedHash)
+      const ok = await verifyPin(pinToVerify, storedHash)
       if (ok) {
         // ✅ Success: Clear attempts and unlock
         clearPinAttempts(itemName)
@@ -146,13 +145,21 @@ export default function PinModal({ open, onClose, onUnlock, storedHash, itemName
           const chanceWord = attemptsUntilLockout === 1 ? 'chance' : 'chances'
           setError(`Incorrect PIN. ${attemptsUntilLockout} ${chanceWord} left before lockout.`)
           setPin('')
-          inputRef.current?.focus()
         }
       }
     } catch {
       setError('Something went wrong. Please try again.')
     } finally {
       setLoading(false)
+    }
+  }
+
+  // Auto-submit when all digits are entered
+  const handlePinChange = (newPin) => {
+    setPin(newPin)
+    setError('')
+    if (newPin.length === pinLength && !loading && !isLocked) {
+      handlePinSubmit(newPin)
     }
   }
 
@@ -255,22 +262,23 @@ export default function PinModal({ open, onClose, onUnlock, storedHash, itemName
                 )}
               </div>
             ) : (
-              <form onSubmit={handlePinSubmit} className="space-y-3">
-                <div className="relative">
-                  <input
-                    ref={inputRef}
-                    type={showPin ? 'text' : 'password'}
-                    value={pin}
-                    onChange={e => { setPin(e.target.value); setError('') }}
-                    placeholder="Enter PIN (min. 6 chars)"
-                    maxLength={20}
-                    className="w-full rounded-2xl border border-amber-100 bg-amber-50/40 px-4 py-3 pr-10 text-center text-lg font-bold tracking-widest text-stone-800 placeholder-stone-300 placeholder:text-sm placeholder:font-normal placeholder:tracking-normal focus:border-amber-300 focus:bg-white transition-colors"
-                  />
-                  <button type="button" onClick={() => setShowPin(v => !v)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400">
-                    {showPin ? <EyeOff size={14} /> : <Eye size={14} />}
-                  </button>
-                </div>
+              <form onSubmit={e => { e.preventDefault(); handlePinSubmit(pin) }} className="space-y-4" autoComplete="off">
+                {/* Hidden fields to prevent Chrome from treating this as a login form */}
+                <input type="text" name="username" style={{ display: 'none' }} readOnly tabIndex={-1} />
+                <input type="text" name="fakepassword" style={{ display: 'none' }} readOnly tabIndex={-1} />
+
+                <PinLengthSelector value={pinLength} onChange={(len) => {
+                  setPinLength(len)
+                  setPin('')
+                  setError('')
+                }} />
+
+                <PinInput
+                  length={pinLength}
+                  value={pin}
+                  onChange={handlePinChange}
+                  autoFocus
+                />
 
                 {error && (
                   <p className="rounded-xl bg-red-50 border border-red-100 px-3 py-2 text-xs text-red-600 text-center">
@@ -278,7 +286,7 @@ export default function PinModal({ open, onClose, onUnlock, storedHash, itemName
                   </p>
                 )}
 
-                <button type="submit" disabled={loading || !pin}
+                <button type="submit" disabled={loading || pin.length < pinLength}
                   className="w-full rounded-2xl bg-amber-600 py-3 text-sm font-semibold text-white hover:bg-amber-700 transition-colors disabled:opacity-60">
                   {loading ? 'Verifying...' : 'Unlock'}
                 </button>
@@ -347,3 +355,4 @@ export default function PinModal({ open, onClose, onUnlock, storedHash, itemName
     </div>
   )
 }
+

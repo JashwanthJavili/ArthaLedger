@@ -48,18 +48,15 @@ export default function RegisterPage() {
     setLoading(true)
     try {
       await register(name, email, password)
-      // register() sends verification email then signs out — go to verify screen
       navigate('/verify-email', { replace: true })
     } catch (err) {
       const msg = err.message || ''
 
-      // Unverified account detected — redirect to verify page
       if (msg === 'UNVERIFIED_ACCOUNT') {
         navigate('/verify-email', { replace: true })
         return
       }
 
-      // Route specific messages to the right field
       if (
         msg.toLowerCase().includes('email already exists') ||
         msg.toLowerCase().includes('already in use') ||
@@ -156,7 +153,6 @@ export default function RegisterPage() {
                 {showPw ? <EyeOff size={14} /> : <Eye size={14} />}
               </button>
             </div>
-            {/* Strength bar */}
             {strength && (
               <div className="mt-1.5">
                 <div className="h-1 w-full rounded-full bg-stone-100 overflow-hidden">
@@ -193,7 +189,6 @@ export default function RegisterPage() {
             {errors.confirmPassword && <p className="mt-1 text-xs text-red-500">{errors.confirmPassword}</p>}
           </div>
 
-          {/* Global error */}
           {globalError && (
             <motion.p
               initial={{ opacity: 0, y: -4 }}

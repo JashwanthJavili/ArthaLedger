@@ -236,7 +236,54 @@ export function AppDataProvider({ children }) {
     }
   }, [user?.uid])
 
-  // ── PIN lock ──────────────────────────────────────────────────────────────
+  // ── Inter-book Transfer ───────────────────────────────────────────────────
+
+  /**
+   * Transfer amount from one book to another within the same project.
+   * Creates a `transfer_out` expense in the source book and a `transfer_in`
+   * income in the destination book, both linked by a shared transferId.
+   * These entries are tagged so project-level summaries can exclude them.
+   */
+  const transferBetweenBooks = useCallback(async (projectId, fromBookId, toBookId, amount, note) => {
+    const transferId = `txfr_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`
+    const timestamp = Date.now()
+    const description = note || `Transfer to/from book`
+
+    // Helper to add a transfer entry to a book
+    const addTransferEntry = async (bookId, type, desc) => {
+      const entriesRef = ref(db, `users/${user.uid}/projects/${projectId}/books/${bookId}/entries`)
+      const snap = await get(entriesRef)
+      const existing = toArray(snap.val()).sort((a, b) => a.timestamp - b.timestamp)
+      const lastBalance = existing.length ? Number(existing[existing.length - 1].balanceAfter || 0) : 0
+      const signed = type === 'transfer_in' ? Number(amount) : -Number(amount)
+      const balanceAfter = lastBalance + signed
+
+      const newRef = push(entriesRef)
+      await set(newRef, {
+        amount: Number(amount),
+        type,           // 'transfer_in' | 'transfer_out'
+        description: desc,
+        category: 'Transfer',
+        mode: 'Internal',
+        balanceAfter,
+        enteredBy: '',
+        timestamp,
+        notes: '',
+        transferId,     // links the two entries together
+        isTransfer: true,
+      })
+
+      await update(ref(db, `users/${user.uid}/projects/${projectId}/books/${bookId}`), {
+        updatedAt: Date.now(),
+      })
+    }
+
+    // Write both entries atomically (sequential is fine — they're linked by transferId)
+    await addTransferEntry(fromBookId, 'transfer_out',
+      note ? `Transfer → ${note}` : 'Transfer out')
+    await addTransferEntry(toBookId, 'transfer_in',
+      note ? `Transfer ← ${note}` : 'Transfer in')
+  }, [user?.uid])
 
   const setPinForBook = useCallback(async (projectId, bookId, pinHash) => {
     const path = `users/${user.uid}/projects/${projectId}/books/${bookId}`
@@ -334,6 +381,7 @@ export function AppDataProvider({ children }) {
     getCategories,
     setPinForBook,
     setPinForProject,
+    transferBetweenBooks,
   }), [
     loading, projects, booksByProject, entriesByBook,
     createProject, updateProject, deleteProject,
@@ -341,7 +389,7 @@ export function AppDataProvider({ children }) {
     deleteBookWithPin, deleteProjectWithPin,
     addEntry, deleteEntry, updateEntry,
     getBookCurrentBalance, updateCategories, getCategories,
-    setPinForBook, setPinForProject,
+    setPinForBook, setPinForProject, transferBetweenBooks,
   ])
 
   return <AppDataContext.Provider value={value}>{children}</AppDataContext.Provider>
