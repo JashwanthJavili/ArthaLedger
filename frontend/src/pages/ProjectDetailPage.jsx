@@ -110,6 +110,19 @@ export default function ProjectDetailPage() {
   // Transfer state
   const [transferSource, setTransferSource] = useState(null) // book being transferred from
 
+  // Hide/show book amounts — persisted per project in localStorage
+  const bookAmountsKey = `al_show_book_amounts_${projectId}`
+  const [showBookAmounts, setShowBookAmounts] = useState(() => {
+    const stored = localStorage.getItem(bookAmountsKey)
+    return stored === null ? true : stored === 'true'
+  })
+  const toggleBookAmounts = () => {
+    setShowBookAmounts(v => {
+      localStorage.setItem(bookAmountsKey, String(!v))
+      return !v
+    })
+  }
+
   // Hide/show project summary — persisted per project in localStorage
   const summaryKey = `al_show_summary_${projectId}`
   const [showSummary, setShowSummary] = useState(() => {
@@ -316,11 +329,22 @@ export default function ProjectDetailPage() {
           </section>
         )}
 
-        <div>
-          <h2 className="font-serif text-lg font-semibold text-stone-800">Your Books</h2>
-          <p className="text-xs text-stone-400 mt-0.5">
-            {books.length === 0 ? 'No cashbooks yet' : `${books.length} cashbook${books.length !== 1 ? 's' : ''}`}
-          </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="font-serif text-lg font-semibold text-stone-800">Your Books</h2>
+            <p className="text-xs text-stone-400 mt-0.5">
+              {books.length === 0 ? 'No cashbooks yet' : `${books.length} cashbook${books.length !== 1 ? 's' : ''}`}
+            </p>
+          </div>
+          {books.length > 0 && (
+            <button
+              onClick={toggleBookAmounts}
+              className="rounded-xl border border-amber-100 p-1.5 text-stone-400 hover:bg-amber-50 hover:text-stone-600 transition-colors"
+              title={showBookAmounts ? 'Hide amounts' : 'Show amounts'}
+            >
+              {showBookAmounts ? <Eye size={14} /> : <EyeOff size={14} />}
+            </button>
+          )}
         </div>
 
         {/* ── Books list ── */}
@@ -395,7 +419,10 @@ export default function ProjectDetailPage() {
                       <div className="flex items-center gap-1.5 flex-shrink-0">
                         <div className="text-right">
                           <p className={`text-sm font-bold ${balance >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>
-                            {balance < 0 ? '-' : ''}{symbol}{formatAmount(Math.abs(balance))}
+                            {showBookAmounts
+                              ? `${balance < 0 ? '-' : ''}${symbol}${formatAmount(Math.abs(balance))}`
+                              : '●●●'
+                            }
                           </p>
                         </div>
                         {/* Transfer button — only shown when there are other books */}
@@ -422,9 +449,13 @@ export default function ProjectDetailPage() {
                     <div className="flex items-center gap-2 text-[11px]">
                       <span className="text-stone-500">{entries.length} entries</span>
                       <span className="text-stone-300">·</span>
-                      <span className="text-emerald-700 font-medium">+{symbol}{formatAmount(totalIn, 0)}</span>
+                      <span className="text-emerald-700 font-medium">
+                        {showBookAmounts ? `+${symbol}${formatAmount(totalIn, 0)}` : '●●●'}
+                      </span>
                       <span className="text-stone-300">·</span>
-                      <span className="text-red-600 font-medium">-{symbol}{formatAmount(totalOut, 0)}</span>
+                      <span className="text-red-600 font-medium">
+                        {showBookAmounts ? `-${symbol}${formatAmount(totalOut, 0)}` : '●●●'}
+                      </span>
                       <span className="ml-auto text-stone-400">
                         {book.updatedAt ? format(new Date(book.updatedAt), 'dd MMM') : ''}
                       </span>

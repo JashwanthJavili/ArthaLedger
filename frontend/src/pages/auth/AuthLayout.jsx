@@ -1,5 +1,4 @@
 import { Link } from 'react-router-dom'
-import { Wallet } from 'lucide-react'
 import { motion } from 'framer-motion'
 
 export default function AuthLayout({ children, footer }) {
@@ -12,9 +11,7 @@ export default function AuthLayout({ children, footer }) {
         transition={{ duration: 0.5 }}
         className="mb-6 flex flex-col items-center gap-3"
       >
-        <div className="rounded-2xl bg-gradient-to-br from-amber-100 to-amber-200 p-4 shadow-md">
-          <Wallet size={28} className="text-amber-700" />
-        </div>
+        <img src="/L.png" alt="ArthaLedger" className="h-16 w-16 rounded-2xl shadow-md object-contain bg-amber-50 p-1" />
         <div className="text-center">
           <h1 className="font-serif text-2xl font-semibold text-stone-800">ArthaLedger</h1>
           <p className="mt-0.5 text-xs text-stone-400 tracking-wide">Where every rupee has meaning</p>

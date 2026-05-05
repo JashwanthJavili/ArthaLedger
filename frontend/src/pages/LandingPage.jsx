@@ -98,9 +98,7 @@ function MockupCard() {
         <div className="rounded-3xl border border-amber-200/70 bg-white/95 shadow-2xl overflow-hidden">
           <div className="bg-gradient-to-r from-amber-50 to-orange-50 px-4 py-3 flex items-center justify-between border-b border-amber-100">
             <div className="flex items-center gap-2">
-              <div className="rounded-lg bg-amber-100 p-1.5">
-                <BookOpen size={12} className="text-amber-700" />
-              </div>
+              <img src="/L.png" alt="ArthaLedger" className="h-6 w-6 rounded-lg object-contain" />
               <span className="text-xs font-semibold text-stone-700 font-serif">ArthaLedger</span>
             </div>
             <span className="text-[10px] text-stone-400">Dashboard</span>
@@ -191,8 +189,8 @@ export default function LandingPage() {
       >
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 sm:px-6 py-3.5">
           <div className="flex items-center gap-2.5">
-            <motion.div whileHover={{ rotate: 10, scale: 1.05 }} className="rounded-xl bg-gradient-to-br from-amber-100 to-amber-200 p-2 shadow-sm">
-              <BookOpen size={18} className="text-amber-700" />
+            <motion.div whileHover={{ rotate: 10, scale: 1.05 }}>
+              <img src="/L.png" alt="ArthaLedger" className="h-10 w-10 rounded-xl shadow-sm object-contain bg-amber-50 p-0.5" />
             </motion.div>
             <span className="font-serif text-lg font-semibold text-stone-800">ArthaLedger</span>
           </div>
@@ -479,9 +477,7 @@ export default function LandingPage() {
         <div className="mx-auto max-w-5xl px-4 sm:px-6">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-5">
             <div className="flex items-center gap-2">
-              <div className="rounded-lg bg-amber-100 p-1.5">
-                <BookOpen size={13} className="text-amber-700" />
-              </div>
+              <img src="/L.png" alt="ArthaLedger" className="h-8 w-8 rounded-lg object-contain bg-amber-50 p-0.5" />
               <span className="font-serif text-sm font-semibold text-stone-700">ArthaLedger</span>
             </div>
             <div className="flex items-center gap-5 text-xs text-stone-400">

@@ -599,9 +599,7 @@ export default function SettingsPage() {
           </div>
 
           <div className="flex items-center gap-3 mb-4">
-            <div className="rounded-2xl bg-gradient-to-br from-amber-100 to-amber-200 p-3 shadow-sm">
-              <Wallet size={22} className="text-amber-700" />
-            </div>
+            <img src="/L.png" alt="ArthaLedger" className="h-14 w-14 rounded-2xl shadow-sm object-contain bg-amber-50 p-1 flex-shrink-0" />
             <div>
               <p className="text-base font-semibold text-stone-800 font-serif">ArthaLedger</p>
               <p className="text-xs text-stone-400">Where every rupee has meaning</p>
