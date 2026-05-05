@@ -7,6 +7,7 @@ import LoginPage from './pages/auth/LoginPage'
 import RegisterPage from './pages/auth/RegisterPage'
 import ForgotPasswordPage from './pages/auth/ForgotPasswordPage'
 import VerifyEmailPage from './pages/auth/VerifyEmailPage'
+import LandingPage from './pages/LandingPage'
 import DashboardPage from './pages/DashboardPage'
 import ProjectDetailPage from './pages/ProjectDetailPage'
 import BookPage from './pages/BookPage'
@@ -31,12 +32,22 @@ function VerifyEmailRoute({ children }) {
   return <Navigate to="/login" replace />
 }
 
+/**
+ * Home route — show landing page to guests, redirect logged-in users to dashboard.
+ */
+function HomeRoute() {
+  const { user, loading, isEmailVerified } = useAuth()
+  if (loading) return <Loader text="Preparing your space..." />
+  if (user && isEmailVerified) return <Navigate to="/dashboard" replace />
+  return <LandingPage />
+}
+
 export default function App() {
   return (
     <AuthProvider>
       <AppDataProvider>
         <Routes>
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/" element={<HomeRoute />} />
 
           {/* Public routes — redirect logged-in users away */}
           <Route path="/login"           element={<PublicRoute><LoginPage /></PublicRoute>} />
@@ -53,7 +64,7 @@ export default function App() {
           <Route path="/projects/:projectId"                    element={<ProtectedRoute><ProjectDetailPage /></ProtectedRoute>} />
           <Route path="/projects/:projectId/books/:bookId"      element={<ProtectedRoute><BookPage /></ProtectedRoute>} />
 
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </AppDataProvider>
     </AuthProvider>

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'cashbook-v2'
+const CACHE_NAME = 'cashbook-v3'
 const APP_SHELL = ['/', '/index.html', '/manifest.json']
 
 self.addEventListener('install', (event) => {
