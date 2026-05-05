@@ -1,4 +1,5 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
+import { useState, useEffect } from 'react'
 import { AuthProvider } from './context/AuthContext'
 import { AppDataProvider } from './context/AppDataContext'
 import ProtectedRoute from './components/ProtectedRoute'
@@ -13,6 +14,7 @@ import ProjectDetailPage from './pages/ProjectDetailPage'
 import BookPage from './pages/BookPage'
 import AnalyticsPage from './pages/AnalyticsPage'
 import SettingsPage from './pages/SettingsPage'
+import SplashScreen from './components/common/SplashScreen'
 import { useAuth } from './context/AuthContext'
 import Loader from './components/common/Loader'
 
@@ -43,9 +45,14 @@ function HomeRoute() {
 }
 
 export default function App() {
+  // Show splash only when running as installed PWA (standalone mode)
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone
+  const [splashDone, setSplashDone] = useState(!isStandalone)
+
   return (
     <AuthProvider>
       <AppDataProvider>
+        {!splashDone && <SplashScreen onDone={() => setSplashDone(true)} />}
         <Routes>
           <Route path="/" element={<HomeRoute />} />
 
