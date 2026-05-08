@@ -153,12 +153,27 @@ export default function ProjectDetailPage() {
     projectPinLockRef.current = Boolean(project?.pinHash)
   }, [project?.pinHash])
 
-  // Clear the project unlock when leaving the page so it prompts again on next visit.
+  // Only lock the project when navigating OUTSIDE the project.
+  // Navigating to a book within this project should NOT trigger a re-lock,
+  // otherwise the user gets asked for the PIN again when they come back.
   useEffect(() => {
-    return () => {
+    const handleBeforeUnload = () => {
       if (projectPinLockRef.current) lockItem(projectId)
     }
-  }, [projectId]) // only projectId — not project?.pinHash to avoid re-running on data load
+    // Lock on actual page unload (tab close / browser navigation)
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload)
+      // On React unmount, only lock if we're navigating outside the project.
+      // We detect this by checking if the new pathname still starts with this project's path.
+      const currentPath = window.location.pathname
+      const projectPath = `/projects/${projectId}`
+      const isLeavingProject = !currentPath.startsWith(projectPath)
+      if (projectPinLockRef.current && isLeavingProject) {
+        lockItem(projectId)
+      }
+    }
+  }, [projectId])
 
   // Check if any book in this project is PIN-locked
   const hasLockedBooks = books.some(b => Boolean(b.pinHash))

@@ -164,6 +164,7 @@ export function AppDataProvider({ children }) {
       enteredBy: payload.enteredBy || '',
       timestamp: entryTimestamp,
       notes: payload.notes || '',
+      isSavings: Boolean(payload.isSavings),
     }).catch((err) => { throw new Error(friendlyDbError(err)) })
 
     // If the new entry was inserted in the middle (past date), recalculate all subsequent balances
@@ -240,16 +241,20 @@ export function AppDataProvider({ children }) {
 
   /**
    * Transfer amount from one book to another within the same project.
-   * Creates a `transfer_out` expense in the source book and a `transfer_in`
-   * income in the destination book, both linked by a shared transferId.
-   * These entries are tagged so project-level summaries can exclude them.
+   *
+   * Savings logic:
+   * - transfer_out from source: always isSavings=false (money is leaving savings)
+   * - transfer_in at destination: always isSavings=false (money arrives as spendable)
+   *
+   * Rationale: once you move money OUT of savings into another account,
+   * it's no longer "saved" — it's available to spend. Analytics should
+   * reflect this correctly. The original savings deposit in the source
+   * book remains tagged isSavings=true and stays excluded from analytics.
    */
   const transferBetweenBooks = useCallback(async (projectId, fromBookId, toBookId, amount, note) => {
     const transferId = `txfr_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`
     const timestamp = Date.now()
-    const description = note || `Transfer to/from book`
 
-    // Helper to add a transfer entry to a book
     const addTransferEntry = async (bookId, type, desc) => {
       const entriesRef = ref(db, `users/${user.uid}/projects/${projectId}/books/${bookId}/entries`)
       const snap = await get(entriesRef)
@@ -261,7 +266,7 @@ export function AppDataProvider({ children }) {
       const newRef = push(entriesRef)
       await set(newRef, {
         amount: Number(amount),
-        type,           // 'transfer_in' | 'transfer_out'
+        type,
         description: desc,
         category: 'Transfer',
         mode: 'Internal',
@@ -269,8 +274,9 @@ export function AppDataProvider({ children }) {
         enteredBy: '',
         timestamp,
         notes: '',
-        transferId,     // links the two entries together
+        transferId,
         isTransfer: true,
+        isSavings: false,  // transfers are never savings — money is moving, not being saved
       })
 
       await update(ref(db, `users/${user.uid}/projects/${projectId}/books/${bookId}`), {
@@ -278,7 +284,6 @@ export function AppDataProvider({ children }) {
       })
     }
 
-    // Write both entries atomically (sequential is fine — they're linked by transferId)
     await addTransferEntry(fromBookId, 'transfer_out',
       note ? `Transfer → ${note}` : 'Transfer out')
     await addTransferEntry(toBookId, 'transfer_in',

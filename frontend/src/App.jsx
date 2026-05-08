@@ -8,6 +8,7 @@ import LoginPage from './pages/auth/LoginPage'
 import RegisterPage from './pages/auth/RegisterPage'
 import ForgotPasswordPage from './pages/auth/ForgotPasswordPage'
 import VerifyEmailPage from './pages/auth/VerifyEmailPage'
+import { lockAll } from './lib/pin'
 import LandingPage from './pages/LandingPage'
 import DashboardPage from './pages/DashboardPage'
 import ProjectDetailPage from './pages/ProjectDetailPage'
@@ -18,14 +19,6 @@ import SplashScreen from './components/common/SplashScreen'
 import { useAuth } from './context/AuthContext'
 import Loader from './components/common/Loader'
 
-/**
- * Guard for /verify-email:
- * - Loading → spinner
- * - Logged in + already verified → /dashboard
- * - Has pending verification (just registered, signed out) → show page
- * - Logged in but unverified → show page
- * - No user and no pending email → /login
- */
 function VerifyEmailRoute({ children }) {
   const { user, loading, isEmailVerified, needsEmailVerification } = useAuth()
   if (loading) return <Loader text="Preparing your space..." />
@@ -34,9 +27,6 @@ function VerifyEmailRoute({ children }) {
   return <Navigate to="/login" replace />
 }
 
-/**
- * Home route — show landing page to guests, redirect logged-in users to dashboard.
- */
 function HomeRoute() {
   const { user, loading, isEmailVerified } = useAuth()
   if (loading) return <Loader text="Preparing your space..." />
@@ -45,32 +35,52 @@ function HomeRoute() {
 }
 
 export default function App() {
-  // Show splash only when running as installed PWA (standalone mode)
   const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone
-  const [splashDone, setSplashDone] = useState(!isStandalone)
+
+  // Show full splash only on the very first visit in a PWA session.
+  // sessionStorage is cleared on tab close but persists across refreshes,
+  // so a page refresh skips the full animation and goes straight to the app.
+  const isFirstVisit = !sessionStorage.getItem('al_visited')
+  const [splashDone, setSplashDone] = useState(!isStandalone || !isFirstVisit)
+
+  const handleSplashDone = () => {
+    sessionStorage.setItem('al_visited', '1')
+    setSplashDone(true)
+  }
+
+  // Lock all PIN-protected items when app comes back from background after 5 min
+  useEffect(() => {
+    let hiddenAt = null
+    const LOCK_AFTER_MS = 5 * 60 * 1000
+
+    const handleVisibility = () => {
+      if (document.hidden) {
+        hiddenAt = Date.now()
+      } else {
+        if (hiddenAt && Date.now() - hiddenAt > LOCK_AFTER_MS) lockAll()
+        hiddenAt = null
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibility)
+    return () => document.removeEventListener('visibilitychange', handleVisibility)
+  }, [])
 
   return (
     <AuthProvider>
       <AppDataProvider>
-        {!splashDone && <SplashScreen onDone={() => setSplashDone(true)} />}
+        {!splashDone && <SplashScreen onDone={handleSplashDone} />}
         <Routes>
           <Route path="/" element={<HomeRoute />} />
-
-          {/* Public routes — redirect logged-in users away */}
           <Route path="/login"           element={<PublicRoute><LoginPage /></PublicRoute>} />
           <Route path="/register"        element={<PublicRoute><RegisterPage /></PublicRoute>} />
           <Route path="/forgot-password" element={<PublicRoute><ForgotPasswordPage /></PublicRoute>} />
-
-          {/* Email verification waiting room */}
-          <Route path="/verify-email" element={<VerifyEmailRoute><VerifyEmailPage /></VerifyEmailRoute>} />
-
-          {/* Protected routes — require login + verified email */}
-          <Route path="/dashboard"   element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
-          <Route path="/analytics"   element={<ProtectedRoute><AnalyticsPage /></ProtectedRoute>} />
-          <Route path="/settings"    element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
+          <Route path="/verify-email"    element={<VerifyEmailRoute><VerifyEmailPage /></VerifyEmailRoute>} />
+          <Route path="/dashboard"       element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
+          <Route path="/analytics"       element={<ProtectedRoute><AnalyticsPage /></ProtectedRoute>} />
+          <Route path="/settings"        element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
           <Route path="/projects/:projectId"                    element={<ProtectedRoute><ProjectDetailPage /></ProtectedRoute>} />
           <Route path="/projects/:projectId/books/:bookId"      element={<ProtectedRoute><BookPage /></ProtectedRoute>} />
-
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </AppDataProvider>

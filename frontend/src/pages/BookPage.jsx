@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, useRef } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
+import { format, isToday, isYesterday } from 'date-fns'
 import {
   Filter, Search, Download, ArrowLeft, MoreVertical,
   Pencil, Trash2, X, TrendingUp, TrendingDown,
@@ -183,11 +184,29 @@ export default function BookPage() {
         const categoryMatch = filters.category === 'all' || entry.category === filters.category
         const byMatch = filters.enteredBy === 'all' || entry.enteredBy === filters.enteredBy
         const fromMatch = !filters.from || entry.timestamp >= new Date(filters.from).getTime()
-        const toMatch = !filters.to || entry.timestamp <= new Date(filters.to).getTime()
+        const toMatch = !filters.to || entry.timestamp <= new Date(filters.to + 'T23:59:59').getTime()
         return searchMatch && typeMatch && modeMatch && categoryMatch && byMatch && fromMatch && toMatch
       })
       .sort((a, b) => b.timestamp - a.timestamp)
   }, [entries, search, filters])
+
+  // Group filtered entries by calendar date
+  const groupedEntries = useMemo(() => {
+    const groups = new Map()
+    filteredEntries.forEach(entry => {
+      const d = new Date(entry.timestamp)
+      const key = format(d, 'yyyy-MM-dd')
+      if (!groups.has(key)) groups.set(key, { date: d, entries: [] })
+      groups.get(key).entries.push(entry)
+    })
+    return Array.from(groups.values())
+  }, [filteredEntries])
+
+  const formatGroupDate = (date) => {
+    if (isToday(date))     return 'Today'
+    if (isYesterday(date)) return 'Yesterday'
+    return format(date, 'dd MMM yyyy')
+  }
 
   const summary = useMemo(() => {
     const totalIn = entries
@@ -316,7 +335,7 @@ export default function BookPage() {
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                   {[
                     { label: 'Type', key: 'type', options: [['all','All types'],['income','Income'],['expense','Expense']] },
-                    { label: 'Mode', key: 'mode', options: [['all','All modes'],['Cash','Cash'],['UPI','UPI'],['Online','Online'],['Bank Transfer','Bank Transfer']] },
+                    { label: 'Mode', key: 'mode', options: [['all','All modes'],['Cash','Cash'],['UPI','UPI']] },
                     { label: 'Category', key: 'category', options: [['all','All categories'], ...categories.map(c => [c,c])] },
                     { label: 'Person', key: 'enteredBy', options: [['all','All people'], ...enteredByList.map(n => [n,n])] },
                   ].map(({ label, key, options }) => (
@@ -425,27 +444,46 @@ export default function BookPage() {
               </div>
             </div>
           ) : (
-            <div className="space-y-2">
-              {filteredEntries.map((entry, idx) => (
-                <motion.div
-                  key={entry.id}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: Math.min(idx * 0.03, 0.3) }}
-                  className="flex items-start gap-2"
-                >
-                  <div className="flex-1 min-w-0">
-                    <EntryCard entry={entry} />
+            <div className="space-y-5">
+              {groupedEntries.map(({ date, entries: dayEntries }) => {
+                const dayIn  = dayEntries.filter(e => e.type === 'income').reduce((s, e) => s + Number(e.amount), 0)
+                const dayOut = dayEntries.filter(e => e.type === 'expense').reduce((s, e) => s + Number(e.amount), 0)
+                return (
+                  <div key={format(date, 'yyyy-MM-dd')}>
+                    {/* Date group header */}
+                    <div className="flex items-center justify-between mb-2 px-1">
+                      <span className="text-xs font-bold text-stone-500 uppercase tracking-wide">
+                        {formatGroupDate(date)}
+                      </span>
+                      <div className="flex items-center gap-2 text-[10px]">
+                        {dayIn  > 0 && <span className="text-emerald-600 font-semibold">+₹{dayIn.toFixed(0)}</span>}
+                        {dayOut > 0 && <span className="text-red-500 font-semibold">−₹{dayOut.toFixed(0)}</span>}
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      {dayEntries.map((entry, idx) => (
+                        <motion.div
+                          key={entry.id}
+                          initial={{ opacity: 0, y: 6 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: Math.min(idx * 0.03, 0.2) }}
+                          className="flex items-start gap-2"
+                        >
+                          <div className="flex-1 min-w-0">
+                            <EntryCard entry={entry} />
+                          </div>
+                          <div className="flex-shrink-0 pt-3">
+                            <EntryMenu
+                              onEdit={() => setEditingEntry(entry)}
+                              onDelete={() => setDeleteEntryTarget(entry)}
+                            />
+                          </div>
+                        </motion.div>
+                      ))}
+                    </div>
                   </div>
-                  {/* 3-dot per entry */}
-                  <div className="flex-shrink-0 pt-3">
-                    <EntryMenu
-                      onEdit={() => setEditingEntry(entry)}
-                      onDelete={() => setDeleteEntryTarget(entry)}
-                    />
-                  </div>
-                </motion.div>
-              ))}
+                )
+              })}
             </div>
           )}
         </section>

@@ -1,5 +1,5 @@
 import { format } from 'date-fns'
-import { HandCoins, Landmark, Smartphone, Wallet, User, ArrowRight, ArrowLeft } from 'lucide-react'
+import { HandCoins, Landmark, Smartphone, Wallet, User, ArrowRight, ArrowLeft, PiggyBank } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { formatAmount, getCurrencySymbol } from '../../lib/format'
 
@@ -28,8 +28,9 @@ export default function EntryCard({ entry }) {
   const modeStyle = modeColor[entry.mode] || 'bg-stone-50 text-stone-600 border-stone-100'
   const symbol = getCurrencySymbol()
 
-  // Transfer entries get a distinct blue style
-  const amountColor = isTransferIn
+  const amountColor = entry.isSavings
+    ? 'text-violet-600'
+    : isTransferIn
     ? 'text-blue-600'
     : isTransferOut
     ? 'text-blue-500'
@@ -37,8 +38,8 @@ export default function EntryCard({ entry }) {
     ? 'text-emerald-700'
     : 'text-red-600'
 
-  const iconBg = isTransfer ? 'bg-blue-50' : isIncome ? 'bg-emerald-50' : 'bg-red-50'
-  const iconColor = isTransfer ? 'text-blue-500' : isIncome ? 'text-emerald-600' : 'text-red-500'
+  const iconBg    = entry.isSavings ? 'bg-violet-50' : isTransfer ? 'bg-blue-50' : isIncome ? 'bg-emerald-50' : 'bg-red-50'
+  const iconColor = entry.isSavings ? 'text-violet-500' : isTransfer ? 'text-blue-500' : isIncome ? 'text-emerald-600' : 'text-red-500'
   const TransferIcon = isTransferIn ? ArrowLeft : ArrowRight
 
   return (
@@ -47,9 +48,18 @@ export default function EntryCard({ entry }) {
       whileHover={{ y: -1, boxShadow: '0 4px 20px rgba(185,147,78,0.12)' }}
       transition={{ duration: 0.15 }}
       className={`rounded-2xl border bg-white/88 p-3.5 sm:p-4 shadow-sm ${
-        isTransfer ? 'border-blue-100/80' : 'border-amber-100/80'
+        entry.isSavings ? 'border-violet-100/80' : isTransfer ? 'border-blue-100/80' : 'border-amber-100/80'
       }`}
     >
+      {/* Savings badge */}
+      {entry.isSavings && (
+        <div className="flex items-center gap-1.5 mb-2">
+          <span className="inline-flex items-center gap-1 rounded-full bg-violet-50 border border-violet-100 px-2 py-0.5 text-[10px] font-semibold text-violet-600">
+            <PiggyBank size={9} /> Savings
+          </span>
+          <span className="text-[10px] text-stone-400">· Not counted in analytics</span>
+        </div>
+      )}
       {/* Transfer badge */}
       {isTransfer && (
         <div className="flex items-center gap-1.5 mb-2">
