@@ -145,11 +145,9 @@ export default function AnalyticsPage() {
     [allEntries]
   )
 
-  // Net balance = current money available for spending (income − expenses, savings excluded)
-  const netBalance = useMemo(() => {
-    const income  = spendingEntries.filter(e => e.type === 'income').reduce((s, e) => s + Number(e.amount), 0)
-    const expense = spendingEntries.filter(e => e.type === 'expense').reduce((s, e) => s + Number(e.amount), 0)
-    return income - expense
+  // Total spent = sum of expense entries (transfers excluded by spendingEntries)
+  const totalSpent = useMemo(() => {
+    return spendingEntries.filter(e => e.type === 'expense').reduce((s, e) => s + Number(e.amount), 0)
   }, [spendingEntries])
 
   // Monthly income vs expense — last 6 months
@@ -239,24 +237,22 @@ export default function AnalyticsPage() {
           </motion.div>
         ) : (
           <>
-            {/* ── Net Balance — single number, clean ── */}
+            {/* ── Total Spent — single number, clean ── */}
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               className={`rounded-2xl border overflow-hidden shadow-sm ${
-                netBalance >= 0
-                  ? 'border-emerald-100 bg-gradient-to-br from-emerald-50 to-white'
-                  : 'border-red-100 bg-gradient-to-br from-red-50 to-white'
+                'border-red-100 bg-gradient-to-br from-red-50 to-white'
               }`}
             >
               <div className="px-4 py-4">
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
-                    <div className={`rounded-lg p-1.5 ${netBalance >= 0 ? 'bg-emerald-100' : 'bg-red-100'}`}>
-                      <Scale size={13} className={netBalance >= 0 ? 'text-emerald-600' : 'text-red-500'} />
+                    <div className={`rounded-lg p-1.5 bg-red-100`}>
+                      <Scale size={13} className="text-red-500" />
                     </div>
                     <span className="text-xs font-semibold text-stone-500 uppercase tracking-wider">
-                      Available Balance
+                      Total Spent
                     </span>
                   </div>
                   <button
@@ -271,8 +267,8 @@ export default function AnalyticsPage() {
                 {hideBalance ? (
                   <span className="text-3xl font-bold text-stone-300 tracking-widest">••••••</span>
                 ) : (
-                  <span className={`text-3xl font-bold font-serif ${netBalance >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>
-                    {netBalance >= 0 ? '' : '−'}{fmt(Math.abs(netBalance))}
+                  <span className={`text-3xl font-bold font-serif text-red-600`}>
+                    {fmt(Math.abs(totalSpent))}
                   </span>
                 )}
 
