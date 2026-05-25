@@ -1,14 +1,15 @@
 import { useMemo, useState } from 'react'
 import {
-  Bar, BarChart, Cell, Pie, PieChart, LineChart, Line,
+  Bar, BarChart,
   ResponsiveContainer, Tooltip, XAxis, YAxis, CartesianGrid,
 } from 'recharts'
 import { Link } from 'react-router-dom'
 import {
   ArrowLeft, BarChart3, TrendingUp, TrendingDown, Scale,
   Eye, EyeOff, AlertTriangle, Lightbulb, ArrowUpRight,
+  X, Calendar, Tag, Wallet, FileText, ChevronDown, ChevronUp, MoreVertical, User,
 } from 'lucide-react'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import LayoutShell from '../components/LayoutShell'
 import { useAppData } from '../context/AppDataContext'
 
@@ -116,8 +117,10 @@ const insightStyle = {
 }
 
 export default function AnalyticsPage() {
-  const { entriesByBook } = useAppData()
+  const { entriesByBook, booksByProject, projects } = useAppData()
   const [hideBalance, setHideBalance] = useState(() => localStorage.getItem('al_hide_balance') === 'true')
+  const [selectedCategory, setSelectedCategory] = useState(null)
+  const [showCategoryModal, setShowCategoryModal] = useState(false)
 
   const toggleHideBalance = () => {
     setHideBalance(v => {
@@ -127,25 +130,47 @@ export default function AnalyticsPage() {
     })
   }
 
-  // All entries, memoized
-  const allEntries = useMemo(
-    () => Object.values(entriesByBook).flat(),
-    [entriesByBook]
-  )
+  // Create map of bookId -> { bookName, projectId }
+  const bookIdMap = useMemo(() => {
+    const map = {}
+    projects.forEach(project => {
+      (booksByProject[project.id] || []).forEach(book => {
+        map[book.id] = { bookName: book.name, projectId: project.id }
+      })
+    })
+    return map
+  }, [projects, booksByProject])
 
-  // Spending entries = exclude savings-tagged income entries.
+  // All entries with bookId and projectId attached
+  const allEntries = useMemo(() => {
+    const entries = []
+    projects.forEach(project => {
+      (booksByProject[project.id] || []).forEach(book => {
+        const bookEntries = entriesByBook[book.id] || []
+        bookEntries.forEach(entry => {
+          entries.push({
+            ...entry,
+            bookId: book.id,
+            projectId: project.id,
+          })
+        })
+      })
+    })
+    return entries
+  }, [projects, booksByProject, entriesByBook])
+
+  // Spending entries = exclude savings-tagged income entries and all transfers.
   // Savings expenses (spending from savings) ARE included — that's real spending.
-  // Transfers are excluded entirely (they're internal moves, not real income/expense).
   const spendingEntries = useMemo(
     () => allEntries.filter(e => {
-      if (e.isTransfer) return false          // internal transfers never count
+      if (e.isTransfer) return false
       if (e.isSavings === true) return false  // savings deposits excluded
       return true
     }),
     [allEntries]
   )
 
-  // Total spent = sum of expense entries (transfers excluded by spendingEntries)
+  // Total spent = sum of expense entries (transfers excluded)
   const totalSpent = useMemo(() => {
     return spendingEntries.filter(e => e.type === 'expense').reduce((s, e) => s + Number(e.amount), 0)
   }, [spendingEntries])
@@ -165,17 +190,6 @@ export default function AnalyticsPage() {
     return Array.from(map.values()).sort((a, b) => a.month.localeCompare(b.month)).slice(-6)
   }, [spendingEntries])
 
-  // Running balance trend — last 30 data points
-  const balanceTrend = useMemo(() => {
-    const sorted = [...spendingEntries].sort((a, b) => a.timestamp - b.timestamp)
-    let running = 0
-    return sorted.map(e => {
-      running += e.type === 'income' ? Number(e.amount) : -Number(e.amount)
-      const d = new Date(e.timestamp)
-      return { label: `${d.getDate()}/${d.getMonth() + 1}`, balance: running }
-    }).slice(-30)
-  }, [spendingEntries])
-
   // Expense by category — top 8
   const byCategory = useMemo(() => {
     const map = new Map()
@@ -186,8 +200,18 @@ export default function AnalyticsPage() {
     return Array.from(map.entries())
       .map(([name, value]) => ({ name, value }))
       .sort((a, b) => b.value - a.value)
-      .slice(0, 8)
   }, [spendingEntries])
+
+  // Get all transactions for a specific category
+  const getCategoryTransactions = (categoryName) => {
+    return spendingEntries
+      .filter(e => e.type === 'expense' && (e.category || 'General') === categoryName)
+      .sort((a, b) => b.timestamp - a.timestamp)
+  }
+
+  const categoryTransactions = selectedCategory ? getCategoryTransactions(selectedCategory) : []
+
+  // Handle context menu
 
   // Daily average spend — last 30 days
   const dailyAvg = useMemo(() => {
@@ -343,38 +367,7 @@ export default function AnalyticsPage() {
               </div>
             </motion.section>
 
-            {/* ── Balance trend ── */}
-            {balanceTrend.length > 2 && (
-              <motion.section
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.15 }}
-                className="rounded-2xl border border-amber-100/80 bg-white/85 p-4 shadow-sm"
-              >
-                <div className="flex items-center gap-2 mb-4">
-                  <ArrowUpRight size={14} className="text-amber-600" />
-                  <h2 className="text-sm font-semibold text-stone-700">Balance Trend</h2>
-                  <span className="ml-auto text-[10px] text-stone-400">Last 30 entries</span>
-                </div>
-                <div className="h-44">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={balanceTrend} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#f5e8d0" vertical={false} />
-                      <XAxis dataKey="label" tick={{ fontSize: 9, fill: '#a8a29e' }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
-                      <YAxis tick={{ fontSize: 9, fill: '#a8a29e' }} axisLine={false} tickLine={false} tickFormatter={v => fmt(v).replace('₹', '')} />
-                      <Tooltip content={<CustomTooltip />} />
-                      <Line
-                        type="monotone" dataKey="balance" name="Balance"
-                        stroke="#d7a95a" strokeWidth={2} dot={false}
-                        activeDot={{ r: 4, fill: '#d7a95a' }}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-              </motion.section>
-            )}
-
-            {/* ── Where your money goes ── */}
+            {/* ── Spending breakdown ── */}
             {byCategory.length > 0 && (
               <motion.section
                 initial={{ opacity: 0, y: 12 }}
@@ -384,45 +377,42 @@ export default function AnalyticsPage() {
               >
                 <div className="flex items-center gap-2 mb-4">
                   <TrendingDown size={14} className="text-red-400" />
-                  <h2 className="text-sm font-semibold text-stone-700">Where Your Money Goes</h2>
+                  <h2 className="text-sm font-semibold text-stone-700">How Your Spending Breaks Down</h2>
+                  <span className="ml-auto text-[10px] text-stone-400">All spending categories</span>
                 </div>
 
-                <div className="h-44 mb-4">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={byCategory} dataKey="value" nameKey="name"
-                        cx="50%" cy="50%" innerRadius={45} outerRadius={72} paddingAngle={2}
-                      >
-                        {byCategory.map((item, idx) => (
-                          <Cell key={item.name} fill={PALETTE[idx % PALETTE.length]} />
-                        ))}
-                      </Pie>
-                      <Tooltip content={<CustomTooltip />} />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-
-                <div className="space-y-2.5">
+                <div className="space-y-3 mb-3">
                   {byCategory.map((cat, idx) => {
                     const total = byCategory.reduce((s, c) => s + c.value, 0)
-                    const pct   = total > 0 ? (cat.value / total) * 100 : 0
+                    const pct = total > 0 ? (cat.value / total) * 100 : 0
                     return (
-                      <div key={cat.name} className="flex items-center gap-3">
-                        <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: PALETTE[idx % PALETTE.length] }} />
-                        <span className="w-24 text-xs text-stone-600 truncate">{cat.name}</span>
-                        <div className="flex-1 h-1.5 rounded-full bg-stone-100 overflow-hidden">
+                      <button
+                        key={cat.name}
+                        type="button"
+                        onClick={() => {
+                          setSelectedCategory(cat.name)
+                          setShowCategoryModal(true)
+                        }}
+                        className="w-full rounded-xl border border-amber-50 bg-amber-50/20 px-3 py-2.5 text-left hover:border-amber-200 hover:bg-amber-50/60 transition-colors"
+                      >
+                        <div className="flex items-center justify-between gap-3 mb-1.5">
+                          <span className="min-w-0 text-xs font-medium text-stone-700 truncate">{cat.name}</span>
+                          <span className="flex-shrink-0 text-xs font-bold text-red-600">{fmt(cat.value)}</span>
+                        </div>
+                        <div className="h-2 rounded-full bg-stone-100 overflow-hidden">
                           <motion.div
                             initial={{ width: 0 }}
                             animate={{ width: `${pct}%` }}
-                            transition={{ delay: 0.25 + idx * 0.04, duration: 0.5 }}
+                            transition={{ delay: idx * 0.03, duration: 0.45 }}
                             className="h-full rounded-full"
                             style={{ backgroundColor: PALETTE[idx % PALETTE.length] }}
                           />
                         </div>
-                        <span className="w-16 text-right text-xs font-semibold text-stone-700">{fmt(cat.value)}</span>
-                        <span className="w-8 text-right text-[10px] text-stone-400">{pct.toFixed(0)}%</span>
-                      </div>
+                        <div className="mt-1.5 flex items-center justify-between text-[10px] text-stone-400">
+                          <span>{pct.toFixed(1)}% of total</span>
+                          <span>Tap to view transactions</span>
+                        </div>
+                      </button>
                     )
                   })}
                 </div>
@@ -431,6 +421,131 @@ export default function AnalyticsPage() {
           </>
         )}
       </div>
+
+      {/* ── Category Transactions Modal ── */}
+      <AnimatePresence>
+        {showCategoryModal && selectedCategory && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-end sm:items-center justify-center px-4 pb-4 sm:pb-0 bg-black/40 backdrop-blur-sm"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) {
+                setShowCategoryModal(false)
+              }
+            }}
+          >
+            <motion.div
+              initial={{ y: 40, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 40, opacity: 0 }}
+              transition={{ type: 'spring', damping: 22, stiffness: 300 }}
+              className="w-full max-w-2xl rounded-3xl border border-amber-100 bg-white shadow-2xl max-h-[80vh] overflow-x-hidden overflow-y-auto p-6"
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between mb-6 pb-4 border-b border-amber-50">
+                <div className="flex items-center gap-3">
+                  <div className="rounded-xl bg-amber-100 p-2.5">
+                    <Tag size={16} className="text-amber-700" />
+                  </div>
+                  <div>
+                    <h3 className="font-serif text-lg font-semibold text-stone-800">{selectedCategory}</h3>
+                    <p className="text-xs text-stone-400 mt-0.5">{categoryTransactions.length} transaction{categoryTransactions.length !== 1 ? 's' : ''}</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowCategoryModal(false)}
+                  className="rounded-xl p-1.5 text-stone-400 hover:bg-stone-100 transition-colors"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* Transactions List */}
+              {categoryTransactions.length === 0 ? (
+                <div className="flex flex-col items-center justify-center gap-3 py-12 text-center">
+                  <div className="rounded-2xl bg-amber-50 p-4">
+                    <FileText size={24} className="text-amber-400" />
+                  </div>
+                  <p className="text-sm text-stone-600">No transactions in this category</p>
+                </div>
+              ) : (
+                <div className="space-y-2.5">
+                  {categoryTransactions.map((txn, idx) => {
+                    const date = new Date(txn.timestamp)
+                    const dateStr = date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+                    const timeStr = date.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })
+                    const bookInfo = bookIdMap[txn.bookId]
+                    const bookName = bookInfo?.bookName || 'Unknown'
+                    const projectId = bookInfo?.projectId
+
+                    return (
+                      <motion.div
+                        key={idx}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: idx * 0.05 }}
+                        className="rounded-xl border border-amber-100 bg-gradient-to-r from-amber-50/50 to-white p-3.5 hover:border-amber-200 transition-colors group"
+                      >
+                        <div className="flex items-start justify-between gap-3 mb-2.5">
+                          <div className="flex-1">
+                            <p className="text-sm font-medium text-stone-800">{txn.description || 'Untitled'}</p>
+                            <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                              <span className="inline-flex items-center gap-1 rounded-lg bg-stone-100 px-2 py-1 text-[10px] text-stone-600">
+                                <Calendar size={10} />
+                                {dateStr}
+                              </span>
+                              <span className="inline-flex items-center gap-1 rounded-lg bg-blue-50 px-2 py-1 text-[10px] text-blue-600">
+                                <Wallet size={10} />
+                                {txn.mode || 'Cash'}
+                              </span>
+                              <span className="inline-flex items-center gap-1 rounded-lg bg-purple-50 px-2 py-1 text-[10px] text-purple-600">
+                                <FileText size={10} />
+                                {bookName}
+                              </span>
+                              {txn.enteredBy && (
+                                <span className="inline-flex items-center gap-1 rounded-lg bg-orange-50 px-2 py-1 text-[10px] text-orange-600">
+                                  <User size={10} />
+                                  {txn.enteredBy}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex-shrink-0 flex items-start gap-2">
+                            <div className="text-right">
+                              <p className="text-lg font-semibold text-red-600">−{fmt(Number(txn.amount))}</p>
+                              <p className="text-[11px] text-stone-400 mt-0.5">{timeStr}</p>
+                            </div>
+                          </div>
+                        </div>
+                        {txn.notes && (
+                          <div className="mt-2.5 rounded-lg bg-white border border-stone-100 px-2.5 py-2 text-xs text-stone-600">
+                            <p className="font-medium text-stone-700 mb-1">Note:</p>
+                            <p className="text-stone-500 leading-relaxed">{txn.notes}</p>
+                          </div>
+                        )}
+                      </motion.div>
+                    )
+                  })}
+                </div>
+              )}
+
+              {/* Summary Footer */}
+              {categoryTransactions.length > 0 && (
+                <div className="mt-6 pt-4 border-t border-amber-50">
+                  <div className="rounded-xl bg-red-50 border border-red-100 p-3 text-center">
+                    <p className="text-[10px] text-red-600 font-medium uppercase mb-1">Total Spent</p>
+                    <p className="text-lg font-bold text-red-600">
+                      {fmt(categoryTransactions.reduce((s, t) => s + Number(t.amount), 0))}
+                    </p>
+                  </div>
+                </div>
+              )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </LayoutShell>
   )
 }

@@ -148,6 +148,10 @@ export default function ProjectDetailPage() {
 
   const project = projects.find((p) => p.id === projectId)
   const books = booksByProject[projectId] || []
+  const hasAnyTransferTarget = useMemo(() => {
+    const totalBooks = projects.reduce((sum, projectItem) => sum + (booksByProject[projectItem.id] || []).length, 0)
+    return totalBooks > 1
+  }, [projects, booksByProject])
 
   useEffect(() => {
     projectPinLockRef.current = Boolean(project?.pinHash)
@@ -181,15 +185,14 @@ export default function ProjectDetailPage() {
   // Project-level PIN
   const isProjectLocked = Boolean(project?.pinHash) && !isUnlocked(projectId)
 
-  // Project-level summary across all books — excludes internal transfers
+  // Project-level summary across all books — includes transfers as visible movement
   const projectSummary = useMemo(() => {
     let totalIn = 0, totalOut = 0
     books.forEach(book => {
       const entries = entriesByBook[book.id] || []
       entries.forEach(e => {
-        if (e.isTransfer) return // skip transfer entries
-        if (e.type === 'income') totalIn += Number(e.amount)
-        else if (e.type === 'expense') totalOut += Number(e.amount)
+        if (e.type === 'income' || e.type === 'transfer_in') totalIn += Number(e.amount)
+        else if (e.type === 'expense' || e.type === 'transfer_out') totalOut += Number(e.amount)
       })
     })
     return { totalIn, totalOut, net: totalIn - totalOut }
@@ -440,8 +443,8 @@ export default function ProjectDetailPage() {
                             }
                           </p>
                         </div>
-                        {/* Transfer button — only shown when there are other books */}
-                        {books.length > 1 && !isBookLocked && (
+                        {/* Transfer button — only shown when at least one destination exists */}
+                        {hasAnyTransferTarget && !isBookLocked && (
                           <button
                             onClick={(e) => {
                               e.stopPropagation()
@@ -620,16 +623,25 @@ export default function ProjectDetailPage() {
         <TransferModal
           open={true}
           onClose={() => setTransferSource(null)}
+          currentProject={project}
           currentBook={transferSource}
-          otherBooks={books.filter(b => b.id !== transferSource.id)}
+          projects={projects}
+          booksByProject={booksByProject}
           currentBalance={(() => {
             const ents = entriesByBook[transferSource.id] || []
             if (!ents.length) return 0
             const sorted = [...ents].sort((a, b) => a.timestamp - b.timestamp)
             return Number(sorted[sorted.length - 1].balanceAfter || 0)
           })()}
-          onTransfer={async ({ toBookId, amount, note }) => {
-            await transferBetweenBooks(projectId, transferSource.id, toBookId, amount, note)
+          onTransfer={async ({ destinationProjectId, destinationBookId, amount, note }) => {
+            await transferBetweenBooks({
+              sourceProjectId: projectId,
+              sourceBookId: transferSource.id,
+              destinationProjectId,
+              destinationBookId,
+              amount,
+              note,
+            })
             const symbol = getCurrencySymbol()
             showToast(`${symbol}${formatAmount(amount, 0)} transferred 🔄`)
             setTransferSource(null)

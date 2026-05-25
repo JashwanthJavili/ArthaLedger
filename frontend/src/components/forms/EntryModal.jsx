@@ -11,6 +11,7 @@ const MODES = [
 ]
 
 const currencyMap = { INR: '₹', USD: '$', EUR: '€', GBP: '£', JPY: '¥', AED: 'د.إ', SGD: 'S$' }
+const LAST_ENTRY_KEY = 'al_last_entry_defaults'
 
 function localDatetimeValue(date = new Date()) {
   const pad = n => String(n).padStart(2, '0')
@@ -23,7 +24,7 @@ function localDatetimeValue(date = new Date()) {
   )
 }
 
-export default function EntryModal({ open, type, onClose, onSubmit, categories, initial, onSaveCategories }) {
+export default function EntryModal({ open, type, onClose, onSubmit, categories, descriptionSuggestions = [], initial, onSaveCategories }) {
   const [amount,      setAmount]      = useState('')
   const [description, setDesc]        = useState('')
   const [category,    setCategory]    = useState('')
@@ -44,20 +45,30 @@ export default function EntryModal({ open, type, onClose, onSubmit, categories, 
   // the `categories` prop (after onSaveCategories), we do NOT reset the form.
   const isOpenRef   = useRef(false)
   const amountRef   = useRef(null)
+  const formRef     = useRef(null)
+
+  const loadLastEntryDefaults = () => {
+    try {
+      return JSON.parse(localStorage.getItem(LAST_ENTRY_KEY) || '{}') || {}
+    } catch {
+      return {}
+    }
+  }
 
   useEffect(() => {
     if (open && !isOpenRef.current) {
       // First open — initialise everything
       isOpenRef.current = true
       const cats = categories?.length ? categories : ['General']
+      const saved = initial ? {} : loadLastEntryDefaults()
       setLocalCats(cats)
       setAmount(initial?.amount != null ? String(initial.amount) : '')
       setDesc(initial?.description || '')
-      setCategory(initial?.category || cats[0] || 'General')
-      setMode(initial?.mode || 'UPI')
-      setEnteredBy(initial?.enteredBy || '')
+      setCategory(initial?.category || saved.category || cats[0] || 'General')
+      setMode(initial?.mode || saved.mode || 'UPI')
+      setEnteredBy(initial?.enteredBy || saved.enteredBy || '')
       setNotes(initial?.notes || '')
-      setIsSavings(Boolean(initial?.isSavings))
+      setIsSavings(Boolean(initial?.isSavings ?? saved.isSavings))
       setTimestamp(
         initial
           ? localDatetimeValue(new Date(initial.timestamp))
@@ -120,9 +131,30 @@ export default function EntryModal({ open, type, onClose, onSubmit, categories, 
         timestamp: new Date(timestamp).getTime(),
         _localCategories: localCats,
       })
+      if (!initial) {
+        localStorage.setItem(LAST_ENTRY_KEY, JSON.stringify({ category, mode, enteredBy, isSavings }))
+      }
       onClose()
     } finally {
       setSubmitting(false)
+    }
+  }
+
+  const applyDescriptionSuggestion = (description) => {
+    setDesc(description)
+    setErrors({})
+    setTimeout(() => amountRef.current?.focus(), 0)
+  }
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Escape') {
+      e.preventDefault()
+      onClose()
+      return
+    }
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+      e.preventDefault()
+      formRef.current?.requestSubmit()
     }
   }
 
@@ -184,7 +216,7 @@ export default function EntryModal({ open, type, onClose, onSubmit, categories, 
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden bg-white">
+        <form ref={formRef} onSubmit={handleSubmit} onKeyDown={handleKeyDown} className="flex flex-col flex-1 overflow-hidden bg-white">
           <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
 
             {/* Amount */}
@@ -264,6 +296,36 @@ export default function EntryModal({ open, type, onClose, onSubmit, categories, 
                   </button>
                 ))}
               </div>
+
+              {!initial && descriptionSuggestions?.length > 0 && (
+                <div className="space-y-2 mb-2.5">
+                  <div className="flex items-center justify-between">
+                    <p className="text-[10px] font-semibold text-stone-400 uppercase tracking-wider">Frequent descriptions</p>
+                    <span className="text-[10px] text-stone-400">Most used in this book</span>
+                  </div>
+                  <div className="flex gap-2 overflow-x-auto pb-1 snap-x snap-mandatory">
+                    {descriptionSuggestions.slice(0, 6).map((item) => (
+                      <button
+                        key={item.description}
+                        type="button"
+                        onClick={() => applyDescriptionSuggestion(item.description)}
+                        className="min-w-[13rem] snap-start rounded-2xl border border-amber-100 bg-gradient-to-br from-white to-amber-50/60 px-3 py-2.5 text-left shadow-sm hover:shadow-md hover:border-amber-200 transition-all"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <p className="text-sm font-semibold text-stone-800 truncate">{item.description}</p>
+                            <p className="text-[11px] text-stone-400 truncate">Used {item.count} time{item.count === 1 ? '' : 's'} here</p>
+                          </div>
+                          <div className="text-right flex-shrink-0">
+                            <p className="text-xs font-bold text-stone-700">Tap</p>
+                            <p className="text-[10px] text-stone-400">Use</p>
+                          </div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Manage panel — slides in below chips, no form reset */}
               {showCatPanel && (

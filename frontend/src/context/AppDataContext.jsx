@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
-import { get, onValue, push, ref, remove, set, update } from 'firebase/database'
+import { get, limitToLast, onValue, orderByChild, push, query, ref, remove, set, update } from 'firebase/database'
 import { db } from '../lib/firebase'
 import { useAuth } from './AuthContext'
 
@@ -138,20 +138,17 @@ export function AppDataProvider({ children }) {
 
   const addEntry = useCallback(async (projectId, bookId, payload) => {
     const entriesRef = ref(db, `users/${user.uid}/projects/${projectId}/books/${bookId}/entries`)
-    const currentSnap = await get(entriesRef)
-    // Sort chronologically so we insert at the correct position
-    const currentEntries = toArray(currentSnap.val()).sort((a, b) => a.timestamp - b.timestamp)
-
     const entryTimestamp = payload.timestamp || Date.now()
 
-    // Find the last entry that comes BEFORE this new entry's timestamp
-    const precedingEntries = currentEntries.filter((e) => e.timestamp <= entryTimestamp)
-    const lastBalance = precedingEntries.length
-      ? Number(precedingEntries[precedingEntries.length - 1].balanceAfter || 0)
-      : 0
-
     const signedAmount = payload.type === 'income' ? Number(payload.amount) : -Number(payload.amount)
+    const currentSnap = await get(query(entriesRef, orderByChild('timestamp'), limitToLast(1)))
+    const latestEntries = toArray(currentSnap.val()).sort((a, b) => a.timestamp - b.timestamp)
+    const latestEntry = latestEntries.at(-1)
+    const lastBalance = latestEntry ? Number(latestEntry.balanceAfter || 0) : 0
+    const lastTimestamp = latestEntry ? Number(latestEntry.timestamp || 0) : 0
+
     const balanceAfter = lastBalance + signedAmount
+    const isAppendOnly = !latestEntry || entryTimestamp >= lastTimestamp
 
     const newRef = push(entriesRef)
     await set(newRef, {
@@ -167,10 +164,8 @@ export function AppDataProvider({ children }) {
       isSavings: Boolean(payload.isSavings),
     }).catch((err) => { throw new Error(friendlyDbError(err)) })
 
-    // If the new entry was inserted in the middle (past date), recalculate all subsequent balances
-    const hasSubsequent = currentEntries.some((e) => e.timestamp > entryTimestamp)
-    if (hasSubsequent) {
-      await _recalcBalances(user.uid, projectId, bookId)
+    if (!isAppendOnly) {
+      await _recalcBalancesFrom(user.uid, projectId, bookId, entryTimestamp)
     }
 
     await update(ref(db, `users/${user.uid}/projects/${projectId}/books/${bookId}`), {
@@ -181,9 +176,25 @@ export function AppDataProvider({ children }) {
   }, [user?.uid])
 
   const deleteEntry = useCallback(async (projectId, bookId, entryId) => {
-    await remove(ref(db, `users/${user.uid}/projects/${projectId}/books/${bookId}/entries/${entryId}`))
-      .catch((err) => { throw new Error(friendlyDbError(err)) })
-    await _recalcBalances(user.uid, projectId, bookId)
+    const entryRef = ref(db, `users/${user.uid}/projects/${projectId}/books/${bookId}/entries/${entryId}`)
+    const entrySnap = await get(entryRef)
+    const entry = entrySnap.val()
+    if (!entry) {
+      throw new Error('Entry not found')
+    }
+
+    await remove(entryRef).catch((err) => { throw new Error(friendlyDbError(err)) })
+
+    const latestSnap = await get(query(ref(db, `users/${user.uid}/projects/${projectId}/books/${bookId}/entries`), orderByChild('timestamp'), limitToLast(1)))
+    const latestEntries = toArray(latestSnap.val()).sort((a, b) => a.timestamp - b.timestamp)
+    const latestEntry = latestEntries.at(-1)
+
+    if (!latestEntry || Number(entry.timestamp) >= Number(latestEntry.timestamp || 0)) {
+      await update(ref(db, `users/${user.uid}/projects/${projectId}/books/${bookId}`), { updatedAt: Date.now() })
+      return
+    }
+
+    await _recalcBalancesFrom(user.uid, projectId, bookId, Number(entry.timestamp || 0))
     await update(ref(db, `users/${user.uid}/projects/${projectId}/books/${bookId}`), { updatedAt: Date.now() })
   }, [user?.uid])
 
@@ -202,12 +213,17 @@ export function AppDataProvider({ children }) {
     )
 
     let running = 0
+    const updates = {}
     for (const e of next) {
       const signed = e.type === 'income' ? Number(e.amount) : -Number(e.amount)
       running += signed
-      const entryRef = ref(db, `users/${user.uid}/projects/${projectId}/books/${bookId}/entries/${e.id}`)
-      await update(entryRef, { ...sanitiseEntry(e), balanceAfter: running })
+      updates[`users/${user.uid}/projects/${projectId}/books/${bookId}/entries/${e.id}`] = {
+        ...sanitiseEntry(e),
+        balanceAfter: running,
+      }
     }
+
+    await update(ref(db), updates)
 
     await update(ref(db, `users/${user.uid}/projects/${projectId}/books/${bookId}`), {
       updatedAt: Date.now(),
@@ -224,70 +240,155 @@ export function AppDataProvider({ children }) {
   // ── Categories ────────────────────────────────────────────────────────────
 
   const updateCategories = useCallback(async (projectId, bookId, categories) => {
-    await set(ref(db, `users/${user.uid}/projects/${projectId}/books/${bookId}/categories`), categories)
+    const nextCategories = normaliseCategories(categories)
+    await set(ref(db, `users/${user.uid}/categories`), nextCategories)
       .catch((err) => { throw new Error(friendlyDbError(err)) })
   }, [user?.uid])
 
   const getCategories = useCallback(async (projectId, bookId) => {
     try {
-      const snapshot = await get(ref(db, `users/${user.uid}/projects/${projectId}/books/${bookId}/categories`))
-      return snapshot.val() || []
+      const snapshot = await get(ref(db, `users/${user.uid}/categories`))
+      const shared = normaliseCategories(snapshot.val())
+      if (shared.length > 0) return shared
+
+      if (projectId && bookId) {
+        const legacySnapshot = await get(ref(db, `users/${user.uid}/projects/${projectId}/books/${bookId}/categories`))
+        const legacy = normaliseCategories(legacySnapshot.val())
+        if (legacy.length > 0) {
+          await set(ref(db, `users/${user.uid}/categories`), legacy)
+          return legacy
+        }
+      }
+
+      return []
     } catch {
       return []
     }
   }, [user?.uid])
 
-  // ── Inter-book Transfer ───────────────────────────────────────────────────
+  // ── Transfer ──────────────────────────────────────────────────────────────
 
   /**
-   * Transfer amount from one book to another within the same project.
+   * Transfer money between two books, even when they belong to different projects.
    *
-   * Savings logic:
-   * - transfer_out from source: always isSavings=false (money is leaving savings)
-   * - transfer_in at destination: always isSavings=false (money arrives as spendable)
-   *
-   * Rationale: once you move money OUT of savings into another account,
-   * it's no longer "saved" — it's available to spend. Analytics should
-   * reflect this correctly. The original savings deposit in the source
-   * book remains tagged isSavings=true and stays excluded from analytics.
+   * The write is done as one multi-location Firebase update so either both ledger
+   * entries land together or neither does.
    */
-  const transferBetweenBooks = useCallback(async (projectId, fromBookId, toBookId, amount, note) => {
-    const transferId = `txfr_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`
-    const timestamp = Date.now()
-
-    const addTransferEntry = async (bookId, type, desc) => {
-      const entriesRef = ref(db, `users/${user.uid}/projects/${projectId}/books/${bookId}/entries`)
-      const snap = await get(entriesRef)
-      const existing = toArray(snap.val()).sort((a, b) => a.timestamp - b.timestamp)
-      const lastBalance = existing.length ? Number(existing[existing.length - 1].balanceAfter || 0) : 0
-      const signed = type === 'transfer_in' ? Number(amount) : -Number(amount)
-      const balanceAfter = lastBalance + signed
-
-      const newRef = push(entriesRef)
-      await set(newRef, {
-        amount: Number(amount),
-        type,
-        description: desc,
-        category: 'Transfer',
-        mode: 'Internal',
-        balanceAfter,
-        enteredBy: '',
-        timestamp,
-        notes: '',
-        transferId,
-        isTransfer: true,
-        isSavings: false,  // transfers are never savings — money is moving, not being saved
-      })
-
-      await update(ref(db, `users/${user.uid}/projects/${projectId}/books/${bookId}`), {
-        updatedAt: Date.now(),
-      })
+  const transferBetweenBooks = useCallback(async ({
+    sourceProjectId,
+    sourceBookId,
+    destinationProjectId,
+    destinationBookId,
+    amount,
+    note = '',
+  }) => {
+    const numericAmount = Number(amount)
+    if (!Number.isFinite(numericAmount) || numericAmount <= 0) {
+      throw new Error('Enter a valid transfer amount.')
     }
 
-    await addTransferEntry(fromBookId, 'transfer_out',
-      note ? `Transfer → ${note}` : 'Transfer out')
-    await addTransferEntry(toBookId, 'transfer_in',
-      note ? `Transfer ← ${note}` : 'Transfer in')
+    if (!sourceProjectId || !sourceBookId || !destinationProjectId || !destinationBookId) {
+      throw new Error('Select both source and destination books.')
+    }
+
+    if (sourceProjectId === destinationProjectId && sourceBookId === destinationBookId) {
+      throw new Error('Source and destination books must be different.')
+    }
+
+    const [sourceProjectSnap, destinationProjectSnap, sourceBookSnap, destinationBookSnap] = await Promise.all([
+      get(ref(db, `users/${user.uid}/projects/${sourceProjectId}`)),
+      get(ref(db, `users/${user.uid}/projects/${destinationProjectId}`)),
+      get(ref(db, `users/${user.uid}/projects/${sourceProjectId}/books/${sourceBookId}`)),
+      get(ref(db, `users/${user.uid}/projects/${destinationProjectId}/books/${destinationBookId}`)),
+    ])
+
+    if (!sourceProjectSnap.exists()) throw new Error('Source project not found.')
+    if (!destinationProjectSnap.exists()) throw new Error('Destination project not found.')
+    if (!sourceBookSnap.exists()) throw new Error('Source book not found.')
+    if (!destinationBookSnap.exists()) throw new Error('Destination book not found.')
+
+    const sourceProject = sourceProjectSnap.val() || {}
+    const destinationProject = destinationProjectSnap.val() || {}
+    const sourceBook = sourceBookSnap.val() || {}
+    const destinationBook = destinationBookSnap.val() || {}
+
+    const [sourceEntriesSnap, destinationEntriesSnap] = await Promise.all([
+      get(ref(db, `users/${user.uid}/projects/${sourceProjectId}/books/${sourceBookId}/entries`)),
+      get(ref(db, `users/${user.uid}/projects/${destinationProjectId}/books/${destinationBookId}/entries`)),
+    ])
+
+    const sourceEntries = toArray(sourceEntriesSnap.val()).sort((a, b) => a.timestamp - b.timestamp)
+    const destinationEntries = toArray(destinationEntriesSnap.val()).sort((a, b) => a.timestamp - b.timestamp)
+    const sourceBalance = sourceEntries.length
+      ? Number(sourceEntries[sourceEntries.length - 1].balanceAfter || 0)
+      : 0
+
+    if (numericAmount > sourceBalance) {
+      throw new Error(`Insufficient balance. Available: ${sourceBalance.toFixed(2)}`)
+    }
+
+    const timestamp = Date.now()
+    const transferId = `txfr_${timestamp}_${Math.random().toString(36).slice(2, 7)}`
+
+    const sourceEntryRef = push(ref(db, `users/${user.uid}/projects/${sourceProjectId}/books/${sourceBookId}/entries`))
+    const destinationEntryRef = push(ref(db, `users/${user.uid}/projects/${destinationProjectId}/books/${destinationBookId}/entries`))
+
+    const sourceBalanceAfter = Number((sourceBalance - numericAmount).toFixed(2))
+    const destinationBalance = destinationEntries.length
+      ? Number(destinationEntries[destinationEntries.length - 1].balanceAfter || 0)
+      : 0
+    const destinationBalanceAfter = Number((destinationBalance + numericAmount).toFixed(2))
+
+    const transferScope = sourceProjectId === destinationProjectId ? 'internal' : 'cross_project'
+    const noteSuffix = note ? ` · ${note}` : ''
+
+    const sourceDescription = `Transfer to ${destinationBook.name} (${destinationProject.name})${noteSuffix}`
+    const destinationDescription = `Transfer from ${sourceBook.name} (${sourceProject.name})${noteSuffix}`
+
+    const updates = {
+      [`users/${user.uid}/projects/${sourceProjectId}/books/${sourceBookId}/entries/${sourceEntryRef.key}`]: {
+        amount: numericAmount,
+        type: 'transfer_out',
+        description: sourceDescription,
+        category: 'Transfer',
+        mode: 'Internal',
+        balanceAfter: sourceBalanceAfter,
+        enteredBy: '',
+        timestamp,
+        notes: note,
+        transferId,
+        transferScope,
+        fromProjectId: sourceProjectId,
+        fromBookId: sourceBookId,
+        toProjectId: destinationProjectId,
+        toBookId: destinationBookId,
+        isTransfer: true,
+        isSavings: false,
+      },
+      [`users/${user.uid}/projects/${destinationProjectId}/books/${destinationBookId}/entries/${destinationEntryRef.key}`]: {
+        amount: numericAmount,
+        type: 'transfer_in',
+        description: destinationDescription,
+        category: 'Transfer',
+        mode: 'Internal',
+        balanceAfter: destinationBalanceAfter,
+        enteredBy: '',
+        timestamp,
+        notes: note,
+        transferId,
+        transferScope,
+        fromProjectId: sourceProjectId,
+        fromBookId: sourceBookId,
+        toProjectId: destinationProjectId,
+        toBookId: destinationBookId,
+        isTransfer: true,
+        isSavings: false,
+      },
+      [`users/${user.uid}/projects/${sourceProjectId}/books/${sourceBookId}/updatedAt`]: timestamp,
+      [`users/${user.uid}/projects/${destinationProjectId}/books/${destinationBookId}/updatedAt`]: timestamp,
+    }
+
+    await update(ref(db), updates)
   }, [user?.uid])
 
   const setPinForBook = useCallback(async (projectId, bookId, pinHash) => {
@@ -419,13 +520,58 @@ async function _recalcBalances(uid, projectId, bookId) {
   const entriesRef = ref(db, `users/${uid}/projects/${projectId}/books/${bookId}/entries`)
   const snap = await get(entriesRef)
   const arr = toArray(snap.val() || {}).sort((a, b) => a.timestamp - b.timestamp)
+  const updates = {}
   let running = 0
   for (const e of arr) {
     const signed = e.type === 'income' ? Number(e.amount) : -Number(e.amount)
     running += signed
-    await update(
-      ref(db, `users/${uid}/projects/${projectId}/books/${bookId}/entries/${e.id}`),
-      { balanceAfter: running },
-    )
+    updates[`users/${uid}/projects/${projectId}/books/${bookId}/entries/${e.id}/balanceAfter`] = running
+  }
+
+  await update(ref(db), updates)
+}
+
+function normaliseCategories(value) {
+  const list = Array.isArray(value)
+    ? value
+    : value && typeof value === 'object'
+      ? Object.values(value)
+      : []
+
+  const seen = new Set()
+  const cleaned = []
+
+  for (const item of list) {
+    const category = String(item || '').trim()
+    if (!category) continue
+    const key = category.toLowerCase()
+    if (seen.has(key)) continue
+    seen.add(key)
+    cleaned.push(category)
+  }
+
+  return cleaned
+}
+
+async function _recalcBalancesFrom(uid, projectId, bookId, fromTimestamp) {
+  const entriesRef = ref(db, `users/${uid}/projects/${projectId}/books/${bookId}/entries`)
+  const snap = await get(entriesRef)
+  const arr = toArray(snap.val() || {}).sort((a, b) => a.timestamp - b.timestamp)
+  const updates = {}
+  let running = 0
+
+  for (const entry of arr) {
+    const signed = entry.type === 'income' ? Number(entry.amount) : -Number(entry.amount)
+    if (entry.timestamp < fromTimestamp) {
+      running += signed
+      continue
+    }
+
+    running += signed
+    updates[`users/${uid}/projects/${projectId}/books/${bookId}/entries/${entry.id}/balanceAfter`] = running
+  }
+
+  if (Object.keys(updates).length > 0) {
+    await update(ref(db), updates)
   }
 }

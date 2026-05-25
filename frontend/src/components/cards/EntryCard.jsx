@@ -67,7 +67,9 @@ export default function EntryCard({ entry }) {
             <ArrowRight size={9} />
             {isTransferIn ? 'Transfer In' : 'Transfer Out'}
           </span>
-          <span className="text-[10px] text-stone-400">· Internal transfer</span>
+          <span className="text-[10px] text-stone-400">
+            · {entry.transferScope === 'cross_project' ? 'Cross-project transfer' : 'Internal transfer'}
+          </span>
         </div>
       )}
 

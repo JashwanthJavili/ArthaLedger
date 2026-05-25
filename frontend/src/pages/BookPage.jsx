@@ -157,6 +157,29 @@ export default function BookPage() {
   const project = projects.find((p) => p.id === projectId)
   const book = (booksByProject[projectId] || []).find((b) => b.id === bookId)
   const entries = entriesByBook[bookId] || []
+  const descriptionSuggestions = useMemo(() => {
+    const counts = new Map()
+    const latestSeen = new Map()
+
+    entries.forEach((entry) => {
+      const description = String(entry.description || '').trim()
+      if (!description) return
+      const key = description.toLowerCase()
+      counts.set(key, {
+        description,
+        count: (counts.get(key)?.count || 0) + 1,
+      })
+      latestSeen.set(key, Math.max(Number(latestSeen.get(key) || 0), Number(entry.timestamp || 0)))
+    })
+
+    return Array.from(counts.entries())
+      .map(([key, value]) => ({
+        description: value.description,
+        count: value.count,
+        lastUsedAt: latestSeen.get(key) || 0,
+      }))
+      .sort((a, b) => b.count - a.count || b.lastUsedAt - a.lastUsedAt)
+  }, [entries])
 
   useEffect(() => {
     getCategories(projectId, bookId).then((saved) => {
@@ -514,6 +537,7 @@ export default function BookPage() {
         open={Boolean(modalType) || Boolean(editingEntry)}
         type={editingEntry ? editingEntry.type : (modalType || 'income')}
         categories={categories}
+        descriptionSuggestions={descriptionSuggestions}
         initial={editingEntry || null}
         onClose={() => { setModalType(null); setEditingEntry(null) }}
         onSaveCategories={async (cats) => {
