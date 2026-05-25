@@ -1,8 +1,4 @@
 import { useMemo, useState } from 'react'
-import {
-  Bar, BarChart,
-  ResponsiveContainer, Tooltip, XAxis, YAxis, CartesianGrid,
-} from 'recharts'
 import { Link } from 'react-router-dom'
 import {
   ArrowLeft, BarChart3, TrendingUp, TrendingDown, Scale,
@@ -19,20 +15,6 @@ const fmt = (n) => {
   if (n >= 100000) return `₹${(n / 100000).toFixed(1)}L`
   if (n >= 1000)   return `₹${(n / 1000).toFixed(1)}K`
   return `₹${Number(n).toFixed(0)}`
-}
-
-const CustomTooltip = ({ active, payload, label }) => {
-  if (!active || !payload?.length) return null
-  return (
-    <div className="rounded-xl border border-amber-100 bg-white/98 px-3 py-2 shadow-lg text-xs">
-      {label && <p className="font-semibold text-stone-600 mb-1">{label}</p>}
-      {payload.map((p) => (
-        <p key={p.name} style={{ color: p.color }} className="font-medium">
-          {p.name}: {fmt(p.value)}
-        </p>
-      ))}
-    </div>
-  )
 }
 
 function buildInsights(entries) {
@@ -173,21 +155,6 @@ export default function AnalyticsPage() {
   // Total spent = sum of expense entries (transfers excluded)
   const totalSpent = useMemo(() => {
     return spendingEntries.filter(e => e.type === 'expense').reduce((s, e) => s + Number(e.amount), 0)
-  }, [spendingEntries])
-
-  // Monthly income vs expense — last 6 months
-  const monthly = useMemo(() => {
-    const map = new Map()
-    spendingEntries.forEach(e => {
-      const d = new Date(e.timestamp)
-      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-      const label = d.toLocaleString('default', { month: 'short', year: '2-digit' })
-      const cur = map.get(key) || { month: key, label, income: 0, expense: 0 }
-      if (e.type === 'income')  cur.income  += Number(e.amount)
-      if (e.type === 'expense') cur.expense += Number(e.amount)
-      map.set(key, cur)
-    })
-    return Array.from(map.values()).sort((a, b) => a.month.localeCompare(b.month)).slice(-6)
   }, [spendingEntries])
 
   // Expense by category — top 8
@@ -332,40 +299,6 @@ export default function AnalyticsPage() {
                 </div>
               </motion.section>
             )}
-
-            {/* ── Monthly bar chart ── */}
-            <motion.section
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-              className="rounded-2xl border border-amber-100/80 bg-white/85 p-4 shadow-sm"
-            >
-              <div className="flex items-center gap-2 mb-4">
-                <BarChart3 size={14} className="text-amber-600" />
-                <h2 className="text-sm font-semibold text-stone-700">Monthly Overview</h2>
-                <span className="ml-auto text-[10px] text-stone-400">Last 6 months</span>
-              </div>
-              <div className="h-52">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={monthly} margin={{ top: 4, right: 4, left: -20, bottom: 0 }} barGap={3}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f5e8d0" vertical={false} />
-                    <XAxis dataKey="label" tick={{ fontSize: 10, fill: '#78716c' }} axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fontSize: 10, fill: '#78716c' }} axisLine={false} tickLine={false} tickFormatter={v => fmt(v).replace('₹', '')} />
-                    <Tooltip content={<CustomTooltip />} cursor={{ fill: '#fef3c7', radius: 6 }} />
-                    <Bar dataKey="income"  name="In"  fill="#3b9f74" radius={[5, 5, 0, 0]} maxBarSize={28} />
-                    <Bar dataKey="expense" name="Out" fill="#e07070" radius={[5, 5, 0, 0]} maxBarSize={28} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-              <div className="flex items-center gap-4 mt-2 justify-center">
-                <span className="flex items-center gap-1.5 text-[10px] text-stone-500">
-                  <span className="w-2.5 h-2.5 rounded-sm bg-[#3b9f74] inline-block" /> Income
-                </span>
-                <span className="flex items-center gap-1.5 text-[10px] text-stone-500">
-                  <span className="w-2.5 h-2.5 rounded-sm bg-[#e07070] inline-block" /> Expense
-                </span>
-              </div>
-            </motion.section>
 
             {/* ── Spending breakdown ── */}
             {byCategory.length > 0 && (
