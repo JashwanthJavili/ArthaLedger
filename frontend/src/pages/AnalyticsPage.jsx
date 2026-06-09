@@ -1,9 +1,9 @@
 import { useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft, BarChart3, TrendingUp, TrendingDown, Scale,
-  Eye, EyeOff, AlertTriangle, Lightbulb, ArrowUpRight,
-  X, Calendar, Tag, Wallet, FileText, ChevronDown, ChevronUp, MoreVertical, User,
+  Eye, EyeOff, AlertTriangle, Lightbulb,
+  X, Calendar, Tag, Wallet, FileText, User,
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import LayoutShell from '../components/LayoutShell'
@@ -100,10 +100,10 @@ const insightStyle = {
 
 export default function AnalyticsPage() {
   const { entriesByBook, booksByProject, projects } = useAppData()
+  const navigate = useNavigate()
   const [hideBalance, setHideBalance] = useState(() => localStorage.getItem('al_hide_balance') === 'true')
   const [selectedCategory, setSelectedCategory] = useState(null)
   const [showCategoryModal, setShowCategoryModal] = useState(false)
-
   const toggleHideBalance = () => {
     setHideBalance(v => {
       const next = !v
@@ -414,16 +414,21 @@ export default function AnalyticsPage() {
                     const projectId = bookInfo?.projectId
 
                     return (
-                      <motion.div
+                      <motion.button
                         key={idx}
+                        type="button"
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: idx * 0.05 }}
-                        className="rounded-xl border border-amber-100 bg-gradient-to-r from-amber-50/50 to-white p-3.5 hover:border-amber-200 transition-colors group"
+                        onClick={() => {
+                          setShowCategoryModal(false)
+                          navigate(`/projects/${projectId}/books/${txn.bookId}?focusedEntryId=${txn.id}`)
+                        }}
+                        className="w-full text-left rounded-xl border border-amber-100 bg-gradient-to-r from-amber-50/50 to-white p-3.5 hover:border-amber-200 transition-colors group cursor-pointer block"
                       >
                         <div className="flex items-start justify-between gap-3 mb-2.5">
-                          <div className="flex-1">
-                            <p className="text-sm font-medium text-stone-800">{txn.description || 'Untitled'}</p>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold text-stone-800 group-hover:text-amber-800 transition-colors truncate">{txn.description || 'Untitled'}</p>
                             <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                               <span className="inline-flex items-center gap-1 rounded-lg bg-stone-100 px-2 py-1 text-[10px] text-stone-600">
                                 <Calendar size={10} />
@@ -458,7 +463,7 @@ export default function AnalyticsPage() {
                             <p className="text-stone-500 leading-relaxed">{txn.notes}</p>
                           </div>
                         )}
-                      </motion.div>
+                      </motion.button>
                     )
                   })}
                 </div>

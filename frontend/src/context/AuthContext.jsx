@@ -246,6 +246,17 @@ export function AuthProvider({ children }) {
     }
   }, [])
 
+  const verifyPassword = useCallback(async (password) => {
+    const currentUser = auth.currentUser
+    if (!currentUser?.email) throw new Error('No authenticated user found.')
+    try {
+      const credential = EmailAuthProvider.credential(currentUser.email, password)
+      await reauthenticateWithCredential(currentUser, credential)
+    } catch (err) {
+      throw new Error(parseFirebaseError(err))
+    }
+  }, [])
+
   const updateUserProfile = useCallback(async ({ displayName, phone, gender, dob, bio }) => {
     const currentUser = auth.currentUser
     if (!currentUser) throw new Error('No authenticated user found.')
@@ -354,6 +365,7 @@ export function AuthProvider({ children }) {
     googleSignIn,
     resetPassword,
     changePassword,
+    verifyPassword,
     updateUserProfile,
     getUserProfile,
     deleteAccount,
@@ -363,7 +375,7 @@ export function AuthProvider({ children }) {
   }), [
     user, loading, registering, isEmailVerified, needsEmailVerification, pendingVerificationEmail,
     login, register, googleSignIn,
-    resetPassword, changePassword, updateUserProfile, getUserProfile, deleteAccount,
+    resetPassword, changePassword, verifyPassword, updateUserProfile, getUserProfile, deleteAccount,
     sendVerificationEmail, reloadUser, logout,
   ])
 

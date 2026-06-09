@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import {
   ArrowLeft, Settings, Moon, Sun, DollarSign, Download,
@@ -409,13 +409,96 @@ export default function SettingsPage() {
         <motion.section initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.04 }}
           className="rounded-2xl border border-amber-100/80 bg-white/88 p-4 shadow-sm space-y-3">
           <h2 className="text-xs font-semibold uppercase tracking-wider text-stone-400">Appearance</h2>
-          <SettingRow
-            icon={darkMode ? Moon : Sun}
-            label={darkMode ? 'Dark Mode' : 'Light Devotional Mode'}
-            description={darkMode ? 'Deep warm dark theme' : 'Warm saffron tones (default)'}
-            right={<Toggle checked={darkMode} onChange={() => setDarkMode(v => !v)} />}
-          />
+          <div className="grid grid-cols-2 gap-3 mt-1">
+            {/* Light Devotional Mode Card */}
+            <button
+              type="button"
+              onClick={() => setDarkMode(false)}
+              className={`group relative flex flex-col overflow-hidden rounded-xl border text-left transition-all duration-300 focus:outline-none ${
+                !darkMode 
+                  ? 'border-amber-500 ring-2 ring-amber-500/20 bg-amber-50/20' 
+                  : 'border-stone-200 hover:border-amber-200 bg-white'
+              }`}
+            >
+              {/* Miniature Preview Window */}
+              <div className="p-3 bg-gradient-to-br from-[#fff9ee] to-[#fdf6e7] border-b border-stone-100 flex flex-col gap-1.5 h-20 select-none">
+                <div className="flex items-center gap-1">
+                  <div className="w-3 h-3 rounded-full bg-amber-500/80" />
+                  <div className="w-8 h-1 bg-stone-300 rounded" />
+                </div>
+                <div className="rounded-lg bg-white border border-amber-100/80 p-1.5 flex flex-col gap-1 shadow-sm">
+                  <div className="w-10 h-1.5 bg-stone-400 rounded" />
+                  <div className="w-5 h-1 bg-stone-200 rounded" />
+                </div>
+              </div>
+              
+              {/* Card info */}
+              <div className="p-2.5 flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-semibold text-stone-700">Light Devotional</p>
+                  <p className="text-[10px] text-stone-400">Warm saffron tones</p>
+                </div>
+                {!darkMode && (
+                  <CheckCircle2 size={14} className="text-amber-600 flex-shrink-0" />
+                )}
+              </div>
+            </button>
+
+            {/* Saffron Dark Mode Card */}
+            <button
+              type="button"
+              onClick={() => setDarkMode(true)}
+              className={`group relative flex flex-col overflow-hidden rounded-xl border text-left transition-all duration-300 focus:outline-none ${
+                darkMode 
+                  ? 'border-amber-500 ring-2 ring-amber-500/20 bg-[#1e1812]/50' 
+                  : 'border-stone-200 hover:border-amber-200 bg-white'
+              }`}
+            >
+              {/* Miniature Preview Window */}
+              <div className="p-3 bg-gradient-to-br from-[#14110e] to-[#201b15] border-b border-amber-900/20 flex flex-col gap-1.5 h-20 select-none">
+                <div className="flex items-center gap-1">
+                  <div className="w-3 h-3 rounded-full bg-amber-500/80" />
+                  <div className="w-8 h-1 bg-amber-500/30 rounded" />
+                </div>
+                <div className="rounded-lg bg-[#1e1812] border border-amber-500/20 p-1.5 flex flex-col gap-1 shadow-sm">
+                  <div className="w-10 h-1.5 bg-amber-200/60 rounded" />
+                  <div className="w-5 h-1 bg-amber-500/30 rounded" />
+                </div>
+              </div>
+              
+              {/* Card info */}
+              <div className="p-2.5 flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-semibold text-stone-700">Saffron Dark</p>
+                  <p className="text-[10px] text-stone-400">Luxury charcoal-brown</p>
+                </div>
+                {darkMode && (
+                  <CheckCircle2 size={14} className="text-amber-500 flex-shrink-0" />
+                )}
+              </div>
+            </button>
+          </div>
         </motion.section>
+
+        {/* Income Vault Card */}
+        <Link to="/vault" className="block no-underline">
+          <motion.section initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}
+            className="rounded-2xl border border-amber-100/80 bg-white/88 p-4 shadow-sm hover:border-amber-200 hover:bg-amber-50/10 transition-colors">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="flex-shrink-0 rounded-xl bg-amber-50 p-2">
+                  <Lock size={15} className="text-amber-700" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-stone-700 leading-tight">Income Vault</p>
+                  <p className="text-xs text-stone-400 mt-0.5 truncate font-normal">Secure detailed private income analytics</p>
+                </div>
+              </div>
+              <ChevronRight size={16} className="text-stone-400 flex-shrink-0" />
+            </div>
+          </motion.section>
+        </Link>
+
 
         {/* Install App */}
         <motion.section initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.06 }}

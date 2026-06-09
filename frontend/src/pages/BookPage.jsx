@@ -187,6 +187,25 @@ export default function BookPage() {
     })
   }, [projectId, bookId, getCategories])
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const focusedId = params.get('focusedEntryId')
+    if (focusedId && entries.length > 0) {
+      const timer = setTimeout(() => {
+        const element = document.getElementById(`entry-${focusedId}`)
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          element.classList.add('ring-2', 'ring-amber-500', 'rounded-2xl', 'scale-[1.02]')
+          const removeTimer = setTimeout(() => {
+            element.classList.remove('ring-2', 'ring-amber-500', 'scale-[1.02]')
+          }, 3000)
+          return () => clearTimeout(removeTimer)
+        }
+      }, 400)
+      return () => clearTimeout(timer)
+    }
+  }, [entries])
+
   // Lock the book when navigating away (so PIN is required next visit)
   useEffect(() => {
     return () => {
@@ -487,10 +506,11 @@ export default function BookPage() {
                       {dayEntries.map((entry, idx) => (
                         <motion.div
                           key={entry.id}
+                          id={`entry-${entry.id}`}
                           initial={{ opacity: 0, y: 6 }}
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ delay: Math.min(idx * 0.03, 0.2) }}
-                          className="flex items-start gap-2"
+                          className="flex items-start gap-2 transition-all duration-300"
                         >
                           <div className="flex-1 min-w-0">
                             <EntryCard entry={entry} />

@@ -15,6 +15,7 @@ import ProjectDetailPage from './pages/ProjectDetailPage'
 import BookPage from './pages/BookPage'
 import AnalyticsPage from './pages/AnalyticsPage'
 import SettingsPage from './pages/SettingsPage'
+import VaultPage from './pages/VaultPage'
 import SplashScreen from './components/common/SplashScreen'
 import { useAuth } from './context/AuthContext'
 import Loader from './components/common/Loader'
@@ -79,6 +80,7 @@ export default function App() {
           <Route path="/dashboard"       element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
           <Route path="/analytics"       element={<ProtectedRoute><AnalyticsPage /></ProtectedRoute>} />
           <Route path="/settings"        element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
+          <Route path="/vault"           element={<ProtectedRoute><VaultPage /></ProtectedRoute>} />
           <Route path="/projects/:projectId"                    element={<ProtectedRoute><ProjectDetailPage /></ProtectedRoute>} />
           <Route path="/projects/:projectId/books/:bookId"      element={<ProtectedRoute><BookPage /></ProtectedRoute>} />
           <Route path="*" element={<Navigate to="/" replace />} />
