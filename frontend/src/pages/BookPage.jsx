@@ -297,8 +297,7 @@ export default function BookPage() {
                 <ArrowLeft size={13} />
               </Link>
               <div className="min-w-0">
-                <div className="flex items-center gap-1.5">
-                  <BookOpen size={14} className="text-amber-600 flex-shrink-0" />
+                <div className="flex items-center">
                   <h1 className="text-base sm:text-lg font-semibold text-stone-800 truncate leading-tight">
                     {book.name}
                   </h1>

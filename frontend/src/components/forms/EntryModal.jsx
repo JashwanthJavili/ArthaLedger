@@ -137,13 +137,9 @@ export default function EntryModal({ open, type, onClose, onSubmit, categories, 
       onClose()
     } finally {
       setSubmitting(false)
-    }
-  }
-
   const applyDescriptionSuggestion = (description) => {
     setDesc(description)
     setErrors({})
-    setTimeout(() => amountRef.current?.focus(), 0)
   }
 
   const handleKeyDown = (e) => {
@@ -259,14 +255,14 @@ export default function EntryModal({ open, type, onClose, onSubmit, categories, 
 
               {!initial && descriptionSuggestions?.length > 0 && (
                 <div className="space-y-1 mt-2.5">
-                  <span className="text-[9px] font-bold text-stone-400 uppercase tracking-wider block">Frequent Descriptions</span>
+                  <span className="text-[9px] font-bold text-stone-400 uppercase tracking-wider block">Suggestions</span>
                   <div className="flex gap-1.5 overflow-x-auto pb-1.5 snap-x snap-mandatory">
                     {descriptionSuggestions.slice(0, 6).map((item) => (
                       <button
                         key={item.description}
                         type="button"
                         onClick={() => applyDescriptionSuggestion(item.description)}
-                        className="snap-start rounded-full border border-amber-100/70 bg-amber-50/20 px-3 py-1 text-xs text-stone-650 font-medium hover:border-amber-250 hover:bg-amber-50/45 transition-all flex-shrink-0 cursor-pointer whitespace-nowrap dark:border-amber-955/40 dark:bg-amber-950/10 dark:text-stone-300"
+                        className="snap-start rounded-full border border-amber-100 bg-amber-50/20 px-3 py-1 text-xs text-stone-600 font-medium hover:border-amber-200 hover:bg-amber-50/40 transition-all flex-shrink-0 cursor-pointer whitespace-nowrap dark:border-amber-900/40 dark:bg-amber-950/15 dark:text-stone-300"
                       >
                         {item.description}
                       </button>

@@ -15,11 +15,8 @@ export default function SummaryStrip({ net, totalIn, totalOut, delay = 0 }) {
     >
       {/* Net balance — full-width top row */}
       <div className={`px-4 py-3 flex items-center justify-between ${netPositive ? 'bg-gradient-to-r from-amber-50 to-orange-50' : 'bg-gradient-to-r from-red-50 to-rose-50'}`}>
-        <div className="flex items-center gap-2">
-          <div className={`rounded-lg p-1.5 ${netPositive ? 'bg-amber-100' : 'bg-red-100'}`}>
-            <Scale size={13} className={netPositive ? 'text-amber-600' : 'text-red-500'} />
-          </div>
-          <span className="text-xs font-medium text-stone-500 uppercase tracking-wider">Net Balance</span>
+        <div className="flex items-center">
+          <span className="text-xs font-bold text-stone-500 uppercase tracking-wider">Net Balance</span>
         </div>
         <span className={`text-lg font-bold font-serif ${netPositive ? 'text-stone-800' : 'text-red-600'}`}>
           {netPositive ? '' : '-'}{symbol}{formatAmount(Math.abs(net))}
@@ -33,21 +30,15 @@ export default function SummaryStrip({ net, totalIn, totalOut, delay = 0 }) {
       <div className="grid grid-cols-2 divide-x divide-amber-100/60 text-center py-2.5 bg-stone-50/20 dark:bg-stone-950/10">
         <div className="flex flex-col items-center justify-center px-4 py-1">
           <span className="text-[10px] text-stone-400 font-semibold uppercase tracking-wider mb-0.5">Cash In</span>
-          <div className="flex items-center justify-center gap-1">
-            <TrendingUp size={12} className="text-emerald-550 flex-shrink-0" />
-            <span className="text-sm font-bold text-emerald-600 font-serif">
-              {symbol}{formatAmount(totalIn)}
-            </span>
-          </div>
+          <span className="text-sm font-bold text-emerald-600 font-serif">
+            {symbol}{formatAmount(totalIn)}
+          </span>
         </div>
         <div className="flex flex-col items-center justify-center px-4 py-1">
           <span className="text-[10px] text-stone-400 font-semibold uppercase tracking-wider mb-0.5">Cash Out</span>
-          <div className="flex items-center justify-center gap-1">
-            <TrendingDown size={12} className="text-rose-500 flex-shrink-0" />
-            <span className="text-sm font-bold text-rose-500 font-serif">
-              {symbol}{formatAmount(totalOut)}
-            </span>
-          </div>
+          <span className="text-sm font-bold text-rose-500 font-serif">
+            {symbol}{formatAmount(totalOut)}
+          </span>
         </div>
       </div>
     </motion.div>

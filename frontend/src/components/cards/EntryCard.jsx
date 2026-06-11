@@ -75,13 +75,7 @@ export default function EntryCard({ entry }) {
 
       {/* Main row */}
       <div className="flex items-start justify-between gap-3">
-        <div className="flex items-start gap-2.5 min-w-0 flex-1">
-          <div className={`flex-shrink-0 mt-0.5 rounded-xl p-2 ${iconBg}`}>
-            {isTransfer
-              ? <TransferIcon size={14} className={iconColor} />
-              : <ModeIcon size={14} className={iconColor} />
-            }
-          </div>
+        <div className="flex items-start gap-1 min-w-0 flex-1">
           <div className="min-w-0">
             <p className="text-sm font-semibold text-stone-800 leading-tight truncate">{entry.description}</p>
             <p className="text-xs text-stone-400 mt-0.5 truncate">{entry.category}</p>
@@ -97,8 +91,7 @@ export default function EntryCard({ entry }) {
 
       {/* Middle row */}
       <div className="mt-2.5 flex items-center justify-between gap-2">
-        <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium ${modeStyle}`}>
-          <ModeIcon size={10} />
+        <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium ${modeStyle}`}>
           {entry.mode}
         </span>
         <span className="text-[10px] text-stone-400">
