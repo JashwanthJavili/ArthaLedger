@@ -2,6 +2,8 @@
 
 @import 'tailwindcss';
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 /* ── Light mode (default) ── */
 :root {
   --saffron: #d6a75e;

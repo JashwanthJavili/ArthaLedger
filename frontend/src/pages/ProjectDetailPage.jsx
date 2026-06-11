@@ -369,9 +369,6 @@ export default function ProjectDetailPage() {
         {books.length === 0 ? (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
             className="flex flex-col items-center justify-center gap-4 py-16 text-center">
-            <div className="rounded-2xl bg-gradient-to-br from-amber-50 to-orange-50 p-6 shadow-sm">
-              <BookOpen size={36} className="text-amber-400" />
-            </div>
             <div>
               <p className="font-serif text-base font-medium text-stone-600">No cashbooks yet</p>
               <p className="mt-1 text-xs text-stone-400">Create your first cashbook to start tracking</p>
@@ -412,12 +409,11 @@ export default function ProjectDetailPage() {
                   >
                     <div className="flex items-center justify-between gap-2 mb-2">
                       <div className="flex items-center gap-2 min-w-0">
-                        <div className="flex-shrink-0 rounded-lg p-1.5 bg-amber-100">
-                          {isBookLocked
-                            ? <Lock size={13} className="text-amber-700" />
-                            : <BookOpen size={13} className="text-amber-700" />
-                          }
-                        </div>
+                        {isBookLocked && (
+                          <div className="flex-shrink-0 rounded-lg p-1.5 bg-amber-100">
+                            <Lock size={13} className="text-amber-700" />
+                          </div>
+                        )}
                         <div className="min-w-0">
                           <div className="flex items-center gap-1.5">
                             <h3 className="text-sm font-semibold text-stone-800 truncate leading-tight">

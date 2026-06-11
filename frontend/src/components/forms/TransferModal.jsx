@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
-import { X, ArrowRight, BookOpen } from 'lucide-react'
+import { X, ArrowRight } from 'lucide-react'
 import { getCurrencySymbol, formatAmount } from '../../lib/format'
 const LAST_TRANSFER_KEY = 'al_last_transfer_target'
 
@@ -171,14 +171,12 @@ export default function TransferModal({
           {/* From → To visual */}
           <div className="flex items-center gap-2 rounded-xl bg-stone-50 border border-stone-200 px-3 py-2.5">
             <div className="flex items-center gap-1.5 min-w-0 flex-1">
-              <BookOpen size={12} className="text-amber-600 flex-shrink-0" />
               <span className="text-xs font-semibold text-stone-700 truncate">
                 {currentProject?.name ? `${currentProject.name} · ` : ''}{currentBook?.name}
               </span>
             </div>
             <ArrowRight size={14} className="text-stone-400 flex-shrink-0" />
             <div className="flex items-center gap-1.5 min-w-0 flex-1 justify-end">
-              <BookOpen size={12} className="text-blue-500 flex-shrink-0" />
               <span className="text-xs font-semibold text-blue-700 truncate">
                 {selectedProject?.name ? `${projectLabel} · ` : ''}{bookLabel}
               </span>
@@ -212,7 +210,6 @@ export default function TransferModal({
                         : 'border-stone-200 bg-stone-50 text-stone-700 hover:border-blue-200 hover:bg-blue-50/40'
                     }`}
                   >
-                    <BookOpen size={13} className={destinationProjectId === project.id ? 'text-blue-500' : 'text-stone-400'} />
                     <span className="font-medium truncate">{project.name}</span>
                     <span className="ml-auto text-[10px] text-stone-400">{project.books.length} book{project.books.length !== 1 ? 's' : ''}</span>
                   </button>
@@ -277,7 +274,6 @@ export default function TransferModal({
                         : 'border-stone-200 bg-stone-50 text-stone-700 hover:border-blue-200 hover:bg-blue-50/40'
                     }`}
                   >
-                    <BookOpen size={13} className={destinationBookId === book.id ? 'text-blue-500' : 'text-stone-400'} />
                     <span className="font-medium truncate">{book.name}</span>
                     {destinationBookId === book.id && (
                       <span className="ml-auto text-[10px] text-blue-600 font-semibold">Selected</span>

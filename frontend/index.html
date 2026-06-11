@@ -22,6 +22,15 @@
     />
 
     <title>ArthaLedger - Where every rupee has meaning.</title>
+    <script>
+      try {
+        if (localStorage.getItem('sl_dark') === 'true') {
+          document.documentElement.classList.add('dark');
+        } else {
+          document.documentElement.classList.remove('dark');
+        }
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <div id="root"></div>

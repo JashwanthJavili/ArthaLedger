@@ -2,7 +2,7 @@ import { useMemo, useState, useEffect, useRef } from 'react'
 import { format } from 'date-fns'
 import { Link } from 'react-router-dom'
 import {
-  Plus, Search, Eye, EyeOff, BookOpen, TrendingUp,
+  Plus, Search, Eye, EyeOff, TrendingUp,
   Calendar, FolderOpen, MoreVertical, Pencil, Trash2, Lock,
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -238,8 +238,7 @@ export default function DashboardPage() {
 
                     {/* Stats — inline row */}
                     <div className="flex items-center gap-2 text-[11px]">
-                      <span className="flex items-center gap-1 text-stone-500">
-                        <BookOpen size={10} className="text-amber-500" />
+                      <span className="text-stone-500">
                         {showValues ? books.length : '●'} books
                       </span>
                       <span className="text-stone-300">·</span>

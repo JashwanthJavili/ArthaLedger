@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, BookOpen } from 'lucide-react'
+import { X } from 'lucide-react'
 
 export default function BookModal({ open, onClose, onSubmit, initial }) {
   const [name, setName] = useState('')
@@ -41,14 +41,9 @@ export default function BookModal({ open, onClose, onSubmit, initial }) {
           className="relative w-full max-w-md space-y-4 rounded-3xl bg-white p-5 sm:p-6 shadow-2xl"
         >
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <div className="rounded-xl bg-amber-100 p-2">
-                <BookOpen size={16} className="text-amber-700" />
-              </div>
-              <h2 className="text-base sm:text-lg font-semibold text-stone-800">
-                {initial ? 'Edit Book' : 'New Book'}
-              </h2>
-            </div>
+            <h2 className="text-base sm:text-lg font-semibold text-stone-800">
+              {initial ? 'Edit Book' : 'New Book'}
+            </h2>
             <button
               type="button"
               onClick={onClose}

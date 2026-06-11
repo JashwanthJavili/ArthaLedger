@@ -137,6 +137,9 @@ export default function EntryModal({ open, type, onClose, onSubmit, categories, 
       onClose()
     } finally {
       setSubmitting(false)
+    }
+  }
+
   const applyDescriptionSuggestion = (description) => {
     setDesc(description)
     setErrors({})

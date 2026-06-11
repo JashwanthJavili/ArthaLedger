@@ -4,7 +4,7 @@ import { format, isToday, isYesterday } from 'date-fns'
 import {
   Filter, Search, Download, ArrowLeft, MoreVertical,
   Pencil, Trash2, X, TrendingUp, TrendingDown,
-  BookOpen, Hash, Lock, Unlock,
+  Hash, Lock, Unlock,
 } from 'lucide-react'
 import { Link, useParams, useNavigate } from 'react-router-dom'
 import LayoutShell from '../components/LayoutShell'
