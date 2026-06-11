@@ -534,20 +534,20 @@ export default function BookPage() {
 
       {/* ── Fixed bottom action bar ── */}
       <div className="fixed bottom-[4.5rem] left-1/2 z-30 w-[min(96vw,520px)] -translate-x-1/2">
-        <div className="grid grid-cols-2 gap-2 rounded-2xl border border-amber-100/80 bg-white/95 p-2 shadow-xl backdrop-blur-md">
+        <div className="grid grid-cols-2 gap-2.5 rounded-2xl border border-amber-100/80 bg-white/95 p-2 shadow-xl backdrop-blur-md">
           <motion.button
             whileTap={{ scale: 0.97 }}
             onClick={() => setModalType('income')}
-            className="flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white hover:bg-emerald-700 transition-colors shadow-sm"
+            className="flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-4 py-3 text-sm font-bold text-white hover:from-emerald-700 hover:to-teal-700 transition-all shadow-sm cursor-pointer"
           >
-            <TrendingUp size={16} /> + Cash In
+            <TrendingUp size={15} /> Cash In
           </motion.button>
           <motion.button
             whileTap={{ scale: 0.97 }}
             onClick={() => setModalType('expense')}
-            className="flex items-center justify-center gap-2 rounded-xl bg-red-500 px-4 py-3 text-sm font-semibold text-white hover:bg-red-600 transition-colors shadow-sm"
+            className="flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-rose-500 to-red-600 px-4 py-3 text-sm font-bold text-white hover:from-rose-600 hover:to-red-700 transition-all shadow-sm cursor-pointer"
           >
-            <TrendingDown size={16} /> - Cash Out
+            <TrendingDown size={15} /> Cash Out
           </motion.button>
         </div>
       </div>

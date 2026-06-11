@@ -256,6 +256,24 @@ export default function EntryModal({ open, type, onClose, onSubmit, categories, 
                 }`}
               />
               {errors.description && <p className="mt-1 text-[11px] text-red-500">{errors.description}</p>}
+
+              {!initial && descriptionSuggestions?.length > 0 && (
+                <div className="space-y-1 mt-2.5">
+                  <span className="text-[9px] font-bold text-stone-400 uppercase tracking-wider block">Frequent Descriptions</span>
+                  <div className="flex gap-1.5 overflow-x-auto pb-1.5 snap-x snap-mandatory">
+                    {descriptionSuggestions.slice(0, 6).map((item) => (
+                      <button
+                        key={item.description}
+                        type="button"
+                        onClick={() => applyDescriptionSuggestion(item.description)}
+                        className="snap-start rounded-full border border-amber-100/70 bg-amber-50/20 px-3 py-1 text-xs text-stone-650 font-medium hover:border-amber-250 hover:bg-amber-50/45 transition-all flex-shrink-0 cursor-pointer whitespace-nowrap dark:border-amber-955/40 dark:bg-amber-950/10 dark:text-stone-300"
+                      >
+                        {item.description}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Category */}
@@ -296,36 +314,6 @@ export default function EntryModal({ open, type, onClose, onSubmit, categories, 
                   </button>
                 ))}
               </div>
-
-              {!initial && descriptionSuggestions?.length > 0 && (
-                <div className="space-y-2 mb-2.5">
-                  <div className="flex items-center justify-between">
-                    <p className="text-[10px] font-semibold text-stone-400 uppercase tracking-wider">Frequent descriptions</p>
-                    <span className="text-[10px] text-stone-400">Most used in this book</span>
-                  </div>
-                  <div className="flex gap-2 overflow-x-auto pb-1 snap-x snap-mandatory">
-                    {descriptionSuggestions.slice(0, 6).map((item) => (
-                      <button
-                        key={item.description}
-                        type="button"
-                        onClick={() => applyDescriptionSuggestion(item.description)}
-                        className="min-w-[13rem] snap-start rounded-2xl border border-amber-100 bg-gradient-to-br from-white to-amber-50/60 px-3 py-2.5 text-left shadow-sm hover:shadow-md hover:border-amber-200 transition-all"
-                      >
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="min-w-0">
-                            <p className="text-sm font-semibold text-stone-800 truncate">{item.description}</p>
-                            <p className="text-[11px] text-stone-400 truncate">Used {item.count} time{item.count === 1 ? '' : 's'} here</p>
-                          </div>
-                          <div className="text-right flex-shrink-0">
-                            <p className="text-xs font-bold text-stone-700">Tap</p>
-                            <p className="text-[10px] text-stone-400">Use</p>
-                          </div>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
 
               {/* Manage panel — slides in below chips, no form reset */}
               {showCatPanel && (

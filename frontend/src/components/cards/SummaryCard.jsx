@@ -29,25 +29,25 @@ export default function SummaryStrip({ net, totalIn, totalOut, delay = 0 }) {
       {/* Divider */}
       <div className="h-px bg-amber-100/60" />
 
-      {/* Cash In + Cash Out — two columns */}
-      <div className="grid grid-cols-2 divide-x divide-amber-100/60">
-        <div className="px-4 py-2.5 flex items-center justify-between gap-2">
-          <div className="flex items-center gap-1.5 min-w-0">
-            <TrendingUp size={12} className="flex-shrink-0 text-emerald-500" />
-            <span className="text-[11px] text-stone-400 truncate">Cash In</span>
+      {/* Cash In + Cash Out — two columns stacked */}
+      <div className="grid grid-cols-2 divide-x divide-amber-100/60 text-center py-2.5 bg-stone-50/20 dark:bg-stone-950/10">
+        <div className="flex flex-col items-center justify-center px-4 py-1">
+          <span className="text-[10px] text-stone-400 font-semibold uppercase tracking-wider mb-0.5">Cash In</span>
+          <div className="flex items-center justify-center gap-1">
+            <TrendingUp size={12} className="text-emerald-550 flex-shrink-0" />
+            <span className="text-sm font-bold text-emerald-600 font-serif">
+              {symbol}{formatAmount(totalIn)}
+            </span>
           </div>
-          <span className="text-sm font-semibold text-emerald-700 flex-shrink-0">
-            {symbol}{formatAmount(totalIn)}
-          </span>
         </div>
-        <div className="px-4 py-2.5 flex items-center justify-between gap-2">
-          <div className="flex items-center gap-1.5 min-w-0">
-            <TrendingDown size={12} className="flex-shrink-0 text-red-400" />
-            <span className="text-[11px] text-stone-400 truncate">Cash Out</span>
+        <div className="flex flex-col items-center justify-center px-4 py-1">
+          <span className="text-[10px] text-stone-400 font-semibold uppercase tracking-wider mb-0.5">Cash Out</span>
+          <div className="flex items-center justify-center gap-1">
+            <TrendingDown size={12} className="text-rose-500 flex-shrink-0" />
+            <span className="text-sm font-bold text-rose-500 font-serif">
+              {symbol}{formatAmount(totalOut)}
+            </span>
           </div>
-          <span className="text-sm font-semibold text-red-600 flex-shrink-0">
-            {symbol}{formatAmount(totalOut)}
-          </span>
         </div>
       </div>
     </motion.div>
