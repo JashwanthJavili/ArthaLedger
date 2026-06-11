@@ -480,7 +480,7 @@ export default function SettingsPage() {
           </div>
         </motion.section>
 
-        {/* Income Vault Card */}
+        {/* Deep Analytics & Vault Card */}
         <Link to="/vault" className="block no-underline">
           <motion.section initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}
             className="rounded-2xl border border-amber-100/80 bg-white/88 p-4 shadow-sm hover:border-amber-200 hover:bg-amber-50/10 transition-colors">
@@ -490,8 +490,8 @@ export default function SettingsPage() {
                   <Lock size={15} className="text-amber-700" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-sm font-medium text-stone-700 leading-tight">Income Vault</p>
-                  <p className="text-xs text-stone-400 mt-0.5 truncate font-normal">Secure detailed private income analytics</p>
+                  <p className="text-sm font-medium text-stone-700 leading-tight">Deep Analytics & Vault</p>
+                  <p className="text-xs text-stone-400 mt-0.5 truncate font-normal">Unlock advanced spending & private income analytics</p>
                 </div>
               </div>
               <ChevronRight size={16} className="text-stone-400 flex-shrink-0" />
