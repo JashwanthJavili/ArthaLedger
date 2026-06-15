@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Compass, Plus, Trash2, ChevronRight, Hash, FolderHeart, X } from 'lucide-react'
 import { Link } from 'react-router-dom'
@@ -7,9 +7,10 @@ import { useAppData } from '../context/AppDataContext'
 import Toast from '../components/common/Toast'
 import ConfirmDialog from '../components/common/ConfirmDialog'
 import { formatAmount, getCurrencySymbol } from '../lib/format'
+import Loader from '../components/common/Loader'
 
 export default function ExpenseGroupsPage() {
-  const { trips, entriesByBook, createTrip, deleteTrip } = useAppData()
+  const { loading, error, trips, entriesByBook, createTrip, deleteTrip } = useAppData()
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
@@ -17,9 +18,41 @@ export default function ExpenseGroupsPage() {
   const [toast, setToast] = useState({ msg: '', type: 'success', visible: false })
   const symbol = getCurrencySymbol()
 
+  const [stalled, setStalled] = useState(false)
+
+  useEffect(() => {
+    let t = null
+    if (loading) t = setTimeout(() => setStalled(true), 3500)
+    else setStalled(false)
+    return () => clearTimeout(t)
+  }, [loading])
+
   const showToast = (msg, type = 'success') => {
     setToast({ msg, type, visible: true })
     setTimeout(() => setToast((t) => ({ ...t, visible: false })), 2200)
+  }
+
+  if (error) {
+    return (
+      <LayoutShell>
+        <div className="flex flex-col items-center justify-center py-20 gap-4 text-center px-4">
+          <div className="rounded-2xl bg-red-50 border border-red-100 p-4 max-w-sm">
+            <p className="text-sm font-semibold text-red-800">Unable to Load Data</p>
+            <p className="text-xs text-red-600 mt-1">{error}</p>
+          </div>
+          <button 
+            onClick={() => window.location.reload()}
+            className="rounded-xl bg-amber-600 px-4 py-2 text-xs font-semibold text-white hover:bg-amber-700 cursor-pointer"
+          >
+            Retry Loading
+          </button>
+        </div>
+      </LayoutShell>
+    )
+  }
+
+  if (loading && !stalled) {
+    return <Loader text="Loading expense groups..." />
   }
 
   // Calculate statistics for each group
@@ -83,6 +116,11 @@ export default function ExpenseGroupsPage() {
   return (
     <LayoutShell>
       <div className="space-y-4 pb-24">
+        {loading && (
+          <div className="rounded-2xl border border-red-100 bg-red-50 p-3.5 text-xs text-red-700 leading-relaxed font-medium">
+            ⚠️ Connection is taking longer than expected. Please check your internet connection.
+          </div>
+        )}
         {/* Header */}
         <header className="flex items-center justify-between rounded-2xl border border-amber-100/80 bg-white/88 p-3 shadow-sm backdrop-blur-sm">
           <div className="flex items-center gap-2">
@@ -108,9 +146,11 @@ export default function ExpenseGroupsPage() {
           <div className="flex flex-col items-center justify-center gap-3 py-16 text-center rounded-2xl border border-dashed border-amber-200 bg-amber-50/20">
             <FolderHeart size={32} className="text-amber-300" />
             <div>
-              <p className="text-sm font-medium text-stone-600">No Expense Groups yet</p>
+              <p className="text-sm font-medium text-stone-600">
+                {loading ? 'Retrieving expense groups...' : 'No Expense Groups yet'}
+              </p>
               <p className="mt-1 text-xs text-stone-400 max-w-xs mx-auto px-4">
-                Create a group here, then go to any project book, select transactions, and send them here.
+                {loading ? 'Connecting to database...' : 'Create a group here, then go to any project book, select transactions, and send them here.'}
               </p>
             </div>
           </div>

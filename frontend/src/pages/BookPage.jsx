@@ -21,6 +21,7 @@ import { useAppData } from '../context/AppDataContext'
 import { exportBookPdf } from '../lib/pdf'
 import { lockItem } from '../lib/pin'
 import SendToTripModal from '../components/forms/SendToTripModal'
+import Loader from '../components/common/Loader'
 
 const defaultCategories = []
 
@@ -133,6 +134,8 @@ export default function BookPage() {
   const { projectId, bookId } = useParams()
   const navigate = useNavigate()
   const {
+    loading,
+    error,
     projects, booksByProject, entriesByBook,
     addEntry, deleteEntry, updateCategories, getCategories,
     updateBook, updateEntry, deleteBook, deleteBookWithPin, setPinForBook,
@@ -159,6 +162,14 @@ export default function BookPage() {
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false)
   const [selectedEntryIds, setSelectedEntryIds] = useState([])
   const [openSendToTripModal, setOpenSendToTripModal] = useState(false)
+  const [stalled, setStalled] = useState(false)
+
+  useEffect(() => {
+    let t = null
+    if (loading) t = setTimeout(() => setStalled(true), 3500)
+    else setStalled(false)
+    return () => clearTimeout(t)
+  }, [loading])
 
   const toggleSelectEntry = (entryId) => {
     setSelectedEntryIds(prev =>
@@ -350,7 +361,30 @@ export default function BookPage() {
 
   const clearFilters = () => setFilters({ type: 'all', mode: 'all', category: 'all', enteredBy: 'all', from: '', to: '' })
 
-  if (!project || !book) {
+  if (error) {
+    return (
+      <LayoutShell>
+        <div className="flex flex-col items-center justify-center py-20 gap-4 text-center px-4">
+          <div className="rounded-2xl bg-red-50 border border-red-100 p-4 max-w-sm">
+            <p className="text-sm font-semibold text-red-800">Unable to Load Data</p>
+            <p className="text-xs text-red-600 mt-1">{error}</p>
+          </div>
+          <button 
+            onClick={() => window.location.reload()}
+            className="rounded-xl bg-amber-600 px-4 py-2 text-xs font-semibold text-white hover:bg-amber-700 cursor-pointer"
+          >
+            Retry Loading
+          </button>
+        </div>
+      </LayoutShell>
+    )
+  }
+
+  if (loading && !stalled) {
+    return <Loader text="Opening book..." />
+  }
+
+  if (!loading && (!project || !book)) {
     return (
       <LayoutShell>
         <div className="flex flex-col items-center justify-center py-16 gap-3">
@@ -364,6 +398,11 @@ export default function BookPage() {
   return (
     <LayoutShell>
       <div className="space-y-3 pb-28">
+        {loading && (
+          <div className="rounded-2xl border border-red-100 bg-red-50 p-3.5 text-xs text-red-700 leading-relaxed font-medium">
+            ⚠️ Connection is taking longer than expected. Please check your internet connection.
+          </div>
+        )}
 
         {/* ── Book header card ── */}
         <header className="rounded-2xl border border-amber-100/80 bg-white/88 p-3 shadow-sm backdrop-blur-sm">
@@ -574,10 +613,10 @@ export default function BookPage() {
               <Hash size={28} className="text-amber-300" />
               <div>
                 <p className="text-sm font-medium text-stone-500">
-                  {search || hasActiveFilters ? 'No entries match your filters' : 'No entries yet'}
+                  {loading ? 'Retrieving transactions...' : (search || hasActiveFilters ? 'No entries match your filters' : 'No entries yet')}
                 </p>
                 <p className="mt-1 text-xs text-stone-400">
-                  {!search && !hasActiveFilters && 'Use the buttons below to record your first transaction'}
+                  {loading ? 'Connecting to database...' : (!search && !hasActiveFilters && 'Use the buttons below to record your first transaction')}
                 </p>
               </div>
             </div>

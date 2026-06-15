@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { ArrowLeft, Trash2, Hash, Layers } from 'lucide-react'
@@ -9,18 +9,52 @@ import Toast from '../components/common/Toast'
 import ConfirmDialog from '../components/common/ConfirmDialog'
 import SummaryCard from '../components/cards/SummaryCard'
 import { formatAmount, getCurrencySymbol } from '../lib/format'
+import Loader from '../components/common/Loader'
 
 export default function ExpenseGroupDetailPage() {
   const { tripId } = useParams()
   const navigate = useNavigate()
-  const { trips, projects, booksByProject, entriesByBook, unlinkEntryFromTrip, deleteTrip } = useAppData()
+  const { loading, error, trips, projects, booksByProject, entriesByBook, unlinkEntryFromTrip, deleteTrip } = useAppData()
   const [deleteGroupConfirm, setDeleteGroupConfirm] = useState(false)
   const [toast, setToast] = useState({ msg: '', type: 'success', visible: false })
+  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState('all')
   const symbol = getCurrencySymbol()
+
+  const [stalled, setStalled] = useState(false)
+
+  useEffect(() => {
+    let t = null
+    if (loading) t = setTimeout(() => setStalled(true), 3500)
+    else setStalled(false)
+    return () => clearTimeout(t)
+  }, [loading])
 
   const showToast = (msg, type = 'success') => {
     setToast({ msg, type, visible: true })
     setTimeout(() => setToast((t) => ({ ...t, visible: false })), 2200)
+  }
+
+  if (error) {
+    return (
+      <LayoutShell>
+        <div className="flex flex-col items-center justify-center py-20 gap-4 text-center px-4">
+          <div className="rounded-2xl bg-red-50 border border-red-100 p-4 max-w-sm">
+            <p className="text-sm font-semibold text-red-800">Unable to Load Data</p>
+            <p className="text-xs text-red-600 mt-1">{error}</p>
+          </div>
+          <button 
+            onClick={() => window.location.reload()}
+            className="rounded-xl bg-amber-600 px-4 py-2 text-xs font-semibold text-white hover:bg-amber-700 cursor-pointer"
+          >
+            Retry Loading
+          </button>
+        </div>
+      </LayoutShell>
+    )
+  }
+
+  if (loading && !stalled) {
+    return <Loader text="Loading group details..." />
   }
 
   // Find current group
@@ -59,6 +93,21 @@ export default function ExpenseGroupDetailPage() {
       .filter(Boolean)
       .sort((a, b) => b.entry.timestamp - a.entry.timestamp) // Sort by transaction date descending
   }, [group, projects, booksByProject, entriesByBook])
+
+  // Get unique categories for dropdown filter
+  const uniqueCategories = useMemo(() => {
+    const cats = new Set()
+    resolvedItems.forEach(({ entry }) => {
+      cats.add(entry.category || 'General')
+    })
+    return Array.from(cats).sort()
+  }, [resolvedItems])
+
+  // Filtered items list
+  const filteredItems = useMemo(() => {
+    if (selectedCategoryFilter === 'all') return resolvedItems
+    return resolvedItems.filter(({ entry }) => (entry.category || 'General') === selectedCategoryFilter)
+  }, [resolvedItems, selectedCategoryFilter])
 
   // Aggregate stats
   const stats = useMemo(() => {
@@ -120,7 +169,7 @@ export default function ExpenseGroupDetailPage() {
     }
   }
 
-  if (!group) {
+  if (!loading && !group) {
     return (
       <LayoutShell>
         <div className="flex flex-col items-center justify-center py-16 gap-3">
@@ -136,6 +185,11 @@ export default function ExpenseGroupDetailPage() {
   return (
     <LayoutShell>
       <div className="space-y-4 pb-28">
+        {loading && (
+          <div className="rounded-2xl border border-red-100 bg-red-50 p-3.5 text-xs text-red-700 leading-relaxed font-medium">
+            ⚠️ Connection is taking longer than expected. Please check your internet connection.
+          </div>
+        )}
         {/* Header */}
         <header className="rounded-2xl border border-amber-100/80 bg-white/88 p-3 shadow-sm backdrop-blur-sm">
           <div className="flex items-center justify-between gap-2">
@@ -185,42 +239,89 @@ export default function ExpenseGroupDetailPage() {
                 Category Split
               </h2>
             </div>
-            <div className="space-y-3">
-              {categoryStats.map((cat, idx) => (
-                <div key={cat.name} className="space-y-1">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="font-semibold text-stone-700">{cat.name}</span>
-                    <span className="text-stone-500 font-medium">
-                      {symbol}
-                      {formatAmount(cat.amount)} ({cat.percentage.toFixed(0)}%)
-                    </span>
+            <div className="space-y-2.5">
+              {categoryStats.map((cat, idx) => {
+                const isSelected = selectedCategoryFilter === cat.name
+                return (
+                  <div 
+                    key={cat.name} 
+                    onClick={() => setSelectedCategoryFilter(isSelected ? 'all' : cat.name)}
+                    className={`space-y-1 cursor-pointer p-1.5 rounded-xl hover:bg-amber-100/30 transition-all ${
+                      isSelected ? 'bg-amber-100/50 ring-1 ring-amber-200' : ''
+                    }`}
+                    title={`Click to filter by ${cat.name}`}
+                  >
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-bold text-stone-700">{cat.name}</span>
+                      <span className="text-stone-500 font-medium">
+                        {symbol}
+                        {formatAmount(cat.amount)} ({cat.percentage.toFixed(0)}%)
+                      </span>
+                    </div>
+                    <div className="h-1.5 w-full rounded-full bg-amber-50 overflow-hidden">
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: `${cat.percentage}%` }}
+                        transition={{ delay: idx * 0.05, duration: 0.5 }}
+                        className="h-full bg-amber-500 rounded-full"
+                      />
+                    </div>
                   </div>
-                  <div className="h-1.5 w-full rounded-full bg-amber-50 overflow-hidden">
-                    <motion.div
-                      initial={{ width: 0 }}
-                      animate={{ width: `${cat.percentage}%` }}
-                      transition={{ delay: idx * 0.05, duration: 0.5 }}
-                      className="h-full bg-amber-500 rounded-full"
-                    />
-                  </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           </section>
         )}
 
         {/* Transactions list */}
-        <section className="space-y-2">
-          <h2 className="font-serif text-base font-semibold text-stone-700">Linked Transactions</h2>
+        <section className="space-y-2.5">
+          <div className="flex items-center justify-between">
+            <h2 className="font-serif text-base font-semibold text-stone-700">Linked Transactions</h2>
+            {uniqueCategories.length > 0 && (
+              <select
+                value={selectedCategoryFilter}
+                onChange={(e) => setSelectedCategoryFilter(e.target.value)}
+                className="rounded-xl border border-amber-100 bg-amber-50/40 px-2.5 py-1.5 text-xs text-stone-700 focus:border-amber-300 focus:bg-white outline-none cursor-pointer transition-colors"
+              >
+                <option value="all">All Categories</option>
+                {uniqueCategories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+              </select>
+            )}
+          </div>
+
+          {selectedCategoryFilter !== 'all' && (
+            <div className="inline-flex items-center gap-1.5 text-[10px] text-amber-700 font-bold bg-amber-50 border border-amber-100/50 px-2.5 py-1 rounded-full">
+              <span>Showing category: {selectedCategoryFilter}</span>
+              <button 
+                onClick={() => setSelectedCategoryFilter('all')} 
+                className="text-amber-900 hover:text-amber-700 cursor-pointer underline decoration-dotted"
+              >
+                Clear
+              </button>
+            </div>
+          )}
 
           {resolvedItems.length === 0 ? (
             <div className="flex flex-col items-center justify-center gap-3 py-14 text-center rounded-2xl border border-dashed border-amber-200 bg-amber-50/20">
               <Hash size={24} className="text-amber-300" />
-              <p className="text-xs font-medium text-stone-500">No transactions linked yet</p>
+              <p className="text-xs font-medium text-stone-500">
+                {loading ? 'Retrieving transactions...' : 'No transactions linked yet'}
+              </p>
+            </div>
+          ) : filteredItems.length === 0 ? (
+            <div className="flex flex-col items-center justify-center gap-3 py-14 text-center rounded-2xl border border-dashed border-amber-200 bg-amber-50/10">
+              <Hash size={24} className="text-amber-300" />
+              <p className="text-xs font-medium text-stone-500">No items match this category filter</p>
+              <button 
+                onClick={() => setSelectedCategoryFilter('all')}
+                className="text-xs text-amber-700 font-bold hover:underline cursor-pointer"
+              >
+                Reset Filter
+              </button>
             </div>
           ) : (
             <div className="space-y-2.5">
-              {resolvedItems.map(({ entry, projectId, bookId, projectName, bookName }) => {
+              {filteredItems.map(({ entry, projectId, bookId, projectName, bookName }) => {
                 const isIncome = entry.type === 'income' || entry.type === 'transfer_in'
                 const amountColor = entry.isSavings
                   ? 'text-violet-600'

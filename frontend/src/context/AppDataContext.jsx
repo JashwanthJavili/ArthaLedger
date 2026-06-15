@@ -24,6 +24,7 @@ export function AppDataProvider({ children }) {
   const [entriesByBook, setEntriesByBook] = useState({})
   const [trips, setTrips] = useState([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
 
   // All active Firebase listeners — keyed so we can tear them down cleanly
   const unsubsRef = useRef(new Map()) // key → unsub fn
@@ -39,16 +40,23 @@ export function AppDataProvider({ children }) {
       setEntriesByBook({})
       setTrips([])
       setLoading(false)
+      setError(null)
       return
     }
 
     setLoading(true)
+    setError(null)
     const uid = user.uid
 
     const tripsRef = ref(db, `users/${uid}/trips`)
     const unsubTrips = onValue(tripsRef, (snapshot) => {
       const loadedTrips = toArray(snapshot.val())
       setTrips(loadedTrips)
+      setError(null)
+    }, (err) => {
+      console.error('[Firebase trips] Error:', err)
+      setError(friendlyDbError(err))
+      setLoading(false)
     })
     unsubsRef.current.set('trips', unsubTrips)
 
@@ -57,6 +65,7 @@ export function AppDataProvider({ children }) {
       const loadedProjects = toArray(snapshot.val())
       setProjects(loadedProjects)
       setLoading(false)
+      setError(null)
 
       // Remove stale book/entry listeners (keep only the projects and trips ones)
       unsubsRef.current.forEach((fn, key) => {
@@ -69,6 +78,7 @@ export function AppDataProvider({ children }) {
         const unsubBooks = onValue(booksRef, (booksSnap) => {
           const books = toArray(booksSnap.val())
           setBooksByProject((prev) => ({ ...prev, [project.id]: books }))
+          setError(null)
 
           books.forEach((book) => {
             const entriesKey = `entries:${book.id}`
@@ -78,12 +88,23 @@ export function AppDataProvider({ children }) {
             const unsubEntries = onValue(entriesRef, (entriesSnap) => {
               const entries = toArray(entriesSnap.val()).sort((a, b) => b.timestamp - a.timestamp)
               setEntriesByBook((prev) => ({ ...prev, [book.id]: entries }))
+              setError(null)
+            }, (err) => {
+              console.error(`[Firebase entries:${book.id}] Error:`, err)
+              setError(friendlyDbError(err))
             })
             unsubsRef.current.set(entriesKey, unsubEntries)
           })
+        }, (err) => {
+          console.error(`[Firebase books:${project.id}] Error:`, err)
+          setError(friendlyDbError(err))
         })
         unsubsRef.current.set(booksKey, unsubBooks)
       })
+    }, (err) => {
+      console.error('[Firebase projects] Error:', err)
+      setError(friendlyDbError(err))
+      setLoading(false)
     })
 
     unsubsRef.current.set('projects', unsubProjects)
@@ -532,6 +553,7 @@ export function AppDataProvider({ children }) {
 
   const value = useMemo(() => ({
     loading,
+    error,
     projects,
     booksByProject,
     entriesByBook,
@@ -558,7 +580,7 @@ export function AppDataProvider({ children }) {
     linkEntriesToTrip,
     unlinkEntryFromTrip,
   }), [
-    loading, projects, booksByProject, entriesByBook, trips,
+    loading, error, projects, booksByProject, entriesByBook, trips,
     createProject, updateProject, deleteProject,
     createBook, updateBook, deleteBook,
     deleteBookWithPin, deleteProjectWithPin,

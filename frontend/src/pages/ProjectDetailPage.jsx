@@ -16,6 +16,7 @@ import PinModal from '../components/common/PinModal'
 import SetPinModal from '../components/common/SetPinModal'
 import Toast from '../components/common/Toast'
 import SummaryStrip from '../components/cards/SummaryCard'
+import Loader from '../components/common/Loader'
 import { useAppData } from '../context/AppDataContext'
 import { isUnlocked, setUnlocked, lockItem } from '../lib/pin'
 import { formatAmount, getCurrencySymbol } from '../lib/format'
@@ -94,6 +95,8 @@ export default function ProjectDetailPage() {
   const { projectId } = useParams()
   const navigate = useNavigate()
   const {
+    loading,
+    error,
     projects, booksByProject, entriesByBook,
     createBook, updateBook, deleteBook,
     deleteProject, deleteProjectWithPin,
@@ -106,6 +109,14 @@ export default function ProjectDetailPage() {
   const [deleteProjectConfirm, setDeleteProjectConfirm] = useState(false)
   const [verifyProjectPinForDelete, setVerifyProjectPinForDelete] = useState(false)
   const [toast, setToast] = useState({ msg: '', type: 'success', visible: false })
+  const [stalled, setStalled] = useState(false)
+
+  useEffect(() => {
+    let t = null
+    if (loading) t = setTimeout(() => setStalled(true), 3500)
+    else setStalled(false)
+    return () => clearTimeout(t)
+  }, [loading])
 
   // Transfer state
   const [transferSource, setTransferSource] = useState(null) // book being transferred from
@@ -203,7 +214,30 @@ export default function ProjectDetailPage() {
     setTimeout(() => setToast((t) => ({ ...t, visible: false })), 2200)
   }
 
-  if (!project) {
+  if (error) {
+    return (
+      <LayoutShell>
+        <div className="flex flex-col items-center justify-center py-20 gap-4 text-center px-4">
+          <div className="rounded-2xl bg-red-50 border border-red-100 p-4 max-w-sm">
+            <p className="text-sm font-semibold text-red-800">Unable to Load Data</p>
+            <p className="text-xs text-red-600 mt-1">{error}</p>
+          </div>
+          <button 
+            onClick={() => window.location.reload()}
+            className="rounded-xl bg-amber-600 px-4 py-2 text-xs font-semibold text-white hover:bg-amber-700 cursor-pointer"
+          >
+            Retry Loading
+          </button>
+        </div>
+      </LayoutShell>
+    )
+  }
+
+  if (loading && !stalled) {
+    return <Loader text="Opening project..." />
+  }
+
+  if (!loading && !project) {
     return (
       <LayoutShell>
         <div className="flex flex-col items-center justify-center py-16 gap-3">
@@ -255,6 +289,11 @@ export default function ProjectDetailPage() {
   return (
     <LayoutShell>
       <div className="space-y-4 sm:space-y-5">
+        {loading && (
+          <div className="rounded-2xl border border-red-100 bg-red-50 p-3.5 text-xs text-red-700 leading-relaxed font-medium">
+            ⚠️ Connection is taking longer than expected. Please check your internet connection.
+          </div>
+        )}
 
         {/* ── Page header ── */}
         <div className="flex items-start justify-between gap-3">

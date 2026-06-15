@@ -66,7 +66,7 @@ function ProjectMenu({ project, onEdit, onDelete }) {
 }
 
 export default function DashboardPage() {
-  const { loading, projects, booksByProject, entriesByBook, createProject, updateProject, deleteProject, deleteProjectWithPin } = useAppData()
+  const { loading, error, projects, booksByProject, entriesByBook, createProject, updateProject, deleteProject, deleteProjectWithPin } = useAppData()
   const [modalOpen, setModalOpen] = useState(false)
   const [editingProject, setEditingProject] = useState(null)
   const [deleteTarget, setDeleteTarget] = useState(null)
@@ -109,11 +109,35 @@ export default function DashboardPage() {
     return 'Good evening'
   }
 
+  if (error) {
+    return (
+      <LayoutShell>
+        <div className="flex flex-col items-center justify-center py-20 gap-4 text-center px-4">
+          <div className="rounded-2xl bg-red-50 border border-red-100 p-4 max-w-sm">
+            <p className="text-sm font-semibold text-red-800">Unable to Load Data</p>
+            <p className="text-xs text-red-600 mt-1">{error}</p>
+          </div>
+          <button 
+            onClick={() => window.location.reload()}
+            className="rounded-xl bg-amber-600 px-4 py-2 text-xs font-semibold text-white hover:bg-amber-700 cursor-pointer"
+          >
+            Retry Loading
+          </button>
+        </div>
+      </LayoutShell>
+    )
+  }
+
   if (loading && !stalled) return <Loader text="Arranging your projects..." />
 
   return (
     <LayoutShell>
       <div className="space-y-4 sm:space-y-5">
+        {loading && (
+          <div className="rounded-2xl border border-red-100 bg-red-50 p-3.5 text-xs text-red-700 leading-relaxed font-medium">
+            ⚠️ Connection is taking longer than expected. Please check your internet connection.
+          </div>
+        )}
 
         {/* ── Greeting ── */}
         <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="px-1">
@@ -167,15 +191,21 @@ export default function DashboardPage() {
               <FolderOpen size={36} className="text-amber-400" />
             </div>
             <div>
-              <p className="font-serif text-base font-medium text-stone-600">No projects yet</p>
-              <p className="mt-1 text-xs text-stone-400">Create your first project to begin tracking</p>
+              <p className="font-serif text-base font-medium text-stone-600">
+                {loading ? 'Retrieving project records...' : (search ? 'No projects match your search' : 'No projects yet')}
+              </p>
+              <p className="mt-1 text-xs text-stone-400">
+                {loading ? 'Connecting to database...' : 'Create your first project to begin tracking'}
+              </p>
             </div>
-            <button
-              onClick={() => { setEditingProject(null); setModalOpen(true) }}
-              className="rounded-xl bg-amber-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-amber-700 transition-colors shadow-sm"
-            >
-              Create First Project
-            </button>
+            {!loading && (
+              <button
+                onClick={() => { setEditingProject(null); setModalOpen(true) }}
+                className="rounded-xl bg-amber-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-amber-700 transition-colors shadow-sm"
+              >
+                Create First Project
+              </button>
+            )}
           </motion.div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
