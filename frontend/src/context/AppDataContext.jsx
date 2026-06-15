@@ -22,6 +22,7 @@ export function AppDataProvider({ children }) {
   const [projects, setProjects] = useState([])
   const [booksByProject, setBooksByProject] = useState({})
   const [entriesByBook, setEntriesByBook] = useState({})
+  const [trips, setTrips] = useState([])
   const [loading, setLoading] = useState(true)
 
   // All active Firebase listeners — keyed so we can tear them down cleanly
@@ -36,6 +37,7 @@ export function AppDataProvider({ children }) {
       setProjects([])
       setBooksByProject({})
       setEntriesByBook({})
+      setTrips([])
       setLoading(false)
       return
     }
@@ -43,15 +45,22 @@ export function AppDataProvider({ children }) {
     setLoading(true)
     const uid = user.uid
 
+    const tripsRef = ref(db, `users/${uid}/trips`)
+    const unsubTrips = onValue(tripsRef, (snapshot) => {
+      const loadedTrips = toArray(snapshot.val())
+      setTrips(loadedTrips)
+    })
+    unsubsRef.current.set('trips', unsubTrips)
+
     const projectsRef = ref(db, `users/${uid}/projects`)
     const unsubProjects = onValue(projectsRef, (snapshot) => {
       const loadedProjects = toArray(snapshot.val())
       setProjects(loadedProjects)
       setLoading(false)
 
-      // Remove stale book/entry listeners (keep only the projects one)
+      // Remove stale book/entry listeners (keep only the projects and trips ones)
       unsubsRef.current.forEach((fn, key) => {
-        if (key !== 'projects') { fn(); unsubsRef.current.delete(key) }
+        if (key !== 'projects' && key !== 'trips') { fn(); unsubsRef.current.delete(key) }
       })
 
       loadedProjects.forEach((project) => {
@@ -466,11 +475,51 @@ export function AppDataProvider({ children }) {
     }
   }, [])
 
+  // ── Trips / Expense Groups ──────────────────────────────────────────────────
+
+  const createTrip = useCallback(async ({ name, description }) => {
+    const tripRef = push(ref(db, `users/${user.uid}/trips`))
+    await set(tripRef, {
+      name,
+      description: description || '',
+      createdAt: Date.now(),
+    }).catch((err) => { throw new Error(friendlyDbError(err)) })
+    return tripRef.key
+  }, [user?.uid])
+
+  const deleteTrip = useCallback(async (tripId) => {
+    await remove(ref(db, `users/${user.uid}/trips/${tripId}`))
+      .catch((err) => { throw new Error(friendlyDbError(err)) })
+  }, [user?.uid])
+
+  const linkEntriesToTrip = useCallback(async (tripId, entryRefs) => {
+    const updates = {}
+    const timestamp = Date.now()
+    entryRefs.forEach(({ projectId, bookId, entryId }) => {
+      const path = `users/${user.uid}/trips/${tripId}/entries/${projectId}_${bookId}_${entryId}`
+      updates[path] = {
+        projectId,
+        bookId,
+        entryId,
+        addedAt: timestamp,
+      }
+    })
+    await update(ref(db), updates).catch((err) => {
+      throw new Error(friendlyDbError(err))
+    })
+  }, [user?.uid])
+
+  const unlinkEntryFromTrip = useCallback(async (tripId, projectId, bookId, entryId) => {
+    await remove(ref(db, `users/${user.uid}/trips/${tripId}/entries/${projectId}_${bookId}_${entryId}`))
+      .catch((err) => { throw new Error(friendlyDbError(err)) })
+  }, [user?.uid])
+
   const value = useMemo(() => ({
     loading,
     projects,
     booksByProject,
     entriesByBook,
+    trips,
     createProject,
     updateProject,
     deleteProject,
@@ -488,14 +537,19 @@ export function AppDataProvider({ children }) {
     setPinForBook,
     setPinForProject,
     transferBetweenBooks,
+    createTrip,
+    deleteTrip,
+    linkEntriesToTrip,
+    unlinkEntryFromTrip,
   }), [
-    loading, projects, booksByProject, entriesByBook,
+    loading, projects, booksByProject, entriesByBook, trips,
     createProject, updateProject, deleteProject,
     createBook, updateBook, deleteBook,
     deleteBookWithPin, deleteProjectWithPin,
     addEntry, deleteEntry, updateEntry,
     getBookCurrentBalance, updateCategories, getCategories,
     setPinForBook, setPinForProject, transferBetweenBooks,
+    createTrip, deleteTrip, linkEntriesToTrip, unlinkEntryFromTrip,
   ])
 
   return <AppDataContext.Provider value={value}>{children}</AppDataContext.Provider>

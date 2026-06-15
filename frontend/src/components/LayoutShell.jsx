@@ -1,9 +1,10 @@
 import { NavLink } from 'react-router-dom'
-import { BarChart3, Home, Settings } from 'lucide-react'
+import { BarChart3, Home, Settings, Compass } from 'lucide-react'
 
 const nav = [
   { to: '/dashboard', label: 'Home', icon: Home },
   { to: '/analytics', label: 'Analytics', icon: BarChart3 },
+  { to: '/trips', label: 'Groups', icon: Compass },
   { to: '/settings', label: 'Settings', icon: Settings },
 ]
 

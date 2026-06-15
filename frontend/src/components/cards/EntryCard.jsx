@@ -1,6 +1,9 @@
+import { useMemo } from 'react'
 import { format } from 'date-fns'
-import { HandCoins, Landmark, Smartphone, Wallet, User, ArrowRight, ArrowLeft, PiggyBank } from 'lucide-react'
+import { HandCoins, Landmark, Smartphone, Wallet, User, ArrowRight, ArrowLeft, PiggyBank, Compass } from 'lucide-react'
 import { motion } from 'framer-motion'
+import { useParams } from 'react-router-dom'
+import { useAppData } from '../../context/AppDataContext'
 import { formatAmount, getCurrencySymbol } from '../../lib/format'
 
 const modeIcon = {
@@ -20,6 +23,16 @@ const modeColor = {
 }
 
 export default function EntryCard({ entry }) {
+  const { projectId, bookId } = useParams()
+  const { trips } = useAppData()
+
+  const linkedTrips = useMemo(() => {
+    if (!projectId || !bookId || !trips) return []
+    return trips.filter(trip => 
+      trip.entries && trip.entries[`${projectId}_${bookId}_${entry.id}`]
+    )
+  }, [trips, projectId, bookId, entry.id])
+
   const ModeIcon = modeIcon[entry.mode] || Wallet
   const isIncome = entry.type === 'income'
   const isTransferIn = entry.type === 'transfer_in'
@@ -70,6 +83,17 @@ export default function EntryCard({ entry }) {
           <span className="text-[10px] text-stone-400">
             · {entry.transferScope === 'cross_project' ? 'Cross-project transfer' : 'Internal transfer'}
           </span>
+        </div>
+      )}
+
+      {/* Group badge */}
+      {linkedTrips.length > 0 && (
+        <div className="flex flex-wrap items-center gap-1.5 mb-2.5">
+          {linkedTrips.map(trip => (
+            <span key={trip.id} className="inline-flex items-center gap-1 rounded-full bg-amber-50 border border-amber-100/60 px-2 py-0.5 text-[10px] font-semibold text-amber-700">
+              <Compass size={9} /> {trip.name}
+            </span>
+          ))}
         </div>
       )}
 

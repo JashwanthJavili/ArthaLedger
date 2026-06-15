@@ -20,6 +20,7 @@ import Toast from '../components/common/Toast'
 import { useAppData } from '../context/AppDataContext'
 import { exportBookPdf } from '../lib/pdf'
 import { lockItem } from '../lib/pin'
+import SendToTripModal from '../components/forms/SendToTripModal'
 
 const defaultCategories = []
 
@@ -135,6 +136,7 @@ export default function BookPage() {
     projects, booksByProject, entriesByBook,
     addEntry, deleteEntry, updateCategories, getCategories,
     updateBook, updateEntry, deleteBook, deleteBookWithPin, setPinForBook,
+    linkEntriesToTrip,
   } = useAppData()
 
   const [modalType, setModalType] = useState(null)
@@ -153,6 +155,84 @@ export default function BookPage() {
   const [filters, setFilters] = useState({
     type: 'all', mode: 'all', category: 'all', enteredBy: 'all', from: '', to: '',
   })
+
+  const [isMultiSelectMode, setIsMultiSelectMode] = useState(false)
+  const [selectedEntryIds, setSelectedEntryIds] = useState([])
+  const [openSendToTripModal, setOpenSendToTripModal] = useState(false)
+
+  const toggleSelectEntry = (entryId) => {
+    setSelectedEntryIds(prev =>
+      prev.includes(entryId)
+        ? prev.filter(id => id !== entryId)
+        : [...prev, entryId]
+    )
+  }
+
+  const handleSendToTrip = async (tripId) => {
+    try {
+      const refs = selectedEntryIds.map(id => ({
+        projectId,
+        bookId,
+        entryId: id
+      }))
+      await linkEntriesToTrip(tripId, refs)
+      showToast('Added to Group ✓')
+      setIsMultiSelectMode(false)
+      setSelectedEntryIds([])
+    } catch (err) {
+      showToast(err?.message || 'Failed to link entries', 'error')
+    }
+  }
+
+  const longPressTimeoutRef = useRef(null)
+
+  const getLongPressHandlers = (entryId) => {
+    if (isMultiSelectMode) return {}
+
+    return {
+      onTouchStart: () => {
+        if (longPressTimeoutRef.current) clearTimeout(longPressTimeoutRef.current)
+        longPressTimeoutRef.current = setTimeout(() => {
+          setIsMultiSelectMode(true)
+          setSelectedEntryIds([entryId])
+          if (window.navigator && window.navigator.vibrate) {
+            window.navigator.vibrate(50)
+          }
+        }, 600)
+      },
+      onTouchEnd: () => {
+        if (longPressTimeoutRef.current) {
+          clearTimeout(longPressTimeoutRef.current)
+          longPressTimeoutRef.current = null
+        }
+      },
+      onTouchMove: () => {
+        if (longPressTimeoutRef.current) {
+          clearTimeout(longPressTimeoutRef.current)
+          longPressTimeoutRef.current = null
+        }
+      },
+      onMouseDown: () => {
+        if (longPressTimeoutRef.current) clearTimeout(longPressTimeoutRef.current)
+        longPressTimeoutRef.current = setTimeout(() => {
+          setIsMultiSelectMode(true)
+          setSelectedEntryIds([entryId])
+        }, 600)
+      },
+      onMouseUp: () => {
+        if (longPressTimeoutRef.current) {
+          clearTimeout(longPressTimeoutRef.current)
+          longPressTimeoutRef.current = null
+        }
+      },
+      onMouseLeave: () => {
+        if (longPressTimeoutRef.current) {
+          clearTimeout(longPressTimeoutRef.current)
+          longPressTimeoutRef.current = null
+        }
+      }
+    }
+  }
 
   const project = projects.find((p) => p.id === projectId)
   const book = (booksByProject[projectId] || []).find((b) => b.id === bookId)
@@ -465,11 +545,28 @@ export default function BookPage() {
                   : `${filteredEntries.length} of ${entries.length} entries`}
               </p>
             </div>
-            {hasActiveFilters && (
-              <button onClick={clearFilters} className="text-xs text-amber-600 hover:text-amber-800 transition-colors">
-                Clear filters
-              </button>
-            )}
+            <div className="flex items-center gap-2">
+              {entries.length > 0 && (
+                <button
+                  onClick={() => {
+                    setIsMultiSelectMode(!isMultiSelectMode)
+                    setSelectedEntryIds([])
+                  }}
+                  className={`inline-flex items-center gap-1 rounded-xl border px-2.5 py-1.5 text-xs transition-colors cursor-pointer ${
+                    isMultiSelectMode
+                      ? 'border-amber-400 bg-amber-100 text-amber-800 font-semibold'
+                      : 'border-amber-100 text-stone-600 hover:bg-amber-50'
+                  }`}
+                >
+                  {isMultiSelectMode ? 'Cancel' : 'Select'}
+                </button>
+              )}
+              {hasActiveFilters && (
+                <button onClick={clearFilters} className="text-xs text-amber-600 hover:text-amber-800 transition-colors">
+                  Clear filters
+                </button>
+              )}
+            </div>
           </div>
 
           {filteredEntries.length === 0 ? (
@@ -502,26 +599,51 @@ export default function BookPage() {
                       </div>
                     </div>
                     <div className="space-y-2">
-                      {dayEntries.map((entry, idx) => (
-                        <motion.div
-                          key={entry.id}
-                          id={`entry-${entry.id}`}
-                          initial={{ opacity: 0, y: 6 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: Math.min(idx * 0.03, 0.2) }}
-                          className="flex items-start gap-2 transition-all duration-300"
-                        >
-                          <div className="flex-1 min-w-0">
-                            <EntryCard entry={entry} />
-                          </div>
-                          <div className="flex-shrink-0 pt-3">
-                            <EntryMenu
-                              onEdit={() => setEditingEntry(entry)}
-                              onDelete={() => setDeleteEntryTarget(entry)}
-                            />
-                          </div>
-                        </motion.div>
-                      ))}
+                      {dayEntries.map((entry, idx) => {
+                        const isSelected = selectedEntryIds.includes(entry.id);
+                        return (
+                          <motion.div
+                            key={entry.id}
+                            id={`entry-${entry.id}`}
+                            initial={{ opacity: 0, y: 6 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: Math.min(idx * 0.03, 0.2) }}
+                            className="flex items-start gap-2 transition-all duration-300 select-none"
+                            {...getLongPressHandlers(entry.id)}
+                          >
+                            {isMultiSelectMode && (
+                              <div
+                                onClick={() => toggleSelectEntry(entry.id)}
+                                className={`flex-shrink-0 mt-4 flex h-5 w-5 cursor-pointer items-center justify-center rounded-lg border transition-all ${
+                                  isSelected
+                                    ? 'border-amber-600 bg-amber-600 text-white'
+                                    : 'border-amber-200 bg-white hover:border-amber-400'
+                                }`}
+                              >
+                                {isSelected && (
+                                  <svg className="h-3.5 w-3.5 stroke-[3]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                  </svg>
+                                )}
+                              </div>
+                            )}
+                            <div 
+                              className="flex-1 min-w-0" 
+                              onClick={isMultiSelectMode ? () => toggleSelectEntry(entry.id) : undefined}
+                            >
+                              <EntryCard entry={entry} />
+                            </div>
+                            {!isMultiSelectMode && (
+                              <div className="flex-shrink-0 pt-3">
+                                <EntryMenu
+                                  onEdit={() => setEditingEntry(entry)}
+                                  onDelete={() => setDeleteEntryTarget(entry)}
+                                />
+                              </div>
+                            )}
+                          </motion.div>
+                        );
+                      })}
                     </div>
                   </div>
                 )
@@ -533,23 +655,57 @@ export default function BookPage() {
 
       {/* ── Fixed bottom action bar ── */}
       <div className="fixed bottom-[4.5rem] left-1/2 z-30 w-[min(96vw,520px)] -translate-x-1/2">
-        <div className="grid grid-cols-2 gap-2.5 rounded-2xl border border-amber-100/80 bg-white/95 p-2 shadow-xl backdrop-blur-md">
-          <motion.button
-            whileTap={{ scale: 0.97 }}
-            onClick={() => setModalType('income')}
-            className="flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-4 py-3 text-sm font-bold text-white hover:from-emerald-700 hover:to-teal-700 transition-all shadow-sm cursor-pointer"
-          >
-            <TrendingUp size={15} /> Cash In
-          </motion.button>
-          <motion.button
-            whileTap={{ scale: 0.97 }}
-            onClick={() => setModalType('expense')}
-            className="flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-rose-500 to-red-600 px-4 py-3 text-sm font-bold text-white hover:from-rose-600 hover:to-red-700 transition-all shadow-sm cursor-pointer"
-          >
-            <TrendingDown size={15} /> Cash Out
-          </motion.button>
-        </div>
+        {isMultiSelectMode ? (
+          <div className="flex items-center justify-between gap-3 rounded-2xl border border-amber-100/80 bg-white/95 p-2.5 shadow-xl backdrop-blur-md">
+            <div className="pl-2">
+              <p className="text-xs font-semibold text-stone-700">
+                {selectedEntryIds.length === 0 ? 'No entries selected' : `${selectedEntryIds.length} selected`}
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  setIsMultiSelectMode(false)
+                  setSelectedEntryIds([])
+                }}
+                className="rounded-xl border border-amber-200 px-3 py-2 text-xs font-semibold text-stone-600 hover:bg-amber-50 cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                disabled={selectedEntryIds.length === 0}
+                onClick={() => setOpenSendToTripModal(true)}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-amber-600 px-4 py-2 text-xs font-bold text-white hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer"
+              >
+                Send to Group
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-2.5 rounded-2xl border border-amber-100/80 bg-white/95 p-2 shadow-xl backdrop-blur-md">
+            <motion.button
+              whileTap={{ scale: 0.97 }}
+              onClick={() => setModalType('income')}
+              className="flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-4 py-3 text-sm font-bold text-white hover:from-emerald-700 hover:to-teal-700 transition-all shadow-sm cursor-pointer"
+            >
+              <TrendingUp size={15} /> Cash In
+            </motion.button>
+            <motion.button
+              whileTap={{ scale: 0.97 }}
+              onClick={() => setModalType('expense')}
+              className="flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-rose-500 to-red-600 px-4 py-3 text-sm font-bold text-white hover:from-rose-600 hover:to-red-700 transition-all shadow-sm cursor-pointer"
+            >
+              <TrendingDown size={15} /> Cash Out
+            </motion.button>
+          </div>
+        )}
       </div>
+
+      <SendToTripModal
+        open={openSendToTripModal}
+        onClose={() => setOpenSendToTripModal(false)}
+        onSend={handleSendToTrip}
+      />
 
       {/* ── Entry modal ── */}
       <EntryModal

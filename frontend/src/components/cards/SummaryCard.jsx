@@ -30,15 +30,21 @@ export default function SummaryStrip({ net, totalIn, totalOut, delay = 0 }) {
       <div className="grid grid-cols-2 divide-x divide-amber-100/60 text-center py-2.5 bg-stone-50/20 dark:bg-stone-950/10">
         <div className="flex flex-col items-center justify-center px-4 py-1">
           <span className="text-[10px] text-stone-400 font-semibold uppercase tracking-wider mb-0.5">Cash In</span>
-          <span className="text-sm font-bold text-emerald-600 font-serif">
-            {symbol}{formatAmount(totalIn)}
-          </span>
+          <div className="flex items-center justify-center gap-1">
+            <TrendingUp size={12} className="text-emerald-600 flex-shrink-0" />
+            <span className="text-sm font-bold text-emerald-600 font-serif">
+              {symbol}{formatAmount(totalIn)}
+            </span>
+          </div>
         </div>
         <div className="flex flex-col items-center justify-center px-4 py-1">
           <span className="text-[10px] text-stone-400 font-semibold uppercase tracking-wider mb-0.5">Cash Out</span>
-          <span className="text-sm font-bold text-rose-500 font-serif">
-            {symbol}{formatAmount(totalOut)}
-          </span>
+          <div className="flex items-center justify-center gap-1">
+            <TrendingDown size={12} className="text-rose-500 flex-shrink-0" />
+            <span className="text-sm font-bold text-rose-500 font-serif">
+              {symbol}{formatAmount(totalOut)}
+            </span>
+          </div>
         </div>
       </div>
     </motion.div>
