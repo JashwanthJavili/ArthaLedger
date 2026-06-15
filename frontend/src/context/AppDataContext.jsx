@@ -202,7 +202,7 @@ export function AppDataProvider({ children }) {
       updatedAt: Date.now(),
     })
 
-    return balanceAfter
+    return newRef.key
   }, [user?.uid])
 
   const deleteEntry = useCallback(async (projectId, bookId, entryId) => {

@@ -34,29 +34,6 @@ export default function ExpenseGroupDetailPage() {
     setTimeout(() => setToast((t) => ({ ...t, visible: false })), 2200)
   }
 
-  if (error) {
-    return (
-      <LayoutShell>
-        <div className="flex flex-col items-center justify-center py-20 gap-4 text-center px-4">
-          <div className="rounded-2xl bg-red-50 border border-red-100 p-4 max-w-sm">
-            <p className="text-sm font-semibold text-red-800">Unable to Load Data</p>
-            <p className="text-xs text-red-600 mt-1">{error}</p>
-          </div>
-          <button 
-            onClick={() => window.location.reload()}
-            className="rounded-xl bg-amber-600 px-4 py-2 text-xs font-semibold text-white hover:bg-amber-700 cursor-pointer"
-          >
-            Retry Loading
-          </button>
-        </div>
-      </LayoutShell>
-    )
-  }
-
-  if (loading && !stalled) {
-    return <Loader text="Loading group details..." />
-  }
-
   // Find current group
   const group = trips.find((t) => t.id === tripId)
 
@@ -167,6 +144,29 @@ export default function ExpenseGroupDetailPage() {
     } catch (err) {
       showToast(err?.message || 'Failed to delete group', 'error')
     }
+  }
+
+  if (error) {
+    return (
+      <LayoutShell>
+        <div className="flex flex-col items-center justify-center py-20 gap-4 text-center px-4">
+          <div className="rounded-2xl bg-red-50 border border-red-100 p-4 max-w-sm">
+            <p className="text-sm font-semibold text-red-800">Unable to Load Data</p>
+            <p className="text-xs text-red-600 mt-1">{error}</p>
+          </div>
+          <button 
+            onClick={() => window.location.reload()}
+            className="rounded-xl bg-amber-600 px-4 py-2 text-xs font-semibold text-white hover:bg-amber-700 cursor-pointer"
+          >
+            Retry Loading
+          </button>
+        </div>
+      </LayoutShell>
+    )
+  }
+
+  if (loading && !stalled) {
+    return <Loader text="Loading group details..." />
   }
 
   if (!loading && !group) {

@@ -136,10 +136,10 @@ export default function BookPage() {
   const {
     loading,
     error,
-    projects, booksByProject, entriesByBook,
+    projects, booksByProject, entriesByBook, trips,
     addEntry, deleteEntry, updateCategories, getCategories,
     updateBook, updateEntry, deleteBook, deleteBookWithPin, setPinForBook,
-    linkEntriesToTrip,
+    linkEntriesToTrip, unlinkEntryFromTrip,
   } = useAppData()
 
   const [modalType, setModalType] = useState(null)
@@ -753,6 +753,9 @@ export default function BookPage() {
         categories={categories}
         descriptionSuggestions={descriptionSuggestions}
         initial={editingEntry || null}
+        trips={trips}
+        projectId={projectId}
+        bookId={bookId}
         onClose={() => { setModalType(null); setEditingEntry(null) }}
         onSaveCategories={async (cats) => {
           setCategories(cats)
@@ -760,12 +763,32 @@ export default function BookPage() {
         }}
         onSubmit={async (payload) => {
           try {
+            const { tripId, ...entryData } = payload
             if (editingEntry) {
-              await updateEntry(projectId, bookId, editingEntry.id, payload)
+              await updateEntry(projectId, bookId, editingEntry.id, entryData)
+              
+              // Handle Expense Group tagging changes
+              const oldTrip = trips?.find(t => t.entries && t.entries[`${projectId}_${bookId}_${editingEntry.id}`])
+              const oldTripId = oldTrip ? oldTrip.id : ''
+              const newTripId = tripId || ''
+              
+              if (oldTripId !== newTripId) {
+                if (oldTripId) {
+                  await unlinkEntryFromTrip(oldTripId, projectId, bookId, editingEntry.id)
+                }
+                if (newTripId) {
+                  await linkEntriesToTrip(newTripId, [{ projectId, bookId, entryId: editingEntry.id }])
+                }
+              }
               showToast('Entry updated ✓')
             } else {
-              await addEntry(projectId, bookId, payload)
-              showToast(payload.type === 'income' ? 'Recorded with gratitude 🙏' : 'Entry noted mindfully 🕊️')
+              const newEntryId = await addEntry(projectId, bookId, entryData)
+              
+              // Handle Expense Group tagging
+              if (tripId) {
+                await linkEntriesToTrip(tripId, [{ projectId, bookId, entryId: newEntryId }])
+              }
+              showToast(entryData.type === 'income' ? 'Recorded with gratitude 🙏' : 'Entry noted mindfully 🕊️')
             }
           } catch (err) {
             showToast(err?.message || 'Failed to save entry', 'error')

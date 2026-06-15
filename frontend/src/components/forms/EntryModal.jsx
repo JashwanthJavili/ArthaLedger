@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import {
   X, TrendingUp, TrendingDown, ChevronDown, ChevronUp,
   Wallet, Smartphone, Plus, Trash2, Tag, Calendar, User, FileText,
-  PiggyBank, Check
+  PiggyBank, Check, Compass
 } from 'lucide-react'
 
 const MODES = [
@@ -24,7 +24,7 @@ function localDatetimeValue(date = new Date()) {
   )
 }
 
-export default function EntryModal({ open, type, onClose, onSubmit, categories, descriptionSuggestions = [], initial, onSaveCategories }) {
+export default function EntryModal({ open, type, onClose, onSubmit, categories, descriptionSuggestions = [], initial, onSaveCategories, trips = [], projectId, bookId }) {
   const [amount,      setAmount]      = useState('')
   const [description, setDesc]        = useState('')
   const [category,    setCategory]    = useState('')
@@ -33,6 +33,7 @@ export default function EntryModal({ open, type, onClose, onSubmit, categories, 
   const [notes,       setNotes]       = useState('')
   const [timestamp,   setTimestamp]   = useState('')
   const [isSavings,   setIsSavings]   = useState(false)
+  const [tripId,      setTripId]      = useState('')
 
   const [localCats,    setLocalCats]    = useState([])
   const [submitting,   setSubmitting]   = useState(false)
@@ -74,8 +75,14 @@ export default function EntryModal({ open, type, onClose, onSubmit, categories, 
           ? localDatetimeValue(new Date(initial.timestamp))
           : localDatetimeValue()
       )
+      let initialTripId = ''
+      if (initial && trips) {
+        const found = trips.find(t => t.entries && t.entries[`${projectId}_${bookId}_${initial.id}`])
+        if (found) initialTripId = found.id
+      }
+      setTripId(initialTripId)
       setErrors({})
-      setShowMore(Boolean(initial?.notes || initial?.enteredBy || initial?.isSavings))
+      setShowMore(Boolean(initial?.notes || initial?.enteredBy || initial?.isSavings || initialTripId))
       setShowCatPanel(false)
       setNewCatInput('')
       setTimeout(() => amountRef.current?.focus(), 80)
@@ -85,7 +92,7 @@ export default function EntryModal({ open, type, onClose, onSubmit, categories, 
       // Reset the guard when modal closes
       isOpenRef.current = false
     }
-  }, [open, initial, categories])
+  }, [open, initial, categories, trips, projectId, bookId])
 
   // When categories prop updates while modal is open (after saving a new cat),
   // only sync the list — never touch amount/description/etc.
@@ -130,6 +137,7 @@ export default function EntryModal({ open, type, onClose, onSubmit, categories, 
         isSavings,
         timestamp: new Date(timestamp).getTime(),
         _localCategories: localCats,
+        tripId,
       })
       if (!initial) {
         localStorage.setItem(LAST_ENTRY_KEY, JSON.stringify({ category, mode, enteredBy, isSavings }))
@@ -437,6 +445,22 @@ export default function EntryModal({ open, type, onClose, onSubmit, categories, 
                     </div>
                   </button>
                 )}
+
+                <div>
+                  <label className="flex items-center gap-1.5 text-[10px] font-semibold text-stone-400 uppercase tracking-wider mb-1.5">
+                    <Compass size={10} /> Expense Group
+                  </label>
+                  <select
+                    value={tripId}
+                    onChange={e => setTripId(e.target.value)}
+                    className={`w-full rounded-2xl border bg-stone-50 px-4 py-2.5 text-sm text-stone-800 focus:bg-white outline-none transition-colors border-stone-200 ${accent.ring}`}
+                  >
+                    <option value="">None</option>
+                    {trips.map(g => (
+                      <option key={g.id} value={g.id}>{g.name}</option>
+                    ))}
+                  </select>
+                </div>
 
                 <div>
                   <label className="flex items-center gap-1.5 text-[10px] font-semibold text-stone-400 uppercase tracking-wider mb-1.5">
