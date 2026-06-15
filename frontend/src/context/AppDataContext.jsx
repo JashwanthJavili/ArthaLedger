@@ -326,13 +326,31 @@ export function AppDataProvider({ children }) {
       get(ref(db, `users/${user.uid}/projects/${destinationProjectId}/books/${destinationBookId}/entries`)),
     ])
 
-    const sourceEntries = toArray(sourceEntriesSnap.val()).sort((a, b) => a.timestamp - b.timestamp)
-    const destinationEntries = toArray(destinationEntriesSnap.val()).sort((a, b) => a.timestamp - b.timestamp)
-    const sourceBalance = sourceEntries.length
-      ? Number(sourceEntries[sourceEntries.length - 1].balanceAfter || 0)
-      : 0
+    const sourceEntries = toArray(sourceEntriesSnap.val())
+    const destinationEntries = toArray(destinationEntriesSnap.val())
+
+    console.log('[Transfer] Source Entries:', sourceEntries)
+    console.log('[Transfer] Destination Entries:', destinationEntries)
+
+    const calculateBookBalance = (entriesList) => {
+      const balance = entriesList.reduce((acc, e) => {
+        const amt = Number(e.amount || 0)
+        if (e.type === 'income' || e.type === 'transfer_in') {
+          return acc + amt
+        } else if (e.type === 'expense' || e.type === 'transfer_out') {
+          return acc - amt
+        }
+        return acc
+      }, 0)
+      return Number(balance.toFixed(2))
+    }
+
+    const sourceBalance = calculateBookBalance(sourceEntries)
+    console.log('[Transfer] Calculated Source Balance:', sourceBalance)
+    console.log('[Transfer] Numeric Transfer Amount:', numericAmount)
 
     if (numericAmount > sourceBalance) {
+      console.warn('[Transfer] Validation Failed: Insufficient balance. Available:', sourceBalance, 'Requested:', numericAmount)
       throw new Error(`Insufficient balance. Available: ${sourceBalance.toFixed(2)}`)
     }
 
@@ -343,9 +361,7 @@ export function AppDataProvider({ children }) {
     const destinationEntryRef = push(ref(db, `users/${user.uid}/projects/${destinationProjectId}/books/${destinationBookId}/entries`))
 
     const sourceBalanceAfter = Number((sourceBalance - numericAmount).toFixed(2))
-    const destinationBalance = destinationEntries.length
-      ? Number(destinationEntries[destinationEntries.length - 1].balanceAfter || 0)
-      : 0
+    const destinationBalance = calculateBookBalance(destinationEntries)
     const destinationBalanceAfter = Number((destinationBalance + numericAmount).toFixed(2))
 
     const transferScope = sourceProjectId === destinationProjectId ? 'internal' : 'cross_project'

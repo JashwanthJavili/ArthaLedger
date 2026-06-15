@@ -625,9 +625,13 @@ export default function ProjectDetailPage() {
           booksByProject={booksByProject}
           currentBalance={(() => {
             const ents = entriesByBook[transferSource.id] || []
-            if (!ents.length) return 0
-            const sorted = [...ents].sort((a, b) => a.timestamp - b.timestamp)
-            return Number(sorted[sorted.length - 1].balanceAfter || 0)
+            const totalIn = ents
+              .filter((e) => e.type === 'income' || e.type === 'transfer_in')
+              .reduce((s, e) => s + Number(e.amount), 0)
+            const totalOut = ents
+              .filter((e) => e.type === 'expense' || e.type === 'transfer_out')
+              .reduce((s, e) => s + Number(e.amount), 0)
+            return totalIn - totalOut
           })()}
           onTransfer={async ({ destinationProjectId, destinationBookId, amount, note }) => {
             await transferBetweenBooks({
