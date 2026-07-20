@@ -589,21 +589,55 @@ export default function SettingsPage() {
               <div className="rounded-xl border border-emerald-100 bg-emerald-50/30 p-2.5 text-xs text-emerald-800 font-medium">
                 ✓ Push notifications are active. You will receive native system alerts on budget warnings.
               </div>
-              <button
-                type="button"
-                onClick={async () => {
-                  const token = localStorage.getItem('al_fcm_token') || await requestFCMToken()
-                  if (token) {
-                    navigator.clipboard.writeText(token)
-                    showToast('FCM Token copied to clipboard! Paste it into Firebase Console test modal. ✓')
-                  } else {
-                    showToast('Failed to retrieve FCM Token', 'error')
-                  }
-                }}
-                className="w-full text-center text-[11px] font-semibold text-amber-700 hover:text-amber-800 underline cursor-pointer py-1"
-              >
-                📋 Copy FCM Token / Installation ID (for Firebase Console test)
-              </button>
+              <div className="flex gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const token = localStorage.getItem('al_fcm_token') || await requestFCMToken()
+                    if (token) {
+                      navigator.clipboard.writeText(token)
+                      showToast('FCM Token copied to clipboard! Paste it into Firebase Console test modal. ✓')
+                    } else {
+                      showToast('Failed to retrieve FCM Token', 'error')
+                    }
+                  }}
+                  className="flex-1 text-center text-[11px] font-semibold text-amber-700 hover:text-amber-800 underline cursor-pointer py-1"
+                >
+                  📋 Copy FCM Token
+                </button>
+
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const logs = []
+                    logs.push(`1. Notification API: ${'Notification' in window ? 'Supported ✓' : 'Unsupported ❌'}`)
+                    logs.push(`2. Permission: ${typeof Notification !== 'undefined' ? Notification.permission : 'N/A'}`)
+                    logs.push(`3. Service Worker: ${'serviceWorker' in navigator ? 'Supported ✓' : 'Unsupported ❌'}`)
+
+                    if ('serviceWorker' in navigator) {
+                      const regs = await navigator.serviceWorker.getRegistrations()
+                      logs.push(`4. Active ServiceWorkers: ${regs.length}`)
+                      regs.forEach(r => logs.push(`   • ${r.active ? r.active.scriptURL.split('/').pop() : 'registering...'}`))
+                    }
+
+                    try {
+                      const token = await requestFCMToken()
+                      if (token) {
+                        logs.push(`5. FCM Push Token: Ready ✓ (${token.slice(0, 15)}...)`)
+                      } else {
+                        logs.push(`5. FCM Push Token: Failed ❌`)
+                      }
+                    } catch (e) {
+                      logs.push(`5. FCM Error: ${e.message || String(e)}`)
+                    }
+
+                    alert(`🔍 Notification Diagnostic Results:\n\n${logs.join('\n')}`)
+                  }}
+                  className="flex-1 text-center text-[11px] font-semibold text-amber-700 hover:text-amber-800 underline cursor-pointer py-1"
+                >
+                  🔍 Run Diagnostic
+                </button>
+              </div>
             </div>
           ) : notifPermission === 'denied' ? (
             <div className="rounded-xl border border-red-100 bg-red-50/30 p-2.5 text-xs text-red-700">
