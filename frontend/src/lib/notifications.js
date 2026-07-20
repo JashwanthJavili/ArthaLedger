@@ -164,10 +164,9 @@ export function checkAndTriggerDailyReminder() {
   const currentHour = now.getHours()
   const currentMinute = now.getMinutes()
 
-  const isTimeForReminder =
-    currentHour > targetHour || (currentHour === targetHour && currentMinute >= targetMinute)
-
-  if (!isTimeForReminder) return
+  // Strictly check that the current time is within 0 to 2 minutes of the target reminder time
+  const diffMinutes = (currentHour * 60 + currentMinute) - (targetHour * 60 + targetMinute)
+  if (diffMinutes < 0 || diffMinutes > 2) return
 
   const todayStr = `${now.getFullYear()}-${now.getMonth() + 1}-${now.getDate()}`
   const lastSentDate = localStorage.getItem(REMINDER_KEY_LAST_SENT)

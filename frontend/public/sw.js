@@ -7,6 +7,8 @@ let reminderState = {
   lastSentDate: '',
 }
 
+let reminderTimer = null
+
 async function saveReminderState(state) {
   try {
     const cache = await caches.open('arthaledger-config')
@@ -23,6 +25,7 @@ async function loadReminderState() {
     if (response) {
       const data = await response.json()
       reminderState = { ...reminderState, ...data }
+      scheduleExactReminderTimer()
     }
   } catch (e) {
     console.error('Failed to load reminder state:', e)
@@ -52,14 +55,18 @@ self.addEventListener('message', (event) => {
     reminderState.enabled = Boolean(event.data.enabled)
     if (event.data.time) reminderState.time = event.data.time
     saveReminderState(reminderState)
+    scheduleExactReminderTimer()
     checkBackgroundDailyReminder()
   } else if (event.data.type === 'CHECK_REMINDER') {
-    loadReminderState().then(() => checkBackgroundDailyReminder())
+    loadReminderState().then(() => {
+      scheduleExactReminderTimer()
+      checkBackgroundDailyReminder()
+    })
   } else if (event.data.type === 'TEST_NOTIFICATION') {
     self.registration.showNotification('✍️ ArthaLedger Test Notification', {
-      body: 'Mobile notifications are working! Your daily expense reminder is active.',
-      icon: '/icon-192.svg',
-      badge: '/icon-192.svg',
+      body: "Mobile notifications are working! It's time to enter your today's expenses in ArthaLedger.",
+      icon: '/L.png',
+      badge: '/L.png',
       vibrate: [100, 50, 100],
       tag: 'test-notification',
       data: { url: '/dashboard' },
@@ -67,18 +74,30 @@ self.addEventListener('message', (event) => {
   }
 })
 
-// ── Background Periodic Check inside Service Worker ───────────────────────
-function checkBackgroundDailyReminder() {
+// ── Schedule Millisecond Precision Alarm for Target Time ──────────────────
+function scheduleExactReminderTimer() {
+  if (reminderTimer) clearTimeout(reminderTimer)
+  if (!reminderState.enabled || !reminderState.time) return
+
+  const now = new Date()
+  const [h, m] = reminderState.time.split(':').map(Number)
+  let target = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, m, 0)
+
+  if (target <= now) {
+    target.setDate(target.getDate() + 1)
+  }
+
+  const msUntilTarget = target.getTime() - now.getTime()
+  reminderTimer = setTimeout(() => {
+    triggerDailyNotification()
+    scheduleExactReminderTimer()
+  }, msUntilTarget)
+}
+
+function triggerDailyNotification() {
   if (!reminderState.enabled) return
 
   const now = new Date()
-  const [targetHour, targetMinute] = reminderState.time.split(':').map(Number)
-  const currentHour = now.getHours()
-  const currentMinute = now.getMinutes()
-
-  const isTime = currentHour > targetHour || (currentHour === targetHour && currentMinute >= targetMinute)
-  if (!isTime) return
-
   const todayStr = `${now.getFullYear()}-${now.getMonth() + 1}-${now.getDate()}`
   if (reminderState.lastSentDate === todayStr) return
 
@@ -95,8 +114,23 @@ function checkBackgroundDailyReminder() {
   })
 }
 
-// Check every 15 seconds in worker
-setInterval(checkBackgroundDailyReminder, 15000)
+// ── Strict Time-Window Check (Strictly within 2 minutes of target time) ───
+function checkBackgroundDailyReminder() {
+  if (!reminderState.enabled || !reminderState.time) return
+
+  const now = new Date()
+  const [targetHour, targetMinute] = reminderState.time.split(':').map(Number)
+  const currentHour = now.getHours()
+  const currentMinute = now.getMinutes()
+
+  const diffMinutes = (currentHour * 60 + currentMinute) - (targetHour * 60 + targetMinute)
+  if (diffMinutes < 0 || diffMinutes > 2) return
+
+  const todayStr = `${now.getFullYear()}-${now.getMonth() + 1}-${now.getDate()}`
+  if (reminderState.lastSentDate === todayStr) return
+
+  triggerDailyNotification()
+}
 
 // ── Notification Click Handler ─────────────────────────────────────────────
 self.addEventListener('notificationclick', (event) => {
