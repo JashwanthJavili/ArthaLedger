@@ -1,10 +1,32 @@
-const CACHE_NAME = 'cashbook-v5'
+const CACHE_NAME = 'cashbook-v6'
 const APP_SHELL = ['/', '/index.html', '/manifest.json']
 
 let reminderState = {
   enabled: false,
   time: '19:00',
   lastSentDate: '',
+}
+
+async function saveReminderState(state) {
+  try {
+    const cache = await caches.open('arthaledger-config')
+    await cache.put('/reminder-config', new Response(JSON.stringify(state)))
+  } catch (e) {
+    console.error('Failed to save reminder state:', e)
+  }
+}
+
+async function loadReminderState() {
+  try {
+    const cache = await caches.open('arthaledger-config')
+    const response = await cache.match('/reminder-config')
+    if (response) {
+      const data = await response.json()
+      reminderState = { ...reminderState, ...data }
+    }
+  } catch (e) {
+    console.error('Failed to load reminder state:', e)
+  }
 }
 
 self.addEventListener('install', (event) => {
@@ -14,7 +36,10 @@ self.addEventListener('install', (event) => {
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((keys) => Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)))),
+    Promise.all([
+      caches.keys().then((keys) => Promise.all(keys.filter((k) => k !== CACHE_NAME && k !== 'arthaledger-config').map((k) => caches.delete(k)))),
+      loadReminderState(),
+    ])
   )
   self.clients.claim()
 })
@@ -26,9 +51,13 @@ self.addEventListener('message', (event) => {
   if (event.data.type === 'SET_DAILY_REMINDER') {
     reminderState.enabled = Boolean(event.data.enabled)
     if (event.data.time) reminderState.time = event.data.time
+    saveReminderState(reminderState)
+    checkBackgroundDailyReminder()
+  } else if (event.data.type === 'CHECK_REMINDER') {
+    loadReminderState().then(() => checkBackgroundDailyReminder())
   } else if (event.data.type === 'TEST_NOTIFICATION') {
     self.registration.showNotification('✍️ ArthaLedger Test Notification', {
-      body: "Mobile PWA notifications are working! You will receive your daily evening expense reminder at 7:00 PM.",
+      body: 'Mobile notifications are working! Your daily expense reminder is active.',
       icon: '/icon-192.svg',
       badge: '/icon-192.svg',
       vibrate: [100, 50, 100],
@@ -54,6 +83,7 @@ function checkBackgroundDailyReminder() {
   if (reminderState.lastSentDate === todayStr) return
 
   reminderState.lastSentDate = todayStr
+  saveReminderState(reminderState)
 
   self.registration.showNotification('✍️ Daily Expense Reminder', {
     body: "It's time for your evening check-in! Don't forget to log today's cash in & cash out transactions.",
@@ -65,8 +95,8 @@ function checkBackgroundDailyReminder() {
   })
 }
 
-// Check every 45 seconds in the worker
-setInterval(checkBackgroundDailyReminder, 45000)
+// Check every 15 seconds in worker
+setInterval(checkBackgroundDailyReminder, 15000)
 
 // ── Notification Click Handler ─────────────────────────────────────────────
 self.addEventListener('notificationclick', (event) => {

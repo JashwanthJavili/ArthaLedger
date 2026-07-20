@@ -82,11 +82,11 @@ function Toggle({ checked, onChange }) {
       role="switch"
       aria-checked={checked}
       onClick={onChange}
-      className={`relative h-6 w-11 rounded-full transition-colors duration-200 focus:outline-none ${
-        checked ? 'bg-amber-500' : 'bg-stone-200'
+      className={`relative h-6 w-11 flex-shrink-0 min-w-[2.75rem] rounded-xl transition-colors duration-200 focus:outline-none cursor-pointer ${
+        checked ? 'bg-amber-600' : 'bg-stone-300'
       }`}
     >
-      <span className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-200 ${checked ? 'translate-x-5' : 'translate-x-0'}`} />
+      <span className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-lg bg-white shadow-xs transition-transform duration-200 ${checked ? 'translate-x-5' : 'translate-x-0'}`} />
     </button>
   )
 }

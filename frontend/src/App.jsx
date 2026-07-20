@@ -54,8 +54,17 @@ export default function App() {
 
   useEffect(() => {
     checkAndTriggerDailyReminder()
-    const interval = setInterval(checkAndTriggerDailyReminder, 60 * 1000)
-    return () => clearInterval(interval)
+    const interval = setInterval(checkAndTriggerDailyReminder, 15 * 1000)
+    const handleVisChange = () => {
+      if (!document.hidden) {
+        checkAndTriggerDailyReminder()
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisChange)
+    return () => {
+      clearInterval(interval)
+      document.removeEventListener('visibilitychange', handleVisChange)
+    }
   }, [])
 
   // Lock all PIN-protected items when app comes back from background after 5 min
