@@ -716,52 +716,56 @@ export default function EntryModal({
               )}
             </div>
 
-            {/* Date & Time */}
-            <div>
-              <label className="flex items-center gap-1.5 text-[10px] font-semibold text-stone-400 uppercase tracking-wider mb-1.5">
-                <Calendar size={10} /> Date & Time
-              </label>
-              <input
-                type="datetime-local"
-                value={timestamp}
-                onChange={e => setTimestamp(e.target.value)}
-                className={`w-full rounded-2xl border bg-stone-50 px-4 py-2.5 text-sm text-stone-800 focus:bg-white outline-none transition-colors border-stone-200 ${accent.ring}`}
-              />
-            </div>
+            {/* Payment Mode & Date hidden under More Details to keep primary form ultra-clean */}
 
-            {/* Payment Mode */}
-            <div>
-              <label className="block text-[10px] font-semibold text-stone-400 uppercase tracking-wider mb-1.5">
-                Payment Mode
-              </label>
-              <div className="grid grid-cols-2 gap-2">
-                {MODES.map(({ id, label, icon: Icon }) => {
-                  const active = mode === id
-                  return (
-                    <button key={id} type="button" onClick={() => setMode(id)}
-                      className={`flex items-center justify-center gap-2 rounded-2xl border py-3 text-sm font-semibold transition-all ${
-                        active ? accent.modeActive : 'border-stone-200 bg-stone-50 text-stone-400 hover:bg-stone-100'
-                      }`}
-                    >
-                      <Icon size={16} strokeWidth={active ? 2.5 : 1.8} />
-                      {label}
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-
-            {/* More details */}
+            {/* More details toggle button */}
             <button
               type="button" onClick={() => setShowMore(v => !v)}
-              className="w-full flex items-center justify-between rounded-2xl border border-dashed border-stone-200 px-4 py-2.5 text-xs font-medium text-stone-400 hover:border-stone-300 hover:text-stone-500 transition-colors"
+              className="w-full flex items-center justify-between rounded-2xl border border-dashed border-stone-200 px-4 py-2.5 text-xs font-semibold text-stone-500 hover:border-amber-300 hover:text-amber-700 hover:bg-amber-50/20 transition-all cursor-pointer"
             >
-              <span>{isIncome ? 'More details & Savings' : 'More details'}</span>
+              <span className="flex items-center gap-1.5">
+                <Compass size={13} className="text-amber-600" />
+                {isIncome ? 'More Options (Payment Mode, Date, Notes & Savings)' : 'More Options (Payment Mode, Date, Notes & Group)'}
+              </span>
               {showMore ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
             </button>
 
             {showMore && (
-              <div className="space-y-4 pt-0.5">
+              <div className="space-y-4 pt-1 border-t border-stone-100">
+                {/* Payment Mode */}
+                <div>
+                  <label className="block text-[10px] font-semibold text-stone-400 uppercase tracking-wider mb-1.5">
+                    Payment Mode
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {MODES.map(({ id, label, icon: Icon }) => {
+                      const active = mode === id
+                      return (
+                        <button key={id} type="button" onClick={() => setMode(id)}
+                          className={`flex items-center justify-center gap-2 rounded-2xl border py-2.5 text-xs font-semibold transition-all cursor-pointer ${
+                            active ? accent.modeActive : 'border-stone-200 bg-stone-50 text-stone-500 hover:bg-stone-100'
+                          }`}
+                        >
+                          <Icon size={14} strokeWidth={active ? 2.5 : 1.8} />
+                          {label}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                {/* Date & Time */}
+                <div>
+                  <label className="flex items-center gap-1.5 text-[10px] font-semibold text-stone-400 uppercase tracking-wider mb-1.5">
+                    <Calendar size={10} /> Date & Time
+                  </label>
+                  <input
+                    type="datetime-local"
+                    value={timestamp}
+                    onChange={e => setTimestamp(e.target.value)}
+                    className={`w-full rounded-2xl border bg-stone-50 px-4 py-2.5 text-xs font-medium text-stone-800 focus:bg-white outline-none transition-colors border-stone-200 ${accent.ring}`}
+                  />
+                </div>
                 {/* Savings toggle — inside More details, only for income */}
                 {isIncome && (
                   <button
