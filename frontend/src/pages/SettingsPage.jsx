@@ -4,7 +4,7 @@ import {
   ArrowLeft, Settings, Moon, Sun, DollarSign, Download,
   LogOut, User, Shield, ChevronRight, Lock, Eye, EyeOff,
   CheckCircle, Info, HelpCircle, ChevronDown, ChevronUp,
-  Wallet, Database, Key, Globe, Smartphone, CheckCircle2, Trash2, Pencil, Phone, Calendar, Users, Bell, Clock,
+  Wallet, Database, Key, Globe, Smartphone, CheckCircle2, Trash2, Pencil, Phone, Calendar, Users, Bell, Clock, Plus,
 } from 'lucide-react'
 import { requestNotificationPermission, getNotificationPermissionState, sendNativeNotification, getDailyReminderSettings, saveDailyReminderSettings, syncReminderFromFirebase, testMobileNotification } from '../lib/notifications'
 import { requestFCMToken } from '../lib/firebase'
