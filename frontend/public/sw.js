@@ -1,5 +1,11 @@
-const CACHE_NAME = 'cashbook-v4'
+const CACHE_NAME = 'cashbook-v5'
 const APP_SHELL = ['/', '/index.html', '/manifest.json']
+
+let reminderState = {
+  enabled: false,
+  time: '19:00',
+  lastSentDate: '',
+}
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL)))
@@ -12,6 +18,55 @@ self.addEventListener('activate', (event) => {
   )
   self.clients.claim()
 })
+
+// ── Message Listener from Client App ──────────────────────────────────────
+self.addEventListener('message', (event) => {
+  if (!event.data) return
+
+  if (event.data.type === 'SET_DAILY_REMINDER') {
+    reminderState.enabled = Boolean(event.data.enabled)
+    if (event.data.time) reminderState.time = event.data.time
+  } else if (event.data.type === 'TEST_NOTIFICATION') {
+    self.registration.showNotification('✍️ ArthaLedger Test Notification', {
+      body: "Mobile PWA notifications are working! You will receive your daily evening expense reminder at 7:00 PM.",
+      icon: '/icon-192.svg',
+      badge: '/icon-192.svg',
+      vibrate: [100, 50, 100],
+      tag: 'test-notification',
+      data: { url: '/dashboard' },
+    })
+  }
+})
+
+// ── Background Periodic Check inside Service Worker ───────────────────────
+function checkBackgroundDailyReminder() {
+  if (!reminderState.enabled) return
+
+  const now = new Date()
+  const [targetHour, targetMinute] = reminderState.time.split(':').map(Number)
+  const currentHour = now.getHours()
+  const currentMinute = now.getMinutes()
+
+  const isTime = currentHour > targetHour || (currentHour === targetHour && currentMinute >= targetMinute)
+  if (!isTime) return
+
+  const todayStr = `${now.getFullYear()}-${now.getMonth() + 1}-${now.getDate()}`
+  if (reminderState.lastSentDate === todayStr) return
+
+  reminderState.lastSentDate = todayStr
+
+  self.registration.showNotification('✍️ Daily Expense Reminder', {
+    body: "It's time for your evening check-in! Don't forget to log today's cash in & cash out transactions.",
+    icon: '/icon-192.svg',
+    badge: '/icon-192.svg',
+    vibrate: [200, 100, 200],
+    tag: 'daily-expense-reminder',
+    data: { url: '/dashboard' },
+  })
+}
+
+// Check every 45 seconds in the worker
+setInterval(checkBackgroundDailyReminder, 45000)
 
 // ── Notification Click Handler ─────────────────────────────────────────────
 self.addEventListener('notificationclick', (event) => {
@@ -34,16 +89,11 @@ self.addEventListener('notificationclick', (event) => {
 
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return
-
   const url = new URL(event.request.url)
 
-  // ── Skip everything in development (localhost) ──────────────────────────
   if (url.hostname === 'localhost' || url.hostname === '127.0.0.1') return
-
-  // ── Skip non-http(s) schemes ─────────────────────────────────────────────
   if (!url.protocol.startsWith('http')) return
 
-  // ── Skip Firebase / external API calls ──────────────────────────────────
   if (
     url.hostname.includes('firebaseio.com') ||
     url.hostname.includes('googleapis.com') ||
@@ -51,7 +101,6 @@ self.addEventListener('fetch', (event) => {
     url.hostname.includes('identitytoolkit.googleapis.com')
   ) return
 
-  // For navigation requests (HTML pages), network-first
   if (event.request.mode === 'navigate') {
     event.respondWith(
       fetch(event.request)
@@ -65,7 +114,6 @@ self.addEventListener('fetch', (event) => {
     return
   }
 
-  // For JS/CSS assets (Vite hashed filenames), cache-first
   if (url.pathname.startsWith('/assets/')) {
     event.respondWith(
       caches.match(event.request).then((cached) => {
@@ -80,7 +128,6 @@ self.addEventListener('fetch', (event) => {
     return
   }
 
-  // Network-first with cache fallback
   event.respondWith(
     fetch(event.request)
       .then((response) => {

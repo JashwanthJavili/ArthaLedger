@@ -95,12 +95,36 @@ export function getDailyReminderSettings() {
   return { enabled, time }
 }
 
+export function syncReminderWithServiceWorker() {
+  const { enabled, time } = getDailyReminderSettings()
+  if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+    navigator.serviceWorker.controller.postMessage({
+      type: 'SET_DAILY_REMINDER',
+      enabled,
+      time,
+    })
+  }
+}
+
 export function saveDailyReminderSettings({ enabled, time = '19:00' }) {
   localStorage.setItem(REMINDER_KEY_ENABLED, String(enabled))
   localStorage.setItem(REMINDER_KEY_TIME, time)
+  syncReminderWithServiceWorker()
+}
+
+export function testMobileNotification() {
+  if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+    navigator.serviceWorker.controller.postMessage({ type: 'TEST_NOTIFICATION' })
+    return
+  }
+  sendNativeNotification('✍️ ArthaLedger Test Notification', {
+    body: "Mobile notifications are working! You will receive your daily evening expense reminder at 7:00 PM.",
+  })
 }
 
 export function checkAndTriggerDailyReminder() {
+  syncReminderWithServiceWorker()
+
   const { enabled, time } = getDailyReminderSettings()
   if (!enabled || getNotificationPermissionState() !== 'granted') return
 
@@ -110,7 +134,6 @@ export function checkAndTriggerDailyReminder() {
   const currentHour = now.getHours()
   const currentMinute = now.getMinutes()
 
-  // Check if current time has passed target time today
   const isTimeForReminder =
     currentHour > targetHour || (currentHour === targetHour && currentMinute >= targetMinute)
 
@@ -119,10 +142,8 @@ export function checkAndTriggerDailyReminder() {
   const todayStr = `${now.getFullYear()}-${now.getMonth() + 1}-${now.getDate()}`
   const lastSentDate = localStorage.getItem(REMINDER_KEY_LAST_SENT)
 
-  // Avoid sending multiple reminders on the same day
   if (lastSentDate === todayStr) return
 
-  // Trigger Notification
   sendNativeNotification('✍️ Daily Expense Reminder', {
     body: "It's time for your evening check-in! Don't forget to log today's cash in & cash out transactions.",
     tag: 'daily-expense-reminder',

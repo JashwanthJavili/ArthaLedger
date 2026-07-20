@@ -6,7 +6,7 @@ import {
   CheckCircle, Info, HelpCircle, ChevronDown, ChevronUp,
   Wallet, Database, Key, Globe, Smartphone, CheckCircle2, Trash2, Pencil, Phone, Calendar, Users, Bell, Clock,
 } from 'lucide-react'
-import { requestNotificationPermission, getNotificationPermissionState, sendNativeNotification, getDailyReminderSettings, saveDailyReminderSettings } from '../lib/notifications'
+import { requestNotificationPermission, getNotificationPermissionState, sendNativeNotification, getDailyReminderSettings, saveDailyReminderSettings, testMobileNotification } from '../lib/notifications'
 import { motion, AnimatePresence } from 'framer-motion'
 import LayoutShell from '../components/LayoutShell'
 import Toast from '../components/common/Toast'
@@ -637,19 +637,31 @@ export default function SettingsPage() {
             </div>
 
             {dailyReminder.enabled && (
-              <div className="flex items-center justify-between gap-2 rounded-xl bg-amber-50/50 border border-amber-100 p-2.5 text-xs">
-                <span className="text-stone-600 font-medium">Reminder Time:</span>
-                <input
-                  type="time"
-                  value={dailyReminder.time}
-                  onChange={(e) => {
-                    const newTime = e.target.value || '19:00'
-                    setDailyReminder((prev) => ({ ...prev, time: newTime }))
-                    saveDailyReminderSettings({ enabled: true, time: newTime })
-                    showToast(`Reminder time set to ${newTime} ✓`)
+              <div className="space-y-2 pt-1">
+                <div className="flex items-center justify-between gap-2 rounded-xl bg-amber-50/50 border border-amber-100 p-2.5 text-xs">
+                  <span className="text-stone-600 font-medium">Reminder Time:</span>
+                  <input
+                    type="time"
+                    value={dailyReminder.time}
+                    onChange={(e) => {
+                      const newTime = e.target.value || '19:00'
+                      setDailyReminder((prev) => ({ ...prev, time: newTime }))
+                      saveDailyReminderSettings({ enabled: true, time: newTime })
+                      showToast(`Reminder time set to ${newTime} ✓`)
+                    }}
+                    className="rounded-lg border border-amber-200 bg-white px-2 py-1 text-xs text-stone-800 font-bold outline-none cursor-pointer"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    testMobileNotification()
+                    showToast('Test notification sent to your mobile device 🔔')
                   }}
-                  className="rounded-lg border border-amber-200 bg-white px-2 py-1 text-xs text-stone-800 font-bold outline-none cursor-pointer"
-                />
+                  className="w-full flex items-center justify-center gap-1.5 rounded-xl border border-amber-200 bg-white py-2 text-xs font-semibold text-amber-800 hover:bg-amber-50 transition-colors cursor-pointer"
+                >
+                  🧪 Send Test Mobile Notification
+                </button>
               </div>
             )}
           </div>
