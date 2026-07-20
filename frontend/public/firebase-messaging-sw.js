@@ -26,7 +26,7 @@ function displayNotification(title, body, url = '/dashboard') {
 
 messaging.onBackgroundMessage((payload) => {
   const title = payload.notification?.title || payload.data?.title || '✍️ ArthaLedger Daily Reminder'
-  const body = payload.notification?.body || payload.data?.body || "It's time for your evening check-in! Log today's expenses in ArthaLedger."
+  const body = payload.notification?.body || payload.data?.body || "It's time to enter your today's expenses in ArthaLedger."
   const url = payload.data?.url || '/dashboard'
   displayNotification(title, body, url)
 })

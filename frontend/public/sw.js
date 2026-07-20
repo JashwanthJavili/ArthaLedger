@@ -86,9 +86,9 @@ function checkBackgroundDailyReminder() {
   saveReminderState(reminderState)
 
   self.registration.showNotification('✍️ Daily Expense Reminder', {
-    body: "It's time for your evening check-in! Don't forget to log today's cash in & cash out transactions.",
-    icon: '/icon-192.svg',
-    badge: '/icon-192.svg',
+    body: "It's time to enter your today's expenses in ArthaLedger.",
+    icon: '/L.png',
+    badge: '/L.png',
     vibrate: [200, 100, 200],
     tag: 'daily-expense-reminder',
     data: { url: '/dashboard' },

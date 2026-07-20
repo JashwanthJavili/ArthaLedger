@@ -123,7 +123,7 @@ export async function testMobileNotification() {
       body: JSON.stringify({
         token,
         title: '✍️ ArthaLedger Test Notification',
-        body: 'Mobile PWA notifications are connected! You will receive your daily evening expense reminder at 7:00 PM.',
+        body: "Mobile PWA notifications are connected! It's time to enter your today's expenses in ArthaLedger.",
         url: '/dashboard',
       }),
     }).catch(e => console.warn('Backend push trigger error:', e))
@@ -134,7 +134,7 @@ export async function testMobileNotification() {
     return
   }
   sendNativeNotification('✍️ ArthaLedger Test Notification', {
-    body: "Mobile notifications are working! You will receive your daily evening expense reminder at 7:00 PM.",
+    body: "Mobile notifications are working! It's time to enter your today's expenses in ArthaLedger.",
   })
 }
 
@@ -161,7 +161,7 @@ export function checkAndTriggerDailyReminder() {
   if (lastSentDate === todayStr) return
 
   sendNativeNotification('✍️ Daily Expense Reminder', {
-    body: "It's time for your evening check-in! Don't forget to log today's cash in & cash out transactions.",
+    body: "It's time to enter your today's expenses in ArthaLedger.",
     tag: 'daily-expense-reminder',
     data: { url: '/dashboard' },
   })
