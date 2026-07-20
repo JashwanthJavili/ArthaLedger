@@ -1,4 +1,4 @@
-const CACHE_NAME = 'cashbook-v6'
+const CACHE_NAME = 'cashbook-v7'
 const APP_SHELL = ['/', '/index.html', '/manifest.json']
 
 let reminderState = {
