@@ -112,7 +112,23 @@ export function saveDailyReminderSettings({ enabled, time = '19:00' }) {
   syncReminderWithServiceWorker()
 }
 
-export function testMobileNotification() {
+export async function testMobileNotification() {
+  const token = localStorage.getItem('al_fcm_token')
+  const apiBase = import.meta.env.VITE_API_URL || 'https://arthaledger-api.onrender.com'
+
+  if (token) {
+    fetch(`${apiBase}/api/v1/notifications/send-push`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        token,
+        title: '✍️ ArthaLedger Test Notification',
+        body: 'Mobile PWA notifications are connected! You will receive your daily evening expense reminder at 7:00 PM.',
+        url: '/dashboard',
+      }),
+    }).catch(e => console.warn('Backend push trigger error:', e))
+  }
+
   if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
     navigator.serviceWorker.controller.postMessage({ type: 'TEST_NOTIFICATION' })
     return
