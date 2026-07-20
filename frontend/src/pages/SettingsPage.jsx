@@ -7,6 +7,7 @@ import {
   Wallet, Database, Key, Globe, Smartphone, CheckCircle2, Trash2, Pencil, Phone, Calendar, Users, Bell, Clock,
 } from 'lucide-react'
 import { requestNotificationPermission, getNotificationPermissionState, sendNativeNotification, getDailyReminderSettings, saveDailyReminderSettings, testMobileNotification } from '../lib/notifications'
+import { requestFCMToken } from '../lib/firebase'
 import { motion, AnimatePresence } from 'framer-motion'
 import LayoutShell from '../components/LayoutShell'
 import Toast from '../components/common/Toast'
@@ -584,8 +585,25 @@ export default function SettingsPage() {
           </div>
 
           {notifPermission === 'granted' ? (
-            <div className="rounded-xl border border-emerald-100 bg-emerald-50/30 p-2.5 text-xs text-emerald-800 font-medium">
-              ✓ Push notifications are active. You will receive native system alerts on budget warnings.
+            <div className="space-y-2">
+              <div className="rounded-xl border border-emerald-100 bg-emerald-50/30 p-2.5 text-xs text-emerald-800 font-medium">
+                ✓ Push notifications are active. You will receive native system alerts on budget warnings.
+              </div>
+              <button
+                type="button"
+                onClick={async () => {
+                  const token = localStorage.getItem('al_fcm_token') || await requestFCMToken()
+                  if (token) {
+                    navigator.clipboard.writeText(token)
+                    showToast('FCM Token copied to clipboard! Paste it into Firebase Console test modal. ✓')
+                  } else {
+                    showToast('Failed to retrieve FCM Token', 'error')
+                  }
+                }}
+                className="w-full text-center text-[11px] font-semibold text-amber-700 hover:text-amber-800 underline cursor-pointer py-1"
+              >
+                📋 Copy FCM Token / Installation ID (for Firebase Console test)
+              </button>
             </div>
           ) : notifPermission === 'denied' ? (
             <div className="rounded-xl border border-red-100 bg-red-50/30 p-2.5 text-xs text-red-700">

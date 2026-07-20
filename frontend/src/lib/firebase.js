@@ -56,14 +56,16 @@ export async function requestFCMToken(vapidKey = import.meta.env.VITE_FIREBASE_V
       serviceWorkerRegistration: reg,
       vapidKey: vapidKey || 'BHOMcvcUDNC3w_QJT7KC3LyERkOzAeybfxKtb8wrjhnhuzI-nZWkYLQnGw6mr8Eg1dPflGnZIuiDqFFB0sTpkjQ',
     })
-    if (token && auth.currentUser?.uid) {
-      // Save device push token to Firebase Realtime Database
-      const safeTokenKey = token.replace(/[.#$[\]]/g, '_')
-      await set(ref(db, `users/${auth.currentUser.uid}/pushTokens/${safeTokenKey}`), {
-        token,
-        updatedAt: Date.now(),
-        platform: navigator.userAgent,
-      }).catch(e => console.warn('Push token DB save error:', e))
+    if (token) {
+      localStorage.setItem('al_fcm_token', token)
+      if (auth.currentUser?.uid) {
+        const safeTokenKey = token.replace(/[.#$[\]]/g, '_')
+        await set(ref(db, `users/${auth.currentUser.uid}/pushTokens/${safeTokenKey}`), {
+          token,
+          updatedAt: Date.now(),
+          platform: navigator.userAgent,
+        }).catch(e => console.warn('Push token DB save error:', e))
+      }
     }
     return token
   } catch (err) {
