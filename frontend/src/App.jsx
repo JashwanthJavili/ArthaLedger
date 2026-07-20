@@ -21,7 +21,7 @@ import ExpenseGroupDetailPage from './pages/ExpenseGroupDetailPage'
 import SplashScreen from './components/common/SplashScreen'
 import { useAuth } from './context/AuthContext'
 import Loader from './components/common/Loader'
-import { checkAndTriggerDailyReminder } from './lib/notifications'
+import { checkAndTriggerDailyReminder, syncReminderFromFirebase } from './lib/notifications'
 
 function VerifyEmailRoute({ children }) {
   const { user, loading, isEmailVerified, needsEmailVerification } = useAuth()
@@ -53,10 +53,12 @@ export default function App() {
   }
 
   useEffect(() => {
+    syncReminderFromFirebase()
     checkAndTriggerDailyReminder()
     const interval = setInterval(checkAndTriggerDailyReminder, 15 * 1000)
     const handleVisChange = () => {
       if (!document.hidden) {
+        syncReminderFromFirebase()
         checkAndTriggerDailyReminder()
       }
     }

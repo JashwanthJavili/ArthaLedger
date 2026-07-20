@@ -1,27 +1,27 @@
-/**
- * Web Push & Native System Notifications for ArthaLedger
- */
+import { ref, set, get } from 'firebase/database'
+import { auth, db } from './firebase'
 
-const REMINDER_KEY_ENABLED = 'al_daily_reminder_enabled'
-const REMINDER_KEY_TIME = 'al_daily_reminder_time' // e.g. "19:00"
-const REMINDER_KEY_LAST_SENT = 'al_last_reminder_date'
+// LocalStorage Keys for persistent reminder config
+const REMINDER_KEY_ENABLED = 'al_reminder_enabled'
+const REMINDER_KEY_TIME = 'al_reminder_time'
+const REMINDER_KEY_LAST_SENT = 'al_reminder_last_sent'
 
 export async function requestNotificationPermission() {
-  if (!('Notification' in window)) {
-    return 'unsupported'
-  }
+  if (!('Notification' in window)) return 'unsupported'
+  if (Notification.permission === 'granted') return 'granted'
+
   try {
     const permission = await Notification.requestPermission()
     return permission
-  } catch (err) {
-    console.error('Notification permission error:', err)
+  } catch (e) {
+    console.error('Failed to request notification permission:', e)
     return 'denied'
   }
 }
 
 export function getNotificationPermissionState() {
   if (!('Notification' in window)) return 'unsupported'
-  return Notification.permission // 'granted' | 'denied' | 'default'
+  return Notification.permission
 }
 
 export async function sendNativeNotification(title, options = {}) {
@@ -38,9 +38,9 @@ export async function sendNativeNotification(title, options = {}) {
   // Prefer ServiceWorker registration if available
   if ('serviceWorker' in navigator) {
     try {
-      const reg = await navigator.serviceWorker.ready
-      if (reg && reg.showNotification) {
-        await reg.showNotification(title, defaultOptions)
+      const registration = await navigator.serviceWorker.ready
+      if (registration && registration.showNotification) {
+        await registration.showNotification(title, defaultOptions)
         return true
       }
     } catch (e) {
@@ -48,46 +48,31 @@ export async function sendNativeNotification(title, options = {}) {
     }
   }
 
-  // Window Notification fallback
+  // Fallback to standard Notification constructor
   try {
     new Notification(title, defaultOptions)
     return true
-  } catch (err) {
-    console.error('Failed to trigger notification:', err)
+  } catch (e) {
+    console.error('Failed to dispatch native notification:', e)
     return false
   }
 }
 
-/**
- * Triggers a native Push Alert when a Category Budget threshold (80% or 100%) is crossed
- */
-export function triggerBudgetAlertNotification({ category, pct, spent, soft, symbol = '₹' }) {
-  if (getNotificationPermissionState() !== 'granted') return
-
-  const formattedPct = Math.round(pct)
-  let title = ''
-  let body = ''
-
-  if (pct >= 100) {
-    title = `🚨 Budget Exceeded: ${category}`
-    body = `You have reached ${formattedPct}% of your ${category} budget (${symbol}${spent.toLocaleString()} / ${symbol}${soft.toLocaleString()}).`
-  } else if (pct >= 80) {
-    title = `⚠️ Budget Warning: ${category}`
-    body = `You have used ${formattedPct}% of your ${category} budget (${symbol}${spent.toLocaleString()} / ${symbol}${soft.toLocaleString()}).`
-  } else {
-    return
+export function triggerBudgetAlertNotification({ categoryName, spent, limit, percentage }) {
+  if (percentage >= 100) {
+    sendNativeNotification(`🚨 Budget Exceeded: ${categoryName}`, {
+      body: `You have reached ${Math.round(percentage)}% of your target budget (₹${spent.toLocaleString('en-IN')} / ₹${limit.toLocaleString('en-IN')}).`,
+      tag: `budget-exceeded-${categoryName}`,
+      data: { url: '/analytics' },
+    })
+  } else if (percentage >= 80) {
+    sendNativeNotification(`⚠️ Budget Warning: ${categoryName}`, {
+      body: `You have used ${Math.round(percentage)}% of your target budget (₹${spent.toLocaleString('en-IN')} / ₹${limit.toLocaleString('en-IN')}).`,
+      tag: `budget-warning-${categoryName}`,
+      data: { url: '/analytics' },
+    })
   }
-
-  sendNativeNotification(title, {
-    body,
-    tag: `budget-alert-${category}`,
-    data: { url: '/analytics' },
-  })
 }
-
-/**
- * Daily Reminder Settings & Trigger Functions
- */
 
 export function getDailyReminderSettings() {
   const enabled = localStorage.getItem(REMINDER_KEY_ENABLED) === 'true'
@@ -106,10 +91,39 @@ export function syncReminderWithServiceWorker() {
   }
 }
 
+export async function syncReminderFromFirebase() {
+  if (!auth.currentUser?.uid) return
+  try {
+    const snap = await get(ref(db, `users/${auth.currentUser.uid}/reminderSettings`))
+    if (snap.exists()) {
+      const data = snap.val()
+      if (typeof data.enabled === 'boolean') {
+        localStorage.setItem(REMINDER_KEY_ENABLED, String(data.enabled))
+      }
+      if (data.time) {
+        localStorage.setItem(REMINDER_KEY_TIME, data.time)
+      }
+      syncReminderWithServiceWorker()
+      return data
+    }
+  } catch (e) {
+    console.warn('Failed to sync reminder settings from Firebase:', e)
+  }
+  return null
+}
+
 export function saveDailyReminderSettings({ enabled, time = '19:00' }) {
   localStorage.setItem(REMINDER_KEY_ENABLED, String(enabled))
   localStorage.setItem(REMINDER_KEY_TIME, time)
   syncReminderWithServiceWorker()
+
+  if (auth.currentUser?.uid) {
+    set(ref(db, `users/${auth.currentUser.uid}/reminderSettings`), {
+      enabled: Boolean(enabled),
+      time,
+      updatedAt: Date.now(),
+    }).catch(e => console.warn('Firebase reminder save error:', e))
+  }
 }
 
 export async function testMobileNotification() {
