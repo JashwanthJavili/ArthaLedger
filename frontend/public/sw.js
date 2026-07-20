@@ -53,7 +53,12 @@ self.addEventListener('message', (event) => {
 
   if (event.data.type === 'SET_DAILY_REMINDER') {
     reminderState.enabled = Boolean(event.data.enabled)
-    if (event.data.time) reminderState.time = event.data.time
+    if (event.data.time) {
+      if (reminderState.time !== event.data.time) {
+        reminderState.lastSentDate = ''
+      }
+      reminderState.time = event.data.time
+    }
     saveReminderState(reminderState)
     scheduleExactReminderTimer()
     checkBackgroundDailyReminder()

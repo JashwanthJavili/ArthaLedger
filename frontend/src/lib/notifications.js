@@ -113,8 +113,15 @@ export async function syncReminderFromFirebase() {
 }
 
 export function saveDailyReminderSettings({ enabled, time = '19:00' }) {
+  const oldTime = localStorage.getItem(REMINDER_KEY_TIME)
   localStorage.setItem(REMINDER_KEY_ENABLED, String(enabled))
   localStorage.setItem(REMINDER_KEY_TIME, time)
+
+  // Reset lastSent date whenever time or status changes so today's new reminder can fire
+  if (oldTime !== time || enabled) {
+    localStorage.removeItem(REMINDER_KEY_LAST_SENT)
+  }
+
   syncReminderWithServiceWorker()
 
   if (auth.currentUser?.uid) {
