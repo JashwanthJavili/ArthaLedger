@@ -14,6 +14,7 @@ import {
   reload,
 } from 'firebase/auth'
 import { getDatabase } from 'firebase/database'
+import { getMessaging, getToken, onMessage, isSupported as isMessagingSupported } from 'firebase/messaging'
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY || 'YOUR_API_KEY',
@@ -37,6 +38,35 @@ if (typeof window !== 'undefined' && firebaseConfig.measurementId) {
       if (supported) analytics = getAnalytics(app)
     })
     .catch(() => { analytics = null })
+}
+
+const messagingPromise = (async () => {
+  if (typeof window === 'undefined') return null
+  const supported = await isMessagingSupported().catch(() => false)
+  if (!supported) return null
+  return getMessaging(app)
+})()
+
+export async function requestFCMToken(vapidKey) {
+  try {
+    const messaging = await messagingPromise
+    if (!messaging) return null
+    const reg = await navigator.serviceWorker.ready
+    const token = await getToken(messaging, {
+      serviceWorkerRegistration: reg,
+      vapidKey,
+    })
+    return token
+  } catch (err) {
+    console.error('Failed to get FCM token:', err)
+    return null
+  }
+}
+
+export async function onForegroundMessage(callback) {
+  const messaging = await messagingPromise
+  if (!messaging) return () => {}
+  return onMessage(messaging, callback)
 }
 
 export {
