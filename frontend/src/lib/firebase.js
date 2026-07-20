@@ -13,7 +13,7 @@ import {
   updateProfile,
   reload,
 } from 'firebase/auth'
-import { getDatabase } from 'firebase/database'
+import { getDatabase, ref, set } from 'firebase/database'
 import { getMessaging, getToken, onMessage, isSupported as isMessagingSupported } from 'firebase/messaging'
 
 const firebaseConfig = {
@@ -47,15 +47,24 @@ const messagingPromise = (async () => {
   return getMessaging(app)
 })()
 
-export async function requestFCMToken(vapidKey) {
+export async function requestFCMToken(vapidKey = import.meta.env.VITE_FIREBASE_VAPID_KEY) {
   try {
     const messaging = await messagingPromise
     if (!messaging) return null
     const reg = await navigator.serviceWorker.ready
     const token = await getToken(messaging, {
       serviceWorkerRegistration: reg,
-      vapidKey,
+      vapidKey: vapidKey || undefined,
     })
+    if (token && auth.currentUser?.uid) {
+      // Save device push token to Firebase Realtime Database
+      const safeTokenKey = token.replace(/[.#$[\]]/g, '_')
+      await set(ref(db, `users/${auth.currentUser.uid}/pushTokens/${safeTokenKey}`), {
+        token,
+        updatedAt: Date.now(),
+        platform: navigator.userAgent,
+      }).catch(e => console.warn('Push token DB save error:', e))
+    }
     return token
   } catch (err) {
     console.error('Failed to get FCM token:', err)
