@@ -2,6 +2,7 @@
   "name": "ArthaLedger — Where every rupee has meaning",
   "short_name": "ArthaLedger",
   "id": "/",
+  "gcm_sender_id": "103953800507",
   "description": "ArthaLedger — a peaceful, mindful financial ledger for personal, family and business tracking.",
   "start_url": "/",
   "scope": "/",

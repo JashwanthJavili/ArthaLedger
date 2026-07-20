@@ -29,8 +29,8 @@ export async function sendNativeNotification(title, options = {}) {
   if (Notification.permission !== 'granted') return false
 
   const defaultOptions = {
-    icon: '/icon-192.svg',
-    badge: '/icon-192.svg',
+    icon: '/L.png',
+    badge: '/L.png',
     vibrate: [100, 50, 100],
     ...options,
   }

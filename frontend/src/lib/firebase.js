@@ -51,7 +51,12 @@ export async function requestFCMToken(vapidKey = import.meta.env.VITE_FIREBASE_V
   try {
     const messaging = await messagingPromise
     if (!messaging) return null
-    const reg = await navigator.serviceWorker.ready
+
+    let reg = await navigator.serviceWorker.getRegistration('/firebase-messaging-sw.js')
+    if (!reg) {
+      reg = await navigator.serviceWorker.register('/firebase-messaging-sw.js')
+    }
+
     const token = await getToken(messaging, {
       serviceWorkerRegistration: reg,
       vapidKey: vapidKey || 'BHOMcvcUDNC3w_QJT7KC3LyERkOzAeybfxKtb8wrjhnhuzI-nZWkYLQnGw6mr8Eg1dPflGnZIuiDqFFB0sTpkjQ',

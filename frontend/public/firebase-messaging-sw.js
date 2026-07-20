@@ -14,17 +14,37 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging()
 
-messaging.onBackgroundMessage((payload) => {
-  const title = payload.notification?.title || '✍️ ArthaLedger Daily Reminder'
-  const options = {
-    body: payload.notification?.body || "It's time for your evening check-in! Log today's expenses in ArthaLedger.",
-    icon: payload.notification?.icon || '/icon-192.svg',
-    badge: '/icon-192.svg',
+function displayNotification(title, body, url = '/dashboard') {
+  return self.registration.showNotification(title, {
+    body,
+    icon: '/L.png',
+    badge: '/L.png',
     vibrate: [200, 100, 200],
-    data: payload.data || { url: '/dashboard' },
+    data: { url },
+  })
+}
+
+messaging.onBackgroundMessage((payload) => {
+  const title = payload.notification?.title || payload.data?.title || '✍️ ArthaLedger Daily Reminder'
+  const body = payload.notification?.body || payload.data?.body || "It's time for your evening check-in! Log today's expenses in ArthaLedger."
+  const url = payload.data?.url || '/dashboard'
+  displayNotification(title, body, url)
+})
+
+self.addEventListener('push', (event) => {
+  if (!event.data) return
+  let payload = {}
+  try {
+    payload = event.data.json()
+  } catch (e) {
+    payload = { notification: { title: '✍️ ArthaLedger Reminder', body: event.data.text() } }
   }
 
-  self.registration.showNotification(title, options)
+  const title = payload.notification?.title || payload.title || payload.data?.title || '✍️ ArthaLedger Daily Reminder'
+  const body = payload.notification?.body || payload.body || payload.data?.body || "It's time for your evening check-in!"
+  const url = payload.data?.url || '/dashboard'
+
+  event.waitUntil(displayNotification(title, body, url))
 })
 
 self.addEventListener('notificationclick', (event) => {
