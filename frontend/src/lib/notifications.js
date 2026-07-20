@@ -6,6 +6,25 @@ const REMINDER_KEY_ENABLED = 'al_reminder_enabled'
 const REMINDER_KEY_TIME = 'al_reminder_time'
 const REMINDER_KEY_LAST_SENT = 'al_reminder_last_sent'
 
+export function parseTime24(timeStr) {
+  if (!timeStr) return { hour: 19, minute: 0 }
+
+  const str = String(timeStr).trim().toUpperCase()
+  const isPM = str.includes('PM')
+  const isAM = str.includes('AM')
+
+  const cleanStr = str.replace(/AM|PM/g, '').trim()
+  const parts = cleanStr.split(':').map((n) => parseInt(n, 10) || 0)
+
+  let hour = parts[0] || 0
+  const minute = parts[1] || 0
+
+  if (isPM && hour < 12) hour += 12
+  if (isAM && hour === 12) hour = 0
+
+  return { hour, minute }
+}
+
 export async function requestNotificationPermission() {
   if (!('Notification' in window)) return 'unsupported'
   if (Notification.permission === 'granted') return 'granted'
@@ -35,7 +54,6 @@ export async function sendNativeNotification(title, options = {}) {
     ...options,
   }
 
-  // Prefer ServiceWorker registration if available
   if ('serviceWorker' in navigator) {
     try {
       const registration = await navigator.serviceWorker.ready
@@ -48,7 +66,6 @@ export async function sendNativeNotification(title, options = {}) {
     }
   }
 
-  // Fallback to standard Notification constructor
   try {
     new Notification(title, defaultOptions)
     return true
@@ -117,7 +134,6 @@ export function saveDailyReminderSettings({ enabled, time = '19:00' }) {
   localStorage.setItem(REMINDER_KEY_ENABLED, String(enabled))
   localStorage.setItem(REMINDER_KEY_TIME, time)
 
-  // Reset lastSent date whenever time or status changes so today's new reminder can fire
   if (oldTime !== time || enabled) {
     localStorage.removeItem(REMINDER_KEY_LAST_SENT)
   }
@@ -129,7 +145,7 @@ export function saveDailyReminderSettings({ enabled, time = '19:00' }) {
       enabled: Boolean(enabled),
       time,
       updatedAt: Date.now(),
-    }).catch(e => console.warn('Firebase reminder save error:', e))
+    }).catch((e) => console.warn('Firebase reminder save error:', e))
   }
 }
 
@@ -147,7 +163,7 @@ export async function testMobileNotification() {
         body: "Mobile PWA notifications are connected! It's time to enter your today's expenses in ArthaLedger.",
         url: '/dashboard',
       }),
-    }).catch(e => console.warn('Backend push trigger error:', e))
+    }).catch((e) => console.warn('Backend push trigger error:', e))
   }
 
   if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
@@ -166,14 +182,13 @@ export function checkAndTriggerDailyReminder() {
   if (!enabled || getNotificationPermissionState() !== 'granted') return
 
   const now = new Date()
-  const [targetHour, targetMinute] = time.split(':').map(Number)
+  const { hour: targetHour, minute: targetMinute } = parseTime24(time)
 
-  const currentHour = now.getHours()
-  const currentMinute = now.getMinutes()
+  const currentTotal = now.getHours() * 60 + now.getMinutes()
+  const targetTotal = targetHour * 60 + targetMinute
 
-  // Strictly check that the current time is within 0 to 2 minutes of the target reminder time
-  const diffMinutes = (currentHour * 60 + currentMinute) - (targetHour * 60 + targetMinute)
-  if (diffMinutes < 0 || diffMinutes > 2) return
+  const diffMinutes = currentTotal - targetTotal
+  if (diffMinutes < 0 || diffMinutes > 30) return
 
   const todayStr = `${now.getFullYear()}-${now.getMonth() + 1}-${now.getDate()}`
   const lastSentDate = localStorage.getItem(REMINDER_KEY_LAST_SENT)

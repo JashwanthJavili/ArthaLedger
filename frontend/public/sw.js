@@ -9,6 +9,20 @@ let reminderState = {
 
 let reminderTimer = null
 
+function parseTime24SW(timeStr) {
+  if (!timeStr) return { hour: 19, minute: 0 }
+  const str = String(timeStr).trim().toUpperCase()
+  const isPM = str.includes('PM')
+  const isAM = str.includes('AM')
+  const cleanStr = str.replace(/AM|PM/g, '').trim()
+  const parts = cleanStr.split(':').map((n) => parseInt(n, 10) || 0)
+  let hour = parts[0] || 0
+  const minute = parts[1] || 0
+  if (isPM && hour < 12) hour += 12
+  if (isAM && hour === 12) hour = 0
+  return { hour, minute }
+}
+
 async function saveReminderState(state) {
   try {
     const cache = await caches.open('arthaledger-config')
@@ -85,7 +99,7 @@ function scheduleExactReminderTimer() {
   if (!reminderState.enabled || !reminderState.time) return
 
   const now = new Date()
-  const [h, m] = reminderState.time.split(':').map(Number)
+  const { hour: h, minute: m } = parseTime24SW(reminderState.time)
   let target = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, m, 0)
 
   if (target <= now) {
@@ -119,17 +133,17 @@ function triggerDailyNotification() {
   })
 }
 
-// ── Strict Time-Window Check (Strictly within 2 minutes of target time) ───
+// ── Resilient Time-Window Check (Within 30 minutes of target time) ─────────
 function checkBackgroundDailyReminder() {
   if (!reminderState.enabled || !reminderState.time) return
 
   const now = new Date()
-  const [targetHour, targetMinute] = reminderState.time.split(':').map(Number)
-  const currentHour = now.getHours()
-  const currentMinute = now.getMinutes()
+  const { hour: targetHour, minute: targetMinute } = parseTime24SW(reminderState.time)
+  const currentTotal = now.getHours() * 60 + now.getMinutes()
+  const targetTotal = targetHour * 60 + targetMinute
 
-  const diffMinutes = (currentHour * 60 + currentMinute) - (targetHour * 60 + targetMinute)
-  if (diffMinutes < 0 || diffMinutes > 2) return
+  const diffMinutes = currentTotal - targetTotal
+  if (diffMinutes < 0 || diffMinutes > 30) return
 
   const todayStr = `${now.getFullYear()}-${now.getMonth() + 1}-${now.getDate()}`
   if (reminderState.lastSentDate === todayStr) return
