@@ -6,7 +6,7 @@ import {
   CheckCircle, Info, HelpCircle, ChevronDown, ChevronUp,
   Wallet, Database, Key, Globe, Smartphone, CheckCircle2, Trash2, Pencil, Phone, Calendar, Users, Bell, Clock,
 } from 'lucide-react'
-import { requestNotificationPermission, getNotificationPermissionState, sendNativeNotification, getDailyReminderSettings, saveDailyReminderSettings, testMobileNotification } from '../lib/notifications'
+import { requestNotificationPermission, getNotificationPermissionState, sendNativeNotification, getDailyReminderSettings, saveDailyReminderSettings, syncReminderFromFirebase, testMobileNotification } from '../lib/notifications'
 import { requestFCMToken } from '../lib/firebase'
 import { motion, AnimatePresence } from 'framer-motion'
 import LayoutShell from '../components/LayoutShell'
@@ -194,6 +194,17 @@ export default function SettingsPage() {
   const [confirmPw, setConfirmPw] = useState('')
   const [notifPermission, setNotifPermission] = useState(() => getNotificationPermissionState())
   const [dailyReminder, setDailyReminder] = useState(() => getDailyReminderSettings())
+
+  useEffect(() => {
+    syncReminderFromFirebase().then((cloudData) => {
+      if (cloudData) {
+        setDailyReminder({
+          enabled: Boolean(cloudData.enabled),
+          time: cloudData.time || '19:00',
+        })
+      }
+    })
+  }, [])
   const [pwError, setPwError] = useState('')
   const [pwLoading, setPwLoading] = useState(false)
   const [pwSuccess, setPwSuccess] = useState(false)
