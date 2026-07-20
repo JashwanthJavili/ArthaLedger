@@ -10,6 +10,8 @@ from app.core.config import settings
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger('santham')
 
+from app.services.scheduler import start_scheduler
+
 app = FastAPI(
     title='Santham Ledger API',
     description='Backend for Santham Ledger — peaceful financial records',
@@ -17,6 +19,13 @@ app = FastAPI(
     docs_url='/docs' if not settings.is_production else None,
     redoc_url='/redoc' if not settings.is_production else None,
 )
+
+@app.on_event('startup')
+def on_startup():
+    try:
+        start_scheduler()
+    except Exception as e:
+        logger.error("Failed to start background scheduler: %s", e)
 
 # ── CORS ──────────────────────────────────────────────────────────────────────
 app.add_middleware(
