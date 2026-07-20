@@ -1,10 +1,10 @@
 import { ref, set, get } from 'firebase/database'
 import { auth, db } from './firebase'
 
-// LocalStorage Keys for persistent reminder config
+// LocalStorage Keys for persistent multi-time reminder config
 const REMINDER_KEY_ENABLED = 'al_reminder_enabled'
+const REMINDER_KEY_TIMES = 'al_reminder_times'
 const REMINDER_KEY_TIME = 'al_reminder_time'
-const REMINDER_KEY_LAST_SENT = 'al_reminder_last_sent'
 
 export function parseTime24(timeStr) {
   if (!timeStr) return { hour: 19, minute: 0 }
@@ -93,23 +93,33 @@ export function triggerBudgetAlertNotification({ categoryName, spent, limit, per
 
 export function getDailyReminderSettings() {
   const enabled = localStorage.getItem(REMINDER_KEY_ENABLED) === 'true'
-  const time = localStorage.getItem(REMINDER_KEY_TIME) || '19:00'
-  return { enabled, time }
+  let times = []
+  try {
+    times = JSON.parse(localStorage.getItem(REMINDER_KEY_TIMES) || '[]')
+  } catch {
+    times = []
+  }
+  if (!Array.isArray(times) || times.length === 0) {
+    const single = localStorage.getItem(REMINDER_KEY_TIME) || '19:00'
+    times = [single]
+  }
+  return { enabled, times, time: times[0] }
 }
 
 export function syncReminderWithServiceWorker() {
-  const { enabled, time } = getDailyReminderSettings()
+  const { enabled, times } = getDailyReminderSettings()
   if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
     navigator.serviceWorker.controller.postMessage({
       type: 'SET_DAILY_REMINDER',
       enabled,
-      time,
+      times,
+      time: times[0],
     })
   }
 }
 
 export async function syncReminderFromFirebase() {
-  if (!auth.currentUser?.uid) return
+  if (!auth.currentUser?.uid) return null
   try {
     const snap = await get(ref(db, `users/${auth.currentUser.uid}/reminderSettings`))
     if (snap.exists()) {
@@ -117,11 +127,11 @@ export async function syncReminderFromFirebase() {
       if (typeof data.enabled === 'boolean') {
         localStorage.setItem(REMINDER_KEY_ENABLED, String(data.enabled))
       }
-      if (data.time) {
-        localStorage.setItem(REMINDER_KEY_TIME, data.time)
-      }
+      let times = data.times || (data.time ? [data.time] : ['19:00'])
+      localStorage.setItem(REMINDER_KEY_TIMES, JSON.stringify(times))
+      localStorage.setItem(REMINDER_KEY_TIME, times[0])
       syncReminderWithServiceWorker()
-      return data
+      return { enabled: Boolean(data.enabled), times, time: times[0] }
     }
   } catch (e) {
     console.warn('Failed to sync reminder settings from Firebase:', e)
@@ -129,21 +139,19 @@ export async function syncReminderFromFirebase() {
   return null
 }
 
-export function saveDailyReminderSettings({ enabled, time = '19:00' }) {
-  const oldTime = localStorage.getItem(REMINDER_KEY_TIME)
+export function saveDailyReminderSettings({ enabled, times = ['19:00'] }) {
+  const finalTimes = Array.isArray(times) && times.length > 0 ? times : ['19:00']
   localStorage.setItem(REMINDER_KEY_ENABLED, String(enabled))
-  localStorage.setItem(REMINDER_KEY_TIME, time)
-
-  if (oldTime !== time || enabled) {
-    localStorage.removeItem(REMINDER_KEY_LAST_SENT)
-  }
+  localStorage.setItem(REMINDER_KEY_TIMES, JSON.stringify(finalTimes))
+  localStorage.setItem(REMINDER_KEY_TIME, finalTimes[0])
 
   syncReminderWithServiceWorker()
 
   if (auth.currentUser?.uid) {
     set(ref(db, `users/${auth.currentUser.uid}/reminderSettings`), {
       enabled: Boolean(enabled),
-      time,
+      times: finalTimes,
+      time: finalTimes[0],
       updatedAt: Date.now(),
     }).catch((e) => console.warn('Firebase reminder save error:', e))
   }
@@ -175,31 +183,7 @@ export async function testMobileNotification() {
   })
 }
 
+// Client app-open daily reminder trigger is disabled to strictly rely on scheduled cloud push
 export function checkAndTriggerDailyReminder() {
   syncReminderWithServiceWorker()
-
-  const { enabled, time } = getDailyReminderSettings()
-  if (!enabled || getNotificationPermissionState() !== 'granted') return
-
-  const now = new Date()
-  const { hour: targetHour, minute: targetMinute } = parseTime24(time)
-
-  const currentTotal = now.getHours() * 60 + now.getMinutes()
-  const targetTotal = targetHour * 60 + targetMinute
-
-  const diffMinutes = currentTotal - targetTotal
-  if (diffMinutes < 0 || diffMinutes > 30) return
-
-  const todayStr = `${now.getFullYear()}-${now.getMonth() + 1}-${now.getDate()}`
-  const lastSentDate = localStorage.getItem(REMINDER_KEY_LAST_SENT)
-
-  if (lastSentDate === todayStr) return
-
-  sendNativeNotification('✍️ Daily Expense Reminder', {
-    body: "It's time to enter your today's expenses in ArthaLedger.",
-    tag: 'daily-expense-reminder',
-    data: { url: '/dashboard' },
-  })
-
-  localStorage.setItem(REMINDER_KEY_LAST_SENT, todayStr)
 }

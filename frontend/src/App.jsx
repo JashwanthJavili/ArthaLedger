@@ -54,17 +54,13 @@ export default function App() {
 
   useEffect(() => {
     syncReminderFromFirebase()
-    checkAndTriggerDailyReminder()
-    const interval = setInterval(checkAndTriggerDailyReminder, 15 * 1000)
     const handleVisChange = () => {
       if (!document.hidden) {
         syncReminderFromFirebase()
-        checkAndTriggerDailyReminder()
       }
     }
     document.addEventListener('visibilitychange', handleVisChange)
     return () => {
-      clearInterval(interval)
       document.removeEventListener('visibilitychange', handleVisChange)
     }
   }, [])
