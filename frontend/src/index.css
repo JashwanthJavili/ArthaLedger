@@ -1,0 +1,203 @@
+@import url('https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Inter:wght@300;400;500;600&display=swap');
+
+@import 'tailwindcss';
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ── Light mode (default) ── */
+:root {
+  --saffron: #d6a75e;
+  --cream: #fdf6e7;
+  --gold: #b9934e;
+  --deep-brown: #4e3a24;
+  --sage: #90a989;
+  --soft-red: #cd6a62;
+  --muted-gold: #c9a55a;
+
+  --bg-primary: linear-gradient(160deg, #fff9ee 0%, #fdf6e7 40%, #f9efe0 100%);
+  --bg-card: rgba(255, 255, 255, 0.88);
+  --bg-card-border: rgba(214, 167, 94, 0.2);
+  --text-primary: #4e3a24;
+  --text-secondary: #78716c;
+  --text-muted: #a8a29e;
+}
+
+/* ── Dark mode — premium luxury warm-dark ── */
+html.dark {
+  --bg-primary: linear-gradient(160deg, #14110e 0%, #1a1510 40%, #201b15 100%);
+  --bg-card: rgba(30, 24, 18, 0.97);
+  --bg-card-border: rgba(214, 167, 94, 0.24);
+  --text-primary: #f8ebd4;
+  --text-secondary: #e6c897;
+  --text-muted: #aa8e67;
+}
+
+html.dark body {
+  color: #f8ebd4;
+  background:
+    radial-gradient(ellipse at 10% 5%, rgba(214, 167, 94, 0.14) 0%, transparent 40%),
+    radial-gradient(ellipse at 90% 90%, rgba(170, 142, 103, 0.1) 0%, transparent 40%),
+    linear-gradient(160deg, #14110e 0%, #1a1510 40%, #201b15 100%);
+  background-attachment: fixed;
+}
+
+html.dark body::before {
+  opacity: 0.05;
+}
+
+/* Cards — warm deep luxury charcoal-brown */
+html.dark .bg-white\/88,
+html.dark .bg-white\/85,
+html.dark .bg-white\/80,
+html.dark .bg-white\/75,
+html.dark .bg-white\/70,
+html.dark .bg-white\/90,
+html.dark .bg-white\/95 {
+  background-color: rgba(30, 24, 18, 0.97) !important;
+}
+
+html.dark .border-amber-100\/80,
+html.dark .border-amber-100 {
+  border-color: rgba(214, 167, 94, 0.24) !important;
+}
+
+html.dark .text-stone-800,
+html.dark .text-stone-700 {
+  color: #f8ebd4 !important;
+}
+
+html.dark .text-stone-600,
+html.dark .text-stone-500 {
+  color: #e6c897 !important;
+}
+
+html.dark .text-stone-400 {
+  color: #aa8e67 !important;
+}
+
+html.dark .text-stone-300 {
+  color: #7c6446 !important;
+}
+
+html.dark .bg-amber-50\/40,
+html.dark .bg-amber-50\/60,
+html.dark .bg-amber-50\/70,
+html.dark .bg-amber-50 {
+  background-color: rgba(214, 167, 94, 0.12) !important;
+}
+
+html.dark .bg-stone-50 {
+  background-color: rgba(25, 20, 15, 0.85) !important;
+}
+
+html.dark .border-amber-50 {
+  border-color: rgba(214, 167, 94, 0.16) !important;
+}
+
+html.dark input,
+html.dark select,
+html.dark textarea {
+  background-color: rgba(22, 17, 13, 0.9) !important;
+  color: #f8ebd4 !important;
+  border-color: rgba(214, 167, 94, 0.28) !important;
+}
+
+html.dark input::placeholder,
+html.dark textarea::placeholder {
+  color: #aa8e67 !important;
+}
+
+/* Nav bar */
+html.dark nav.fixed {
+  background-color: rgba(26, 21, 16, 0.97) !important;
+  border-color: rgba(214, 167, 94, 0.2) !important;
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  font-family: 'Inter', 'Helvetica Neue', sans-serif;
+  color: var(--deep-brown);
+  background:
+    radial-gradient(ellipse at 10% 5%, rgba(214, 167, 94, 0.22) 0%, transparent 40%),
+    radial-gradient(ellipse at 90% 90%, rgba(144, 169, 137, 0.18) 0%, transparent 40%),
+    radial-gradient(ellipse at 50% 50%, rgba(253, 246, 231, 0.6) 0%, transparent 70%),
+    linear-gradient(160deg, #fff9ee 0%, #fdf6e7 40%, #f9efe0 100%);
+  background-attachment: fixed;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition: background 0.3s ease, color 0.3s ease;
+}
+
+/* Subtle mandala watermark */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.07;
+  background-image:
+    radial-gradient(circle at center, rgba(185, 147, 78, 0.35) 1px, transparent 1px),
+    radial-gradient(circle at center, rgba(185, 147, 78, 0.12) 1px, transparent 1px);
+  background-size: 80px 80px, 24px 24px;
+  background-position: 0 0, 12px 12px;
+  z-index: 0;
+  transition: opacity 0.3s ease;
+}
+
+#root {
+  position: relative;
+  z-index: 1;
+}
+
+.font-serif {
+  font-family: 'Lora', 'Georgia', serif;
+}
+
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(185, 147, 78, 0.3); border-radius: 4px; }
+
+input, select, textarea, button { font: inherit; }
+
+input:focus, select:focus, textarea:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(214, 167, 94, 0.35);
+}
+
+.safe-bottom { padding-bottom: env(safe-area-inset-bottom, 0px); }
+
+@media (max-width: 640px) {
+  button, a { min-height: 40px; }
+}
+
+button { user-select: none; -webkit-user-select: none; }
+
+input[type='number']::-webkit-inner-spin-button,
+input[type='number']::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+input[type='number'] { appearance: textfield; -moz-appearance: textfield; }
+
+/* ── PIN input masking — uses text-security instead of type=password
+   so Chrome's password manager never triggers ── */
+.pin-input {
+  -webkit-text-security: disc;
+  text-security: disc;
+  font-family: monospace;
+  letter-spacing: 0.25em;
+}
+.pin-input::placeholder {
+  -webkit-text-security: none;
+  text-security: none;
+  font-family: inherit;
+  letter-spacing: normal;
+}
