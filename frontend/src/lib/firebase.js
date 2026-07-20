@@ -47,14 +47,14 @@ const messagingPromise = (async () => {
   return getMessaging(app)
 })()
 
-export async function requestFCMToken(vapidKey = import.meta.env.VITE_FIREBASE_VAPID_KEY) {
+export async function requestFCMToken(vapidKey = import.meta.env.VITE_FIREBASE_VAPID_KEY || 'BHOMcvcUDNC3w_QJT7KC3LyERkOzAeybfxKtb8wrjhnhuzI-nZWkYLQnGw6mr8Eg1dPflGnZIuiDqFFB0sTpkjQ') {
   try {
     const messaging = await messagingPromise
     if (!messaging) return null
     const reg = await navigator.serviceWorker.ready
     const token = await getToken(messaging, {
       serviceWorkerRegistration: reg,
-      vapidKey: vapidKey || undefined,
+      vapidKey: vapidKey || 'BHOMcvcUDNC3w_QJT7KC3LyERkOzAeybfxKtb8wrjhnhuzI-nZWkYLQnGw6mr8Eg1dPflGnZIuiDqFFB0sTpkjQ',
     })
     if (token && auth.currentUser?.uid) {
       // Save device push token to Firebase Realtime Database
