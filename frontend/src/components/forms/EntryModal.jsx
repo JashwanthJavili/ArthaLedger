@@ -49,6 +49,7 @@ export default function EntryModal({
   const [enteredBy,   setEnteredBy]   = useState('')
   const [notes,       setNotes]       = useState('')
   const [timestamp,   setTimestamp]   = useState('')
+  const [timeTouched, setTimeTouched] = useState(false)
   const [isSavings,   setIsSavings]   = useState(false)
   const [tripId,      setTripId]      = useState('')
   const [subcategory, setSubcategory] = useState('')
@@ -98,6 +99,7 @@ export default function EntryModal({
       setEnteredBy(initial?.enteredBy || saved.enteredBy || '')
       setNotes(initial?.notes || '')
       setIsSavings(Boolean(initial?.isSavings ?? saved.isSavings))
+      setTimeTouched(false)
       setTimestamp(
         initial?.timestamp
           ? localDatetimeValue(new Date(initial.timestamp))
@@ -323,7 +325,9 @@ export default function EntryModal({
         notes,
         type: entryType,
         isSavings: savingsOn,
-        timestamp: new Date(timestamp).getTime(),
+        // Untouched date/time on a new entry = right now, to the millisecond,
+        // so it always sorts above entries added earlier in the same minute.
+        timestamp: !initial && !timeTouched ? Date.now() : new Date(timestamp).getTime(),
         _localCategories: localCats,
         tripId,
       })
@@ -854,7 +858,7 @@ export default function EntryModal({
             </div>
 
             {/* Date & time */}
-            <DateTimeField value={timestamp} onChange={setTimestamp} />
+            <DateTimeField value={timestamp} onChange={(v) => { setTimestamp(v); setTimeTouched(true) }} />
 
             {/* Additional details */}
             <div className="rounded-xl border border-[var(--border-card)] bg-[var(--bg-card)]">

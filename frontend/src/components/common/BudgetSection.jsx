@@ -9,6 +9,7 @@ import {
   splitBudgetKey, entryMatchesBudget, spentInMonth, averageMonthlySpend, projectSpend,
   budgetZone, ZONE_META, ZONE_RANK, topLevelBudgetKeys,
 } from '../../lib/budgets'
+import { compareNewestFirst } from '../../lib/entryOrder'
 
 const card = 'rounded-2xl border border-[var(--border-card)] bg-[var(--bg-card)]'
 const sectionTitle = 'text-[11px] font-semibold uppercase tracking-[0.1em] text-[var(--text-subtle)]'
@@ -545,7 +546,7 @@ export default function BudgetSection({
     const { start, end } = monthBounds(monthKey)
     return expenses
       .filter(e => e.timestamp >= start && e.timestamp <= end && entryMatchesBudget(e, detailKey))
-      .sort((a, b) => b.timestamp - a.timestamp)
+      .sort(compareNewestFirst)
   }, [expenses, detailKey, monthKey])
 
   const perDay = progress.isCurrent && progress.daysLeft > 0 && overall.left > 0 ? overall.left / progress.daysLeft : null

@@ -12,6 +12,7 @@ import Toast from '../components/common/Toast'
 import ConfirmDialog from '../components/common/ConfirmDialog'
 import SummaryCard from '../components/cards/SummaryCard'
 import { formatAmount, getCurrencySymbol } from '../lib/format'
+import { compareNewestFirst } from '../lib/entryOrder'
 
 const card = 'rounded-2xl border border-[var(--border-card)] bg-[var(--bg-card)]'
 const sectionTitle = 'text-[11px] font-semibold uppercase tracking-[0.1em] text-[var(--text-subtle)]'
@@ -90,7 +91,7 @@ export default function ExpenseGroupDetailPage() {
         }
       })
       .filter(Boolean)
-      .sort((a, b) => b.entry.timestamp - a.entry.timestamp) // Sort by transaction date descending
+      .sort((a, b) => compareNewestFirst(a.entry, b.entry)) // Sort by transaction date descending
   }, [group, projects, booksByProject, entriesByBook])
 
   // Get unique categories for dropdown filter

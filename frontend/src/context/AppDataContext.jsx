@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { get, onValue, push, ref, remove, set, update } from 'firebase/database'
 import { db } from '../lib/firebase'
 import { useAuth } from './AuthContext'
+import { compareNewestFirst, compareOldestFirst } from '../lib/entryOrder'
 
 const AppDataContext = createContext(null)
 
@@ -91,7 +92,7 @@ export function AppDataProvider({ children }) {
         const books = toArray(project.books)
         nextBooks[project.id] = books
         books.forEach((book) => {
-          nextEntries[book.id] = toArray(book.entries).sort((x, y) => y.timestamp - x.timestamp)
+          nextEntries[book.id] = toArray(book.entries).sort(compareNewestFirst)
           nextTemplates[book.id] = toArray(book.templates).sort((x, y) => (y.createdAt || 0) - (x.createdAt || 0))
         })
       })
@@ -168,7 +169,7 @@ export function AppDataProvider({ children }) {
 
   const bookPath = (projectId, bookId) => `users/${user.uid}/projects/${projectId}/books/${bookId}`
   const localEntriesAsc = (bookId) => [...(entriesNowRef.current[bookId] || [])]
-    .sort((x, y) => x.timestamp - y.timestamp || String(x.id).localeCompare(String(y.id)))
+    .sort(compareOldestFirst)
 
   /**
    * Adds an entry with ONE atomic write (entry + any balances it shifts +
@@ -190,9 +191,10 @@ export function AppDataProvider({ children }) {
       timestamp: payload.timestamp || Date.now(),
       notes: payload.notes || '',
       isSavings: Boolean(payload.isSavings),
+      createdAt: Date.now(),
     }
     const list = [...localEntriesAsc(bookId), entry]
-      .sort((x, y) => x.timestamp - y.timestamp || String(x.id).localeCompare(String(y.id)))
+      .sort(compareOldestFirst)
     const updates = balanceUpdates(base, list, entry.timestamp, id)
     entry.balanceAfter = runningBalanceAt(list, id)
     updates[`${base}/entries/${id}`] = sanitiseEntry(entry)
@@ -245,7 +247,7 @@ export function AppDataProvider({ children }) {
     const changed = { ...clean, amount: Number(clean.amount) }
     const next = arr
       .map((e) => (e.id === entryId ? { ...e, ...changed } : e))
-      .sort((x, y) => x.timestamp - y.timestamp || String(x.id).localeCompare(String(y.id)))
+      .sort(compareOldestFirst)
 
     const updates = { [`${base}/updatedAt`]: Date.now() }
     Object.entries(changed).forEach(([k, v]) => { if (v !== undefined) updates[`${base}/entries/${entryId}/${k}`] = v })
@@ -258,7 +260,7 @@ export function AppDataProvider({ children }) {
   const getBookCurrentBalance = useCallback((bookId) => {
     const entries = entriesByBook[bookId] || []
     if (!entries.length) return 0
-    const latest = [...entries].sort((a, b) => a.timestamp - b.timestamp).at(-1)
+    const latest = [...entries].sort(compareOldestFirst).at(-1)
     return Number(latest?.balanceAfter || 0)
   }, [entriesByBook])
 
@@ -725,7 +727,7 @@ function friendlyDbError(err) {
 async function _recalcBalances(uid, projectId, bookId) {
   const entriesRef = ref(db, `users/${uid}/projects/${projectId}/books/${bookId}/entries`)
   const snap = await get(entriesRef)
-  const arr = toArray(snap.val() || {}).sort((a, b) => a.timestamp - b.timestamp)
+  const arr = toArray(snap.val() || {}).sort(compareOldestFirst)
   const updates = {}
   let running = 0
   for (const e of arr) {
@@ -774,7 +776,7 @@ function normaliseCategories(value) {
 async function _recalcBalancesFrom(uid, projectId, bookId, fromTimestamp) {
   const entriesRef = ref(db, `users/${uid}/projects/${projectId}/books/${bookId}/entries`)
   const snap = await get(entriesRef)
-  const arr = toArray(snap.val() || {}).sort((a, b) => a.timestamp - b.timestamp)
+  const arr = toArray(snap.val() || {}).sort(compareOldestFirst)
   const updates = {}
   let running = 0
 

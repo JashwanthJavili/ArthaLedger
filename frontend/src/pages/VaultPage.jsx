@@ -10,6 +10,7 @@ import { useAuth } from '../context/AuthContext'
 import { useAppData } from '../context/AppDataContext'
 import { aggregateAndSortCategories } from '../lib/dsa'
 import { formatAmount, getCurrencySymbol } from '../lib/format'
+import { compareNewestFirst } from '../lib/entryOrder'
 
 export default function VaultPage() {
   const { user, verifyPassword, googleSignIn } = useAuth()
@@ -185,7 +186,7 @@ export default function VaultPage() {
     if (!selectedCategory) return []
     return filteredEntries
       .filter(e => e.type === selectedCategory.type && (e.category || 'General') === selectedCategory.name)
-      .sort((a, b) => b.timestamp - a.timestamp)
+      .sort(compareNewestFirst)
   }, [filteredEntries, selectedCategory])
 
   return (

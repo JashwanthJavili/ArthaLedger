@@ -11,6 +11,7 @@ import { useAppData } from '../context/AppDataContext'
 import { useBudgets } from '../hooks/useBudgets'
 import { getCurrencySymbol, formatAmount } from '../lib/format'
 import SpendingTrends from '../components/common/SpendingTrends'
+import { compareNewestFirst } from '../lib/entryOrder'
 
 const PALETTE = ['#C5A059', '#7FA58A', '#D88A7A', '#6FA3B5', '#B39BD0', '#E0A166', '#9C8B73', '#8FB8A2']
 
@@ -147,7 +148,7 @@ export default function AnalyticsPage() {
         if (selectedSubcatFilter !== 'all' && (e.subcategory || '') !== selectedSubcatFilter) return false
         return true
       })
-      .sort((a, b) => b.timestamp - a.timestamp)
+      .sort(compareNewestFirst)
   }, [spendingEntries, selectedCategory, selectedSubcatFilter])
 
   // Daily average spend — last 30 days

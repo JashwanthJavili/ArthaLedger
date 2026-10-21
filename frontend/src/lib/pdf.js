@@ -1,6 +1,7 @@
 import { format } from 'date-fns'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
+import { compareOldestFirst } from './entryOrder'
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -254,7 +255,7 @@ export function buildReportRows({ projects, booksByProject, entriesByBook, selec
           if (to && e.timestamp > to) return false
           return true
         })
-        .sort((a, b) => a.timestamp - b.timestamp)
+        .sort(compareOldestFirst)
 
       for (const entry of entries) {
         const amt = Number(entry.amount || 0)
@@ -365,7 +366,7 @@ export function exportBookPdf({ projectName, bookName, summary, entries }) {
   doc.text(`₹${summary.net.toFixed(2)}`, 420, boxY + 8)
 
   // Entries table
-  const sortedEntries = [...entries].sort((a, b) => a.timestamp - b.timestamp)
+  const sortedEntries = [...entries].sort(compareOldestFirst)
   const rows = sortedEntries.map((entry) => [
     format(new Date(entry.timestamp), 'dd MMM yy'),
     entry.type === 'income' ? 'IN' : 'OUT',

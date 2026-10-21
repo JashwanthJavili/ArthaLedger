@@ -28,6 +28,7 @@ import { isUnlocked, lockItem, setUnlocked } from '../lib/pin'
 import PinModal from '../components/common/PinModal'
 import SendToTripModal from '../components/forms/SendToTripModal'
 import TransferModal from '../components/forms/TransferModal'
+import { compareNewestFirst, compareOldestFirst } from '../lib/entryOrder'
 
 const defaultCategories = []
 
@@ -395,7 +396,7 @@ export default function BookPage() {
         const toMatch = !filters.to || entry.timestamp <= new Date(filters.to + 'T23:59:59').getTime()
         return searchMatch && typeMatch && modeMatch && categoryMatch && byMatch && fromMatch && toMatch
       })
-      .sort((a, b) => b.timestamp - a.timestamp)
+      .sort(compareNewestFirst)
   }, [entries, search, filters])
 
   // Group filtered entries by calendar date
@@ -435,7 +436,7 @@ export default function BookPage() {
     const map = new Map()
     let running = 0
     ;[...entries]
-      .sort((a, b) => Number(a.timestamp || 0) - Number(b.timestamp || 0))
+      .sort(compareOldestFirst)
       .forEach((e) => {
         const amt = Number(e.amount || 0)
         if (isCreditEntry(e)) running = roundMoney(running + amt)
