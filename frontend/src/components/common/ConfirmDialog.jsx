@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { AlertTriangle, X, Loader } from 'lucide-react'
 
@@ -35,7 +36,7 @@ export default function ConfirmDialog({ open, onClose, onConfirm, title, message
     onClose()
   }
 
-  return (
+  return createPortal(
     <AnimatePresence>
       <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
         <motion.div
@@ -50,12 +51,12 @@ export default function ConfirmDialog({ open, onClose, onConfirm, title, message
           animate={{ scale: 1, opacity: 1, y: 0 }}
           exit={{ scale: 0.9, opacity: 0, y: 16 }}
           transition={{ type: 'spring', damping: 28, stiffness: 340 }}
-          className="relative w-full max-w-sm rounded-3xl bg-white p-6 shadow-2xl"
+          className="relative w-full max-w-sm rounded-3xl border border-[var(--border-card)] bg-[var(--bg-page)] p-6 shadow-[0_30px_80px_-20px_rgba(0,0,0,0.45)]"
         >
           {!confirming && (
             <button
               onClick={handleClose}
-              className="absolute right-4 top-4 rounded-xl p-1.5 text-stone-400 hover:bg-stone-100 transition-colors"
+              className="absolute right-4 top-4 rounded-full p-1.5 text-[var(--text-subtle)] hover:bg-[var(--border-subtle)] hover:text-[var(--text-main)] transition-colors"
               aria-label="Close"
             >
               <X size={15} />
@@ -63,17 +64,15 @@ export default function ConfirmDialog({ open, onClose, onConfirm, title, message
           )}
 
           <div className="flex flex-col items-center text-center gap-3 mb-5">
-            <div className={`rounded-2xl p-3.5 ${danger ? 'bg-red-50' : 'bg-amber-50'}`}>
-              <AlertTriangle size={26} className={danger ? 'text-red-500' : 'text-amber-500'} />
+            <div className={`flex h-12 w-12 items-center justify-center rounded-full ${danger ? 'bg-rose-500/10' : 'bg-[var(--gold-light)]'}`}>
+              <AlertTriangle size={22} className={danger ? 'text-rose-500' : 'text-[var(--gold-primary)]'} />
             </div>
             <div>
-              <h3 className="font-serif text-lg font-semibold text-stone-800">{title}</h3>
-              <p className="mt-2 text-sm text-stone-500 leading-relaxed">{message}</p>
+              <h3 className="text-[16px] font-semibold text-[var(--text-main)]">{title}</h3>
+              <p className="mt-1.5 text-[13px] text-[var(--text-muted)] leading-relaxed">{message}</p>
             </div>
             {danger && (
-              <p className="text-xs text-red-400 font-medium bg-red-50 rounded-xl px-3 py-1.5 border border-red-100">
-                ⚠️ This action cannot be undone
-              </p>
+              <p className="text-[11px] font-medium text-rose-500">This action cannot be undone.</p>
             )}
           </div>
 
@@ -81,7 +80,7 @@ export default function ConfirmDialog({ open, onClose, onConfirm, title, message
             <button
               onClick={handleClose}
               disabled={confirming}
-              className="flex-1 rounded-xl border border-stone-200 px-4 py-2.5 text-sm text-stone-600 hover:bg-stone-50 transition-colors disabled:opacity-50"
+              className="flex-1 rounded-xl border border-[var(--border-card)] px-4 py-2.5 text-sm font-medium text-[var(--text-main)] hover:bg-[var(--border-subtle)] transition-colors disabled:opacity-50"
             >
               Cancel
             </button>
@@ -89,7 +88,7 @@ export default function ConfirmDialog({ open, onClose, onConfirm, title, message
               onClick={handleConfirm}
               disabled={confirming}
               className={`flex-1 rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition-colors shadow-sm disabled:opacity-70 flex items-center justify-center gap-2 ${
-                danger ? 'bg-red-500 hover:bg-red-600' : 'bg-amber-600 hover:bg-amber-700'
+                danger ? 'bg-rose-600 hover:bg-rose-700' : 'bg-[var(--gold-primary)] hover:bg-[var(--gold-hover)]'
               }`}
             >
               {confirming ? (
@@ -104,6 +103,7 @@ export default function ConfirmDialog({ open, onClose, onConfirm, title, message
           </div>
         </motion.div>
       </div>
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body,
   )
 }

@@ -21,7 +21,7 @@ import ExpenseGroupDetailPage from './pages/ExpenseGroupDetailPage'
 import SplashScreen from './components/common/SplashScreen'
 import { useAuth } from './context/AuthContext'
 import Loader from './components/common/Loader'
-import { checkAndTriggerDailyReminder, syncReminderFromFirebase } from './lib/notifications'
+import { ensurePushRegistration, syncReminderFromFirebase } from './lib/notifications'
 
 function VerifyEmailRoute({ children }) {
   const { user, loading, isEmailVerified, needsEmailVerification } = useAuth()
@@ -38,6 +38,26 @@ function HomeRoute() {
   return <LandingPage />
 }
 
+// Once signed in: pull reminder settings and (re)register this device for
+// push, so reminders reach it even when the app is closed.
+function PushSync() {
+  const { user } = useAuth()
+  useEffect(() => {
+    if (!user?.uid) return
+    syncReminderFromFirebase()
+    ensurePushRegistration()
+    const handleVisChange = () => {
+      if (!document.hidden) {
+        syncReminderFromFirebase()
+        ensurePushRegistration()
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisChange)
+    return () => document.removeEventListener('visibilitychange', handleVisChange)
+  }, [user?.uid])
+  return null
+}
+
 export default function App() {
   const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone
 
@@ -52,18 +72,6 @@ export default function App() {
     setSplashDone(true)
   }
 
-  useEffect(() => {
-    syncReminderFromFirebase()
-    const handleVisChange = () => {
-      if (!document.hidden) {
-        syncReminderFromFirebase()
-      }
-    }
-    document.addEventListener('visibilitychange', handleVisChange)
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisChange)
-    }
-  }, [])
 
   // Lock all PIN-protected items when app comes back from background after 5 min
   useEffect(() => {
@@ -85,6 +93,7 @@ export default function App() {
 
   return (
     <AuthProvider>
+      <PushSync />
       <AppDataProvider>
         {!splashDone && <SplashScreen onDone={handleSplashDone} />}
         <Routes>

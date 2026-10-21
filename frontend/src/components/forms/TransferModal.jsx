@@ -1,130 +1,108 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
-import { X, ArrowRight } from 'lucide-react'
+import { createPortal } from 'react-dom'
+import { motion } from 'framer-motion'
+import { X, ArrowDown, Check, AlertTriangle, Lock } from 'lucide-react'
 import { getCurrencySymbol, formatAmount } from '../../lib/format'
+
 const LAST_TRANSFER_KEY = 'al_last_transfer_target'
 
 /**
- * TransferModal — move money from the current book to any other book the user can see.
+ * TransferModal — move money from the current book to another book.
  *
  * Props:
- *   open          - boolean
- *   onClose       - fn
- *   currentBook   - { id, name }
- *   projects      - [{ id, name }]
- *   booksByProject- { [projectId]: [{ id, name }] }
- *   currentBalance - number
- *   onTransfer    - async fn({ destinationProjectId, destinationBookId, amount, note })
+ *   open, onClose
+ *   currentProject  - { id, name }
+ *   currentBook     - { id, name }
+ *   projects        - [{ id, name }]
+ *   booksByProject  - { [projectId]: [{ id, name }] }
+ *   currentBalance  - number (balance of the source book right now)
+ *   getBookBalance  - optional fn(bookId) → number, shown next to destinations
+ *   editing         - optional { amount, note, toProjectId, toBookId } to edit a transfer
+ *   onTransfer      - async fn({ destinationProjectId, destinationBookId, amount, note })
  */
-export default function TransferModal({
-  open,
+export default function TransferModal(props) {
+  if (!props.open) return null
+  return createPortal(<TransferDialog {...props} />, document.body)
+}
+
+function TransferDialog({
   onClose,
   currentProject,
   currentBook,
   projects = [],
   booksByProject = {},
   currentBalance = 0,
+  getBookBalance,
+  editing = null,
   onTransfer,
 }) {
-  const [destinationProjectId, setDestinationProjectId] = useState('')
-  const [destinationBookId, setDestinationBookId] = useState('')
-  const [amount, setAmount] = useState('')
-  const [note, setNote] = useState('')
+  const symbol = getCurrencySymbol()
+  const isEdit = Boolean(editing)
+  // When editing, the existing transfer amount is already deducted; it's available again.
+  const available = Math.round((Number(currentBalance) + (isEdit ? Number(editing.amount || 0) : 0)) * 100) / 100
+
+  const destinationProjects = useMemo(() => projects
+    .map((project) => ({
+      ...project,
+      books: (booksByProject[project.id] || []).filter((b) => !(project.id === currentProject?.id && b.id === currentBook?.id)),
+    }))
+    .filter((project) => project.books.length > 0), [projects, booksByProject, currentProject?.id, currentBook?.id])
+
+  const initialTarget = (() => {
+    if (isEdit) return { projectId: editing.toProjectId, bookId: editing.toBookId }
+    let saved = {}
+    try { saved = JSON.parse(localStorage.getItem(LAST_TRANSFER_KEY) || '{}') || {} } catch { saved = {} }
+    const savedProject = destinationProjects.find((p) => p.id === saved.projectId && p.books.some((b) => b.id === saved.bookId))
+    if (savedProject) return { projectId: savedProject.id, bookId: saved.bookId }
+    const preferred = destinationProjects.find((p) => p.id === currentProject?.id) || destinationProjects[0]
+    return { projectId: preferred?.id || '', bookId: preferred?.books[0]?.id || '' }
+  })()
+
+  const [destinationProjectId, setDestinationProjectId] = useState(initialTarget.projectId)
+  const [destinationBookId, setDestinationBookId] = useState(initialTarget.bookId)
+  const [amount, setAmount] = useState(isEdit ? String(editing.amount) : '')
+  const [note, setNote] = useState(isEdit ? editing.note || '' : '')
   const [submitting, setSubmitting] = useState(false)
   const [errors, setErrors] = useState({})
   const amountRef = useRef(null)
-  const formRef = useRef(null)
 
-  const symbol = getCurrencySymbol()
+  useEffect(() => {
+    const t = setTimeout(() => amountRef.current?.focus(), 80)
+    return () => clearTimeout(t)
+  }, [])
 
-  const destinationProjects = useMemo(() => {
-    return projects
-      .filter(project => (booksByProject[project.id] || []).length > 0)
-      .map(project => ({
-        ...project,
-        books: booksByProject[project.id] || [],
-      }))
-  }, [projects, booksByProject])
-
-  const selectedProject = destinationProjects.find(project => project.id === destinationProjectId)
+  const selectedProject = destinationProjects.find((p) => p.id === destinationProjectId)
   const destinationBooks = selectedProject?.books || []
-  const selectedBook = destinationBooks.find(book => book.id === destinationBookId)
+  const allBooks = Object.values(booksByProject).flat()
+  const selectedBook = destinationBooks.find((b) => b.id === destinationBookId) || allBooks.find((b) => b.id === destinationBookId)
+  const destinationProjectName = projects.find((p) => p.id === destinationProjectId)?.name
 
-  useEffect(() => {
-    if (open) {
-      let savedTarget = {}
-      try {
-        savedTarget = JSON.parse(localStorage.getItem(LAST_TRANSFER_KEY) || '{}') || {}
-      } catch {
-        savedTarget = {}
-      }
-      const currentProjectHasOtherBooks = (booksByProject[currentProject?.id] || []).filter(book => book.id !== currentBook?.id)
-      const savedProject = destinationProjects.find(project => project.id === savedTarget.projectId && (project.books || []).some(book => book.id === savedTarget.bookId)) || null
-      const preferredProject = savedProject || (currentProjectHasOtherBooks.length
-        ? currentProject
-        : destinationProjects.find(project => project.id !== currentProject?.id) || destinationProjects[0] || null)
+  const num = Number(amount) || 0
+  const remaining = Math.round((available - num) * 100) / 100
+  const overLimit = num > available
 
-      const preferredBook = savedProject
-        ? (savedProject.books || []).find(book => book.id === savedTarget.bookId)
-        : preferredProject
-        ? (preferredProject.id === currentProject?.id
-          ? currentProjectHasOtherBooks[0]
-          : (preferredProject.books || [])[0])
-        : null
-
-      setDestinationProjectId(preferredProject?.id || '')
-      setDestinationBookId(preferredBook?.id || '')
-      setAmount('')
-      setNote('')
-      setErrors({})
-      setTimeout(() => amountRef.current?.focus(), 80)
-    }
-  }, [open, booksByProject, currentBook?.id, currentProject, destinationProjects])
-
-  useEffect(() => {
-    if (!open) return
-    if (!destinationProjectId) return
-
-    const books = booksByProject[destinationProjectId] || []
-    const validBooks = books.filter(book => !(destinationProjectId === currentProject?.id && book.id === currentBook?.id))
-
-    if (validBooks.length === 0) {
-      setDestinationBookId('')
-      return
-    }
-
-    if (!validBooks.some(book => book.id === destinationBookId)) {
-      setDestinationBookId(validBooks[0].id)
-    }
-  }, [open, destinationProjectId, destinationBookId, booksByProject, currentBook?.id, currentProject?.id])
-
-  if (!open) return null
+  const pickProject = (project) => {
+    setDestinationProjectId(project.id)
+    setDestinationBookId(project.books[0]?.id || '')
+    setErrors((e) => ({ ...e, destination: '' }))
+  }
 
   const validate = () => {
     const e = {}
-    const num = Number(amount)
     if (!amount || num <= 0) e.amount = 'Enter a valid amount'
-    if (num > currentBalance) e.amount = `Insufficient balance (${symbol}${formatAmount(currentBalance)})`
-    if (!destinationProjectId) e.destinationProject = 'Select a destination project'
-    if (!destinationBookId) e.destinationBook = 'Select a destination book'
-    if (currentProject?.id === destinationProjectId && currentBook?.id === destinationBookId) {
-      e.destinationBook = 'Source and destination books must be different'
-    }
+    else if (overLimit) e.amount = `Only ${symbol}${formatAmount(available)} available`
+    if (!isEdit && (!destinationProjectId || !destinationBookId)) e.destination = 'Choose a book to send to'
     setErrors(e)
     return Object.keys(e).length === 0
   }
 
   const handleSubmit = async (ev) => {
     ev.preventDefault()
-    if (!validate()) return
+    if (submitting || !validate()) return
     setSubmitting(true)
     try {
-      await onTransfer({
-        destinationProjectId,
-        destinationBookId,
-        amount: Number(amount),
-        note: note.trim(),
-      })
-      localStorage.setItem(LAST_TRANSFER_KEY, JSON.stringify({ projectId: destinationProjectId, bookId: destinationBookId }))
+      await onTransfer({ destinationProjectId, destinationBookId, amount: num, note: note.trim() })
+      if (!isEdit) localStorage.setItem(LAST_TRANSFER_KEY, JSON.stringify({ projectId: destinationProjectId, bookId: destinationBookId }))
       onClose()
     } catch (err) {
       setErrors({ submit: err.message || 'Transfer failed. Please try again.' })
@@ -133,201 +111,202 @@ export default function TransferModal({
     }
   }
 
-  const projectLabel = selectedProject?.name || 'Select project'
-  const bookLabel = selectedBook?.name || 'Select book'
-
-  const handleKeyDown = (e) => {
-    if (e.key === 'Escape') {
-      e.preventDefault()
-      onClose()
-      return
-    }
-    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-      e.preventDefault()
-      formRef.current?.requestSubmit()
-    }
-  }
+  const sectionLabel = 'mb-2 block text-[11px] font-semibold text-[var(--text-muted)]'
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
-      <div className="absolute inset-0 bg-black/35 backdrop-blur-sm" onClick={onClose} />
-
-      <div className="relative w-full sm:max-w-sm sm:rounded-3xl rounded-t-3xl bg-white shadow-2xl overflow-hidden">
+    <motion.div
+      className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center sm:p-4"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.15 }}
+      onKeyDown={(e) => { if (e.key === 'Escape') { e.stopPropagation(); onClose() } }}
+    >
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+      <motion.form
+        onSubmit={handleSubmit}
+        initial={{ opacity: 0, y: 24 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+        className="relative flex w-full sm:max-w-[440px] flex-col overflow-hidden rounded-t-3xl sm:rounded-3xl border border-[var(--border-card)] bg-[var(--bg-page)] shadow-[0_30px_80px_-20px_rgba(0,0,0,0.45)]"
+        style={{ maxHeight: '92vh' }}
+      >
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-stone-100">
-          <div className="flex items-center gap-2">
-            <div className="rounded-lg bg-blue-100 p-1.5">
-              <ArrowRight size={15} className="text-blue-600" />
-            </div>
-            <span className="text-sm font-semibold text-stone-800">Transfer Between Books</span>
+        <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-[var(--border-subtle)]">
+          <div>
+            <h2 className="text-[15px] font-semibold text-[var(--text-main)]">{isEdit ? 'Edit transfer' : 'Transfer money'}</h2>
+            <p className="mt-0.5 text-[11px] text-[var(--text-subtle)]">
+              {isEdit ? 'Changes update both books' : 'Move money to another book'}
+            </p>
           </div>
-          <button type="button" onClick={onClose}
-            className="rounded-lg p-1.5 text-stone-400 hover:bg-stone-100 transition-colors">
+          <button type="button" onClick={onClose} aria-label="Close"
+            className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--border-subtle)] text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors cursor-pointer">
             <X size={15} />
           </button>
         </div>
 
-        <form ref={formRef} onSubmit={handleSubmit} onKeyDown={handleKeyDown} className="px-4 py-4 space-y-4">
-          {/* From → To visual */}
-          <div className="flex items-center gap-2 rounded-xl bg-stone-50 border border-stone-200 px-3 py-2.5">
-            <div className="flex items-center gap-1.5 min-w-0 flex-1">
-              <span className="text-xs font-semibold text-stone-700 truncate">
-                {currentProject?.name ? `${currentProject.name} · ` : ''}{currentBook?.name}
-              </span>
-            </div>
-            <ArrowRight size={14} className="text-stone-400 flex-shrink-0" />
-            <div className="flex items-center gap-1.5 min-w-0 flex-1 justify-end">
-              <span className="text-xs font-semibold text-blue-700 truncate">
-                {selectedProject?.name ? `${projectLabel} · ` : ''}{bookLabel}
-              </span>
-            </div>
-          </div>
-
-          {/* Destination project */}
-          <div>
-            <label className="block text-[10px] font-semibold text-stone-400 uppercase tracking-wider mb-1.5">
-              Destination Project
-            </label>
-            {destinationProjects.length === 0 ? (
-              <p className="text-xs text-stone-400 rounded-xl border border-dashed border-stone-200 px-3 py-3 text-center">
-                No projects with books available
-              </p>
-            ) : (
-              <div className="space-y-1.5 max-h-40 overflow-y-auto pr-0.5">
-                {destinationProjects.map(project => (
-                  <button
-                    key={project.id}
-                    type="button"
-                    onClick={() => {
-                      setDestinationProjectId(project.id)
-                      const books = (booksByProject[project.id] || []).filter(book => !(project.id === currentProject?.id && book.id === currentBook?.id))
-                      setDestinationBookId(books[0]?.id || '')
-                      setErrors(prev => ({ ...prev, destinationProject: '', destinationBook: '' }))
-                    }}
-                    className={`w-full flex items-center gap-2.5 rounded-xl border px-3 py-2.5 text-sm transition-all ${
-                      destinationProjectId === project.id
-                        ? 'border-blue-400 bg-blue-50 text-blue-800'
-                        : 'border-stone-200 bg-stone-50 text-stone-700 hover:border-blue-200 hover:bg-blue-50/40'
-                    }`}
-                  >
-                    <span className="font-medium truncate">{project.name}</span>
-                    <span className="ml-auto text-[10px] text-stone-400">{project.books.length} book{project.books.length !== 1 ? 's' : ''}</span>
-                  </button>
-                ))}
+        <div className="flex-1 space-y-5 overflow-y-auto px-5 py-5">
+          {/* From → To */}
+          <div className="relative rounded-2xl border border-[var(--border-card)] bg-[var(--bg-card)]">
+            <div className="px-4 py-3">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--text-subtle)]">From</p>
+              <div className="mt-0.5 flex items-baseline justify-between gap-3">
+                <p className="truncate text-[13px] font-semibold text-[var(--text-main)]">{currentBook?.name}</p>
+                <p className="flex-shrink-0 text-[11px] text-[var(--text-subtle)]">
+                  Available <span className="font-semibold tabular-nums text-[var(--text-main)]">{symbol}{formatAmount(available)}</span>
+                </p>
               </div>
-            )}
-            {errors.destinationProject && <p className="mt-1 text-[11px] text-red-500">{errors.destinationProject}</p>}
+              {currentProject?.name && <p className="truncate text-[11px] text-[var(--text-subtle)]">{currentProject.name}</p>}
+            </div>
+            <div className="relative border-t border-[var(--border-subtle)]">
+              <span className="absolute left-1/2 top-0 flex h-7 w-7 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-[var(--border-card)] bg-[var(--bg-page)] text-[var(--gold-primary)]">
+                <ArrowDown size={14} strokeWidth={2.4} />
+              </span>
+              <div className="px-4 py-3 pt-4">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--text-subtle)]">To</p>
+                <p className={`mt-0.5 truncate text-[13px] font-semibold ${selectedBook ? 'text-[var(--text-main)]' : 'text-[var(--text-subtle)]'}`}>
+                  {selectedBook?.name || 'Choose a book below'}
+                </p>
+                {destinationProjectName && <p className="truncate text-[11px] text-[var(--text-subtle)]">{destinationProjectName}</p>}
+              </div>
+            </div>
           </div>
 
           {/* Amount */}
           <div>
-            <label className="block text-[10px] font-semibold text-stone-400 uppercase tracking-wider mb-1.5">
-              Amount
-            </label>
-            <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400 text-base font-bold">{symbol}</span>
+            <label htmlFor="transfer-amount" className={sectionLabel}>Amount</label>
+            <div className={`flex items-center gap-3 rounded-2xl border bg-[var(--bg-card)] px-4 py-2.5 transition-colors ${
+              errors.amount || overLimit ? 'border-rose-500' : 'border-[var(--border-card)] focus-within:border-[var(--gold-primary)]'
+            }`}>
+              <span className="text-lg font-semibold text-[var(--text-subtle)]">{symbol}</span>
               <input
+                id="transfer-amount"
                 ref={amountRef}
-                type="number"
-                inputMode="decimal"
-                min="0.01"
-                step="0.01"
+                type="number" inputMode="decimal" min="0.01" step="0.01"
                 value={amount}
-                onChange={e => { setAmount(e.target.value); setErrors(p => ({ ...p, amount: '' })) }}
+                onChange={(e) => { setAmount(e.target.value); setErrors((p) => ({ ...p, amount: '', submit: '' })) }}
                 placeholder="0.00"
-                className={`w-full rounded-xl border bg-stone-50 pl-8 pr-3 py-2.5 text-2xl font-bold text-stone-800 placeholder-stone-300 focus:bg-white transition-colors ${
-                  errors.amount ? 'border-red-300' : 'border-stone-200 focus:border-amber-300'
-                }`}
+                className="no-spin min-w-0 flex-1 bg-transparent text-[24px] font-bold tabular-nums tracking-tight text-[var(--text-main)] placeholder-[var(--text-subtle)]/50 outline-none"
               />
+              <button type="button" onClick={() => { setAmount(String(Math.max(available, 0))); setErrors((p) => ({ ...p, amount: '' })) }}
+                disabled={available <= 0}
+                className="rounded-lg bg-[var(--gold-light)] px-2.5 py-1 text-[11px] font-semibold text-[var(--gold-primary)] hover:bg-[var(--gold-primary)] hover:text-white disabled:opacity-40 transition-colors cursor-pointer">
+                Max
+              </button>
             </div>
-            {errors.amount && <p className="mt-1 text-[11px] text-red-500">{errors.amount}</p>}
-            <p className="mt-1 text-[10px] text-stone-400">
-              Available: {symbol}{formatAmount(currentBalance)}
+            <p className={`mt-1.5 text-[11px] ${errors.amount || overLimit ? 'text-rose-500' : 'text-[var(--text-subtle)]'}`}>
+              {errors.amount
+                || (overLimit
+                  ? `Only ${symbol}${formatAmount(available)} available`
+                  : num > 0 ? `${symbol}${formatAmount(remaining)} will remain in ${currentBook?.name}` : 'Enter how much to send')}
             </p>
           </div>
 
-          {/* Destination book */}
-          <div>
-            <label className="block text-[10px] font-semibold text-stone-400 uppercase tracking-wider mb-1.5">
-              Transfer To
-            </label>
-            {!selectedProject ? (
-              <p className="text-xs text-stone-400 rounded-xl border border-dashed border-stone-200 px-3 py-3 text-center">
-                Select a project first
+          {/* Destination */}
+          {isEdit ? (
+            <div className="flex items-start gap-2.5 rounded-xl bg-[var(--border-subtle)] px-3.5 py-3">
+              <Lock size={14} className="mt-0.5 flex-shrink-0 text-[var(--text-subtle)]" />
+              <p className="text-[11px] leading-relaxed text-[var(--text-muted)]">
+                The destination can't be changed. To send to a different book, delete this transfer and create a new one.
               </p>
-            ) : destinationBooks.filter(book => !(selectedProject.id === currentProject?.id && book.id === currentBook?.id)).length === 0 ? (
-              <p className="text-xs text-stone-400 rounded-xl border border-dashed border-stone-200 px-3 py-3 text-center">
-                No destination books available in this project
-              </p>
-            ) : (
-              <div className="space-y-1.5">
-                {destinationBooks
-                  .filter(book => !(selectedProject.id === currentProject?.id && book.id === currentBook?.id))
-                  .map(book => (
-                  <button
-                    key={book.id}
-                    type="button"
-                    onClick={() => { setDestinationBookId(book.id); setErrors(p => ({ ...p, destinationBook: '' })) }}
-                    className={`w-full flex items-center gap-2.5 rounded-xl border px-3 py-2.5 text-sm transition-all ${
-                      destinationBookId === book.id
-                        ? 'border-blue-400 bg-blue-50 text-blue-800'
-                        : 'border-stone-200 bg-stone-50 text-stone-700 hover:border-blue-200 hover:bg-blue-50/40'
-                    }`}
-                  >
-                    <span className="font-medium truncate">{book.name}</span>
-                    {destinationBookId === book.id && (
-                      <span className="ml-auto text-[10px] text-blue-600 font-semibold">Selected</span>
-                    )}
-                  </button>
-                ))}
-              </div>
-            )}
-            {errors.destinationBook && <p className="mt-1 text-[11px] text-red-500">{errors.destinationBook}</p>}
-          </div>
+            </div>
+          ) : (
+            <div>
+              <span className={sectionLabel}>Send to</span>
+              {destinationProjects.length === 0 ? (
+                <p className="rounded-xl border border-dashed border-[var(--border-card)] px-3 py-4 text-center text-xs text-[var(--text-subtle)]">
+                  Create another book to transfer money.
+                </p>
+              ) : (
+                <>
+                  {destinationProjects.length > 1 && (
+                    <div className="mb-2.5 flex gap-1.5 overflow-x-auto pb-1">
+                      {destinationProjects.map((project) => {
+                        const active = project.id === destinationProjectId
+                        return (
+                          <button key={project.id} type="button" onClick={() => pickProject(project)}
+                            className={`flex-shrink-0 rounded-full border px-3 py-1.5 text-xs transition-colors cursor-pointer ${
+                              active
+                                ? 'border-[var(--text-main)] bg-[var(--text-main)] font-semibold text-[var(--bg-page)]'
+                                : 'border-[var(--border-card)] bg-[var(--bg-card)] font-medium text-[var(--text-muted)] hover:text-[var(--text-main)]'
+                            }`}>
+                            {project.name}{project.id === currentProject?.id ? ' (this project)' : ''}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  )}
+                  <ul className="divide-y divide-[var(--border-subtle)] rounded-2xl border border-[var(--border-card)] bg-[var(--bg-card)]">
+                    {destinationBooks.map((book) => {
+                      const active = book.id === destinationBookId
+                      const bal = getBookBalance ? getBookBalance(book.id) : null
+                      return (
+                        <li key={book.id}>
+                          <button type="button"
+                            onClick={() => { setDestinationBookId(book.id); setErrors((p) => ({ ...p, destination: '' })) }}
+                            className={`flex w-full items-center gap-3 px-4 py-3 text-left transition-colors cursor-pointer first:rounded-t-2xl last:rounded-b-2xl ${active ? 'bg-[var(--gold-light)]' : 'hover:bg-[var(--border-subtle)]'}`}>
+                            <span className={`flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full border transition-colors ${
+                              active ? 'border-[var(--gold-primary)] bg-[var(--gold-primary)] text-white' : 'border-[var(--border-card)]'
+                            }`}>
+                              {active && <Check size={12} strokeWidth={3} />}
+                            </span>
+                            <span className="min-w-0 flex-1">
+                              <span className="block truncate text-[13px] font-medium text-[var(--text-main)]">{book.name}</span>
+                              {book.description && <span className="block truncate text-[11px] text-[var(--text-subtle)]">{book.description}</span>}
+                            </span>
+                            {bal != null && (
+                              <span className="flex-shrink-0 text-[11px] tabular-nums text-[var(--text-subtle)]">
+                                {bal < 0 ? '−' : ''}{symbol}{formatAmount(Math.abs(bal), 0)}
+                              </span>
+                            )}
+                          </button>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                </>
+              )}
+              {errors.destination && <p className="mt-1.5 text-[11px] text-rose-500">{errors.destination}</p>}
+            </div>
+          )}
 
           {/* Note */}
           <div>
-            <label className="block text-[10px] font-semibold text-stone-400 uppercase tracking-wider mb-1.5">
-              Note <span className="text-stone-300 font-normal">(optional)</span>
-            </label>
+            <label htmlFor="transfer-note" className={sectionLabel}>Note <span className="font-normal text-[var(--text-subtle)]">(optional)</span></label>
             <input
+              id="transfer-note"
               value={note}
-              onChange={e => setNote(e.target.value)}
+              onChange={(e) => setNote(e.target.value)}
               placeholder="e.g. Monthly allocation"
-              className="w-full rounded-xl border border-stone-200 bg-stone-50 px-3 py-2.5 text-sm text-stone-800 placeholder-stone-400 focus:border-amber-300 focus:bg-white transition-colors"
+              className="w-full rounded-xl border border-[var(--border-card)] bg-[var(--bg-card)] px-3.5 py-2.5 text-[13px] text-[var(--text-main)] placeholder-[var(--text-subtle)] outline-none focus:border-[var(--gold-primary)] transition-colors"
             />
           </div>
 
-          {/* Info note */}
-          <div className="flex items-start gap-2 rounded-xl bg-blue-50 border border-blue-100 px-3 py-2.5">
-            <span className="text-base leading-none mt-0.5 flex-shrink-0">ℹ️</span>
-            <p className="text-xs text-blue-700 leading-relaxed">
-              This transfer creates one outgoing entry in the source book and one incoming entry in the destination book.
-            </p>
-          </div>
-
           {errors.submit && (
-            <p className="rounded-xl bg-red-50 border border-red-100 px-3 py-2 text-xs text-red-600 text-center">
-              {errors.submit}
-            </p>
+            <div className="flex items-start gap-2 rounded-xl border border-rose-500/30 bg-rose-500/[0.06] px-3.5 py-3">
+              <AlertTriangle size={14} className="mt-0.5 flex-shrink-0 text-rose-500" />
+              <p className="text-xs text-rose-700 dark:text-rose-300">{errors.submit}</p>
+            </div>
           )}
+        </div>
 
-          {/* Actions */}
-          <div className="flex gap-2 pt-1">
-            <button type="button" onClick={onClose}
-              className="flex-1 rounded-xl border border-stone-200 py-2.5 text-sm font-medium text-stone-600 hover:bg-stone-50 transition-colors">
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={submitting || !selectedProject || !selectedBook}
-              className="flex-[2] rounded-xl bg-blue-600 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 transition-colors shadow-sm disabled:opacity-60"
-            >
-              {submitting ? 'Transferring...' : 'Transfer'}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+        {/* Footer */}
+        <div className="border-t border-[var(--border-subtle)] px-5 pt-3 pb-5">
+          <button
+            type="submit"
+            disabled={submitting || overLimit || num <= 0 || (!isEdit && !selectedBook)}
+            className="w-full rounded-2xl bg-[var(--gold-primary)] py-3.5 text-[13px] font-semibold text-white hover:bg-[var(--gold-hover)] disabled:opacity-40 transition-colors cursor-pointer"
+          >
+            {submitting
+              ? (isEdit ? 'Saving…' : 'Transferring…')
+              : isEdit
+                ? 'Save changes'
+                : num > 0 && selectedBook ? `Transfer ${symbol}${formatAmount(num)} to ${selectedBook.name}` : 'Transfer'}
+          </button>
+          <p className="mt-2 text-center text-[10px] text-[var(--text-subtle)]">
+            Recorded as Transfer out here and Transfer in at the destination. Only this book can edit or delete it.
+          </p>
+        </div>
+      </motion.form>
+    </motion.div>
   )
 }

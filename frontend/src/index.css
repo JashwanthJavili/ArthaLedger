@@ -1,116 +1,47 @@
-@import url('https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Inter:wght@300;400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,500;0,600;1,400&display=swap');
 
 @import 'tailwindcss';
 
 @custom-variant dark (&:where(.dark, .dark *));
 
-/* ── Light mode (default) ── */
+/* ── Light Mode Luxury Palette ── */
 :root {
-  --saffron: #d6a75e;
-  --cream: #fdf6e7;
-  --gold: #b9934e;
-  --deep-brown: #4e3a24;
-  --sage: #90a989;
-  --soft-red: #cd6a62;
-  --muted-gold: #c9a55a;
+  color-scheme: light;
+  --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-serif: 'Playfair Display', Georgia, serif;
 
-  --bg-primary: linear-gradient(160deg, #fff9ee 0%, #fdf6e7 40%, #f9efe0 100%);
-  --bg-card: rgba(255, 255, 255, 0.88);
-  --bg-card-border: rgba(214, 167, 94, 0.2);
-  --text-primary: #4e3a24;
-  --text-secondary: #78716c;
-  --text-muted: #a8a29e;
+  --gold-primary: #C5A059;
+  --gold-hover: #B38E46;
+  --gold-light: #F9F5EC;
+  
+  --bg-page: #FAF8F5;
+  --bg-card: rgba(255, 255, 255, 0.92);
+  --bg-card-hover: rgba(255, 255, 255, 0.98);
+  --border-card: rgba(197, 160, 89, 0.18);
+  --border-subtle: rgba(0, 0, 0, 0.05);
+
+  --text-main: #231E1A;
+  --text-muted: #736960;
+  --text-subtle: #A3978C;
 }
 
-/* ── Dark mode — premium luxury warm-dark ── */
+/* ── Dark Mode: soft charcoal surfaces (not pure black), warm gold accent ── */
 html.dark {
-  --bg-primary: linear-gradient(160deg, #14110e 0%, #1a1510 40%, #201b15 100%);
-  --bg-card: rgba(30, 24, 18, 0.97);
-  --bg-card-border: rgba(214, 167, 94, 0.24);
-  --text-primary: #f8ebd4;
-  --text-secondary: #e6c897;
-  --text-muted: #aa8e67;
-}
+  color-scheme: dark;
 
-html.dark body {
-  color: #f8ebd4;
-  background:
-    radial-gradient(ellipse at 10% 5%, rgba(214, 167, 94, 0.14) 0%, transparent 40%),
-    radial-gradient(ellipse at 90% 90%, rgba(170, 142, 103, 0.1) 0%, transparent 40%),
-    linear-gradient(160deg, #14110e 0%, #1a1510 40%, #201b15 100%);
-  background-attachment: fixed;
-}
+  --gold-primary: #D4B26E;
+  --gold-hover: #E0C084;
+  --gold-light: rgba(212, 178, 110, 0.14);
 
-html.dark body::before {
-  opacity: 0.05;
-}
+  --bg-page: #1B1C20;
+  --bg-card: #25262B;
+  --bg-card-hover: #2C2D33;
+  --border-card: rgba(255, 255, 255, 0.10);
+  --border-subtle: rgba(255, 255, 255, 0.07);
 
-/* Cards — warm deep luxury charcoal-brown */
-html.dark .bg-white\/88,
-html.dark .bg-white\/85,
-html.dark .bg-white\/80,
-html.dark .bg-white\/75,
-html.dark .bg-white\/70,
-html.dark .bg-white\/90,
-html.dark .bg-white\/95 {
-  background-color: rgba(30, 24, 18, 0.97) !important;
-}
-
-html.dark .border-amber-100\/80,
-html.dark .border-amber-100 {
-  border-color: rgba(214, 167, 94, 0.24) !important;
-}
-
-html.dark .text-stone-800,
-html.dark .text-stone-700 {
-  color: #f8ebd4 !important;
-}
-
-html.dark .text-stone-600,
-html.dark .text-stone-500 {
-  color: #e6c897 !important;
-}
-
-html.dark .text-stone-400 {
-  color: #aa8e67 !important;
-}
-
-html.dark .text-stone-300 {
-  color: #7c6446 !important;
-}
-
-html.dark .bg-amber-50\/40,
-html.dark .bg-amber-50\/60,
-html.dark .bg-amber-50\/70,
-html.dark .bg-amber-50 {
-  background-color: rgba(214, 167, 94, 0.12) !important;
-}
-
-html.dark .bg-stone-50 {
-  background-color: rgba(25, 20, 15, 0.85) !important;
-}
-
-html.dark .border-amber-50 {
-  border-color: rgba(214, 167, 94, 0.16) !important;
-}
-
-html.dark input,
-html.dark select,
-html.dark textarea {
-  background-color: rgba(22, 17, 13, 0.9) !important;
-  color: #f8ebd4 !important;
-  border-color: rgba(214, 167, 94, 0.28) !important;
-}
-
-html.dark input::placeholder,
-html.dark textarea::placeholder {
-  color: #aa8e67 !important;
-}
-
-/* Nav bar */
-html.dark nav.fixed {
-  background-color: rgba(26, 21, 16, 0.97) !important;
-  border-color: rgba(214, 167, 94, 0.2) !important;
+  --text-main: #F1F1F3;
+  --text-muted: #B6B7BF;
+  --text-subtle: #8A8B95;
 }
 
 * {
@@ -120,39 +51,26 @@ html.dark nav.fixed {
 
 html {
   scroll-behavior: smooth;
+  font-family: var(--font-sans);
 }
 
 body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
-  font-family: 'Inter', 'Helvetica Neue', sans-serif;
-  color: var(--deep-brown);
-  background:
-    radial-gradient(ellipse at 10% 5%, rgba(214, 167, 94, 0.22) 0%, transparent 40%),
-    radial-gradient(ellipse at 90% 90%, rgba(144, 169, 137, 0.18) 0%, transparent 40%),
-    radial-gradient(ellipse at 50% 50%, rgba(253, 246, 231, 0.6) 0%, transparent 70%),
-    linear-gradient(160deg, #fff9ee 0%, #fdf6e7 40%, #f9efe0 100%);
+  color: var(--text-main);
+  background-color: var(--bg-page);
+  background-image: 
+    radial-gradient(at 0% 0%, rgba(197, 160, 89, 0.06) 0px, transparent 50%),
+    radial-gradient(at 100% 100%, rgba(197, 160, 89, 0.04) 0px, transparent 50%);
   background-attachment: fixed;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  transition: background 0.3s ease, color 0.3s ease;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
-/* Subtle mandala watermark */
-body::before {
-  content: '';
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  opacity: 0.07;
-  background-image:
-    radial-gradient(circle at center, rgba(185, 147, 78, 0.35) 1px, transparent 1px),
-    radial-gradient(circle at center, rgba(185, 147, 78, 0.12) 1px, transparent 1px);
-  background-size: 80px 80px, 24px 24px;
-  background-position: 0 0, 12px 12px;
-  z-index: 0;
-  transition: opacity 0.3s ease;
+html.dark body {
+  background-image: none;
 }
 
 #root {
@@ -160,44 +78,99 @@ body::before {
   z-index: 1;
 }
 
-.font-serif {
-  font-family: 'Lora', 'Georgia', serif;
+/* ── Custom Utility Classes for Premium Minimalist UI ── */
+.font-serif-luxury {
+  font-family: var(--font-serif);
 }
 
-::-webkit-scrollbar { width: 4px; height: 4px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(185, 147, 78, 0.3); border-radius: 4px; }
+/* Smooth Premium Cards */
+.premium-card {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-card);
+  backdrop-filter: blur(12px);
+  border-radius: 1.25rem;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
 
-input, select, textarea, button { font: inherit; }
+.premium-card:hover {
+  background-color: var(--bg-card-hover);
+  border-color: rgba(197, 160, 89, 0.35);
+  transform: translateY(-2px);
+  box-shadow: 0 12px 30px -10px rgba(0, 0, 0, 0.08);
+}
 
-input:focus, select:focus, textarea:focus {
+html.dark .premium-card:hover {
+  border-color: rgba(205, 170, 99, 0.35);
+  box-shadow: 0 12px 30px -10px rgba(0, 0, 0, 0.6);
+}
+
+/* Gold Gradient Text */
+.gold-gradient-text {
+  background: linear-gradient(135deg, #C5A059 0%, #D4AF37 50%, #9E7B3B 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+html.dark .gold-gradient-text {
+  background: linear-gradient(135deg, #FFF1D0 0%, #D4AF37 60%, #E5BE48 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Subtle Inputs */
+.premium-input {
+  background-color: rgba(255, 255, 255, 0.7);
+  border: 1px solid var(--border-card);
+  border-radius: 0.875rem;
+  color: var(--text-main);
+  transition: all 0.2s ease;
+}
+
+html.dark .premium-input {
+  background-color: var(--bg-card);
+  border-color: var(--border-card);
+}
+
+.premium-input:focus {
   outline: none;
-  box-shadow: 0 0 0 2px rgba(214, 167, 94, 0.35);
+  border-color: var(--gold-primary);
+  box-shadow: 0 0 0 3px rgba(197, 160, 89, 0.15);
 }
 
-.safe-bottom { padding-bottom: env(safe-area-inset-bottom, 0px); }
+/* Custom Minimal Scrollbars */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(197, 160, 89, 0.25); border-radius: 999px; }
+html.dark ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.14); }
+::-webkit-scrollbar-thumb:hover { background: rgba(197, 160, 89, 0.45); }
 
-@media (max-width: 640px) {
-  button, a { min-height: 40px; }
-}
-
-button { user-select: none; -webkit-user-select: none; }
-
-input[type='number']::-webkit-inner-spin-button,
-input[type='number']::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
-input[type='number'] { appearance: textfield; -moz-appearance: textfield; }
-
-/* ── PIN input masking — uses text-security instead of type=password
-   so Chrome's password manager never triggers ── */
+/* PIN Input Mask */
 .pin-input {
   -webkit-text-security: disc;
   text-security: disc;
   font-family: monospace;
-  letter-spacing: 0.25em;
+  letter-spacing: 0.2em;
 }
-.pin-input::placeholder {
-  -webkit-text-security: none;
-  text-security: none;
-  font-family: inherit;
-  letter-spacing: normal;
+
+/* Hide native number spinners */
+.no-spin::-webkit-outer-spin-button,
+.no-spin::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.no-spin { -moz-appearance: textfield; appearance: textfield; }
+
+/* Time wheel: hide scrollbar */
+.wheel-scroll { scrollbar-width: none; overscroll-behavior: contain; }
+.wheel-scroll::-webkit-scrollbar { display: none; }
+
+/* Skeleton shimmer */
+.skeleton {
+  background: linear-gradient(90deg, var(--border-subtle) 0%, rgba(197, 160, 89, 0.12) 50%, var(--border-subtle) 100%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.4s ease-in-out infinite;
+}
+@keyframes skeleton-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .skeleton { animation: none; }
 }

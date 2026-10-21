@@ -3,7 +3,7 @@ from app.api.deps import get_current_user
 from app.services.firebase_service import get_db_ref
 from app.core.rate_limit import check_rate_limit, record_success
 import time
-import hashlib
+from app.core.pin_hash import verify_pin
 
 router = APIRouter(prefix='/projects', tags=['projects'])
 
@@ -23,14 +23,9 @@ def _validate_str(value, field: str, min_len: int = 0, max_len: int = 500) -> st
     return s
 
 
-def _hash_pin(pin: str) -> str:
-    """Hash a PIN using SHA-256 (matching frontend pin.js)"""
-    return hashlib.sha256(str(pin).encode()).hexdigest()
-
-
 def _verify_pin(pin: str, stored_hash: str) -> bool:
-    """Verify PIN against stored hash"""
-    return _hash_pin(pin) == stored_hash
+    """Verify a PIN against its stored hash (PBKDF2 or legacy SHA-256)."""
+    return verify_pin(pin, stored_hash)
 
 
 @router.get('/')
@@ -88,7 +83,8 @@ async def delete_project(project_id: str, request: Request, user: dict = Depends
     books_ref = get_db_ref(f'users/{user["uid"]}/projects/{project_id}/books')
     books_snap = books_ref.get()
     
-    has_locked_books = False
+    project_pin = snap.get('pinHash') if isinstance(snap, dict) else None
+    has_locked_books = bool(project_pin)
     if books_snap:
         for book_data in books_snap.values():
             if isinstance(book_data, dict) and book_data.get('pinHash'):
@@ -115,8 +111,9 @@ async def delete_project(project_id: str, request: Request, user: dict = Depends
             raise HTTPException(status_code=429, detail=error_msg)
         
         # Verify PIN against any locked book in the project
-        pin_verified = False
-        if books_snap:
+        # Accept the project's own PIN, or the PIN of any locked book inside it
+        pin_verified = bool(project_pin) and _verify_pin(pin, project_pin)
+        if not pin_verified and books_snap:
             for book_data in books_snap.values():
                 if isinstance(book_data, dict) and book_data.get('pinHash'):
                     if _verify_pin(pin, book_data.get('pinHash')):

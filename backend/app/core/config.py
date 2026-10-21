@@ -11,6 +11,8 @@ class Settings:
     allowed_origins_raw: str = os.getenv('ALLOWED_ORIGINS', '')
     rate_limit_per_minute: int = int(os.getenv('RATE_LIMIT_PER_MINUTE', '120'))
     environment: str = os.getenv('ENVIRONMENT', 'development')
+    # Shared secret for the external cron that wakes the server for reminders
+    cron_secret: str = os.getenv('CRON_SECRET', '')
 
     @property
     def allowed_origins(self) -> List[str]:

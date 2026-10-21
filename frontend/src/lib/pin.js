@@ -1,165 +1,107 @@
 /**
- * PIN utilities — SHA-256 hashing via Web Crypto API.
- * PINs are exactly 4 or 6 numeric digits.
- * Never store raw PINs — only hashes go to Firebase.
+ * PIN utilities.
+ *
+ * Hashing: PBKDF2-SHA256 with a random per-PIN salt and a high iteration count,
+ * stored as `pbkdf2$<iterations>$<saltB64>$<hashB64>`. A 4–6 digit PIN has very
+ * few combinations, so a slow salted hash is what makes an exposed hash
+ * expensive to brute-force. Legacy unsalted SHA-256 hex hashes still verify and
+ * are flagged via `needsRehash` so callers can upgrade them on next unlock.
+ *
+ * Never store raw PINs — only hashes go to the database.
  */
 
-const PIN_REGEX = /^\d{4}$|^\d{6}$/
+const PBKDF2_ITERATIONS = 150_000
+const PBKDF2_PREFIX = 'pbkdf2'
 
-export function validatePin(pin) {
-  // Validate PIN format. Returns { valid: bool, error?: string }
-  if (!pin || typeof pin !== 'string') {
-    return { valid: false, error: 'PIN is required' }
-  }
-  if (!/^\d{4}$/.test(pin) && !/^\d{6}$/.test(pin)) {
-    return { valid: false, error: 'PIN must be exactly 4 or 6 digits' }
-  }
+export const PIN_LENGTHS = [4, 6]
+
+export function validatePin(pin, length) {
+  if (!pin || typeof pin !== 'string') return { valid: false, error: 'PIN is required' }
+  if (length && pin.length !== length) return { valid: false, error: `PIN must be ${length} digits` }
+  if (!/^\d{4}$/.test(pin) && !/^\d{6}$/.test(pin)) return { valid: false, error: 'PIN must be exactly 4 or 6 digits' }
   return { valid: true }
 }
 
+/** Reject PINs that are trivially guessable (repeats, straight sequences, common picks). */
+export function weakPinReason(pin) {
+  if (/^(\d)\1+$/.test(pin)) return 'Avoid repeating the same digit.'
+  const digits = pin.split('').map(Number)
+  const asc = digits.every((d, i) => i === 0 || d === (digits[i - 1] + 1) % 10)
+  const desc = digits.every((d, i) => i === 0 || d === (digits[i - 1] + 9) % 10)
+  if (asc || desc) return 'Avoid simple sequences like 1234.'
+  const common = ['1212', '1122', '2580', '0852', '6969', '1004', '2000', '121212', '112233', '159753', '696969', '123123', '010203']
+  if (common.includes(pin)) return 'This PIN is too common. Choose another.'
+  if (pin.length === 6 && pin.slice(0, 3) === pin.slice(3)) return 'Avoid repeating a pattern.'
+  return null
+}
+
+const toB64 = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf)))
+const fromB64 = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0))
+
+async function pbkdf2(pin, salt, iterations) {
+  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(String(pin)), 'PBKDF2', false, ['deriveBits'])
+  return crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt, iterations }, key, 256)
+}
+
+async function legacySha256Hex(pin) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(String(pin)))
+  return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, '0')).join('')
+}
+
+// Constant-time comparison so timing doesn't reveal how much of the hash matched.
+function safeEqual(a, b) {
+  if (typeof a !== 'string' || typeof b !== 'string' || a.length !== b.length) return false
+  let diff = 0
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i)
+  return diff === 0
+}
+
 export async function hashPin(pin) {
-  const encoder = new TextEncoder()
-  const data = encoder.encode(String(pin))
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data)
-  const hashArray = Array.from(new Uint8Array(hashBuffer))
-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
+  const salt = crypto.getRandomValues(new Uint8Array(16))
+  const bits = await pbkdf2(pin, salt, PBKDF2_ITERATIONS)
+  return `${PBKDF2_PREFIX}$${PBKDF2_ITERATIONS}$${toB64(salt)}$${toB64(bits)}`
+}
+
+export function needsRehash(storedHash) {
+  return typeof storedHash === 'string' && !storedHash.startsWith(`${PBKDF2_PREFIX}$`)
 }
 
 export async function verifyPin(pin, storedHash) {
-  const hash = await hashPin(pin)
-  return hash === storedHash
+  if (!storedHash || typeof storedHash !== 'string') return false
+  if (storedHash.startsWith(`${PBKDF2_PREFIX}$`)) {
+    const [, iter, saltB64, hashB64] = storedHash.split('$')
+    const iterations = Number(iter)
+    if (!iterations || !saltB64 || !hashB64) return false
+    const bits = await pbkdf2(pin, fromB64(saltB64), iterations)
+    return safeEqual(toB64(bits), hashB64)
+  }
+  return safeEqual(await legacySha256Hex(pin), storedHash)
 }
 
 /**
- * Session unlock store.
- * Each unlock is stored in sessionStorage with a TTL of 10 minutes.
- * When the user navigates away and comes back (new page load or after TTL),
- * they must re-enter the PIN.
+ * Unlock state lives only in memory: it survives in-app navigation but not a
+ * reload, and can't be forged by editing browser storage. Each unlock is tied
+ * to the hash it was verified against, so changing the PIN elsewhere relocks.
  */
-const UNLOCK_TTL_MS = 10 * 60 * 1000 // 10 minutes
+const UNLOCK_TTL_MS = 10 * 60 * 1000
+const unlocks = new Map() // id → { expiresAt, hash }
 
-function _key(id) {
-  return `al_pin_unlock_${id}`
+export function isUnlocked(id, storedHash) {
+  const u = unlocks.get(id)
+  if (!u) return false
+  if (Date.now() > u.expiresAt) { unlocks.delete(id); return false }
+  if (storedHash && u.hash && u.hash !== storedHash) { unlocks.delete(id); return false }
+  return true
 }
 
-function _lockoutKey(id) {
-  return `al_pin_lockout_${id}`
-}
-
-function _attemptsKey(id) {
-  return `al_pin_attempts_${id}`
-}
-
-export function isUnlocked(id) {
-  try {
-    const raw = sessionStorage.getItem(_key(id))
-    if (!raw) return false
-    const { expiresAt } = JSON.parse(raw)
-    if (Date.now() > expiresAt) {
-      sessionStorage.removeItem(_key(id))
-      return false
-    }
-    return true
-  } catch {
-    return false
-  }
-}
-
-export function setUnlocked(id) {
-  try {
-    sessionStorage.setItem(_key(id), JSON.stringify({
-      unlockedAt: Date.now(),
-      expiresAt: Date.now() + UNLOCK_TTL_MS,
-    }))
-  } catch { /* ignore storage errors */ }
+export function setUnlocked(id, storedHash) {
+  unlocks.set(id, { expiresAt: Date.now() + UNLOCK_TTL_MS, hash: storedHash || null })
 }
 
 export function lockItem(id) {
-  try {
-    sessionStorage.removeItem(_key(id))
-  } catch { /* ignore */ }
+  unlocks.delete(id)
 }
 
 export function lockAll() {
-  try {
-    const keys = Object.keys(sessionStorage).filter(k => k.startsWith('al_pin_unlock_'))
-    keys.forEach(k => sessionStorage.removeItem(k))
-  } catch { /* ignore */ }
-}
-
-// ── PIN Attempt Tracking (Rate Limiting) ───────────────────────────────────
-
-/**
- * Get PIN attempt data for an item (persisted across page refresh).
- * Returns: { attempts: number, lockedUntil: timestamp ms or 0 }
- */
-export function getPinAttemptData(id) {
-  try {
-    const lockoutRaw = sessionStorage.getItem(_lockoutKey(id))
-    const attemptsRaw = sessionStorage.getItem(_attemptsKey(id))
-
-    const lockoutData = lockoutRaw ? JSON.parse(lockoutRaw) : { lockedUntil: 0 }
-    const attemptsData = attemptsRaw ? JSON.parse(attemptsRaw) : { attempts: 0, lastAttemptAt: 0 }
-
-    // If lockout has expired, clear it
-    if (lockoutData.lockedUntil > 0 && Date.now() > lockoutData.lockedUntil) {
-      sessionStorage.removeItem(_lockoutKey(id))
-      lockoutData.lockedUntil = 0
-    }
-
-    return {
-      attempts: attemptsData.attempts,
-      lockedUntil: lockoutData.lockedUntil,
-      lastAttemptAt: attemptsData.lastAttemptAt,
-    }
-  } catch {
-    return { attempts: 0, lockedUntil: 0, lastAttemptAt: 0 }
-  }
-}
-
-/**
- * Record a failed PIN attempt.
- * Returns: { lockedUntil: timestamp ms or 0, shouldLock: boolean, lockoutSeconds: number }
- */
-export function recordPinAttempt(id) {
-  try {
-    const current = getPinAttemptData(id)
-    const newAttempts = current.attempts + 1
-
-    // Determine if we should trigger lockout
-    let lockoutSeconds = 0
-    if (newAttempts >= 9) lockoutSeconds = 15 * 60 + Math.random() * 5 * 60 // 15-20 min with jitter
-    else if (newAttempts >= 6) lockoutSeconds = 5 * 60 + Math.random() * 2 * 60 // 5-7 min with jitter
-    else if (newAttempts >= 3) lockoutSeconds = 1 * 60 + Math.random() * 1 * 60 // 1-2 min with jitter
-
-    const lockedUntil = lockoutSeconds > 0 ? Date.now() + lockoutSeconds * 1000 : 0
-
-    // Persist
-    sessionStorage.setItem(_attemptsKey(id), JSON.stringify({
-      attempts: newAttempts,
-      lastAttemptAt: Date.now(),
-    }))
-
-    if (lockedUntil > 0) {
-      sessionStorage.setItem(_lockoutKey(id), JSON.stringify({ lockedUntil }))
-    }
-
-    return {
-      newAttempts,
-      lockedUntil,
-      lockoutSeconds: Math.ceil(lockoutSeconds),
-    }
-  } catch {
-    return { newAttempts: 1, lockedUntil: 0, lockoutSeconds: 0 }
-  }
-}
-
-/**
- * Clear PIN attempt tracking for an item (call after successful PIN entry).
- */
-export function clearPinAttempts(id) {
-  try {
-    sessionStorage.removeItem(_attemptsKey(id))
-    sessionStorage.removeItem(_lockoutKey(id))
-  } catch { /* ignore */ }
+  unlocks.clear()
 }

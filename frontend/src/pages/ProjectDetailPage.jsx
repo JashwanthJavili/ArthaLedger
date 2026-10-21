@@ -3,11 +3,12 @@ import { format } from 'date-fns'
 import { Link, useParams, useNavigate } from 'react-router-dom'
 import {
   Plus, ArrowLeft, BookOpen,
-  MoreVertical, Pencil, Trash2, Lock, ShieldAlert, Unlock, ArrowRight,
+  MoreVertical, Pencil, Trash2, Lock, ShieldAlert, Unlock, ArrowLeftRight,
   Eye, EyeOff,
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import LayoutShell from '../components/LayoutShell'
+import PageSkeleton from '../components/common/PageSkeleton'
 import BookModal from '../components/forms/BookModal'
 import TransferModal from '../components/forms/TransferModal'
 import ConfirmDialog from '../components/common/ConfirmDialog'
@@ -16,7 +17,6 @@ import PinModal from '../components/common/PinModal'
 import SetPinModal from '../components/common/SetPinModal'
 import Toast from '../components/common/Toast'
 import SummaryStrip from '../components/cards/SummaryCard'
-import Loader from '../components/common/Loader'
 import { useAppData } from '../context/AppDataContext'
 import { isUnlocked, setUnlocked, lockItem } from '../lib/pin'
 import { formatAmount, getCurrencySymbol } from '../lib/format'
@@ -28,19 +28,25 @@ import { formatAmount, getCurrencySymbol } from '../lib/format'
 function BookMenu({ book, onEdit, onDelete, onDeleteBlocked }) {
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
-  const locked = Boolean(book.pinHash) && !isUnlocked(book.id)
+  const locked = Boolean(book.pinHash) && !isUnlocked(book.id, book.pinHash)
 
   useEffect(() => {
     const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
     document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
+    document.addEventListener('touchstart', handler)
+    return () => {
+      document.removeEventListener('mousedown', handler)
+      document.removeEventListener('touchstart', handler)
+    }
   }, [])
+
+  const item = 'flex w-full items-center gap-2.5 px-3.5 py-2.5 text-xs font-medium text-[var(--text-main)] hover:bg-[var(--border-subtle)] transition-colors cursor-pointer'
 
   return (
     <div ref={ref} className="relative" onClick={(e) => e.stopPropagation()}>
       <button
         onClick={(e) => { e.stopPropagation(); setOpen((v) => !v) }}
-        className="rounded-xl p-1.5 text-stone-400 hover:bg-amber-100 hover:text-amber-700 transition-colors"
+        className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--text-subtle)] hover:bg-[var(--border-subtle)] hover:text-[var(--text-main)] transition-colors cursor-pointer"
         aria-label="Book options"
       >
         <MoreVertical size={15} />
@@ -48,41 +54,26 @@ function BookMenu({ book, onEdit, onDelete, onDeleteBlocked }) {
       <AnimatePresence>
         {open && (
           <motion.div
-            initial={{ opacity: 0, scale: 0.92, y: -4 }}
+            initial={{ opacity: 0, scale: 0.96, y: -4 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.92, y: -4 }}
+            exit={{ opacity: 0, scale: 0.96, y: -4 }}
             transition={{ duration: 0.12 }}
-            className="absolute right-0 top-8 z-50 w-44 overflow-hidden rounded-2xl border border-amber-100 bg-white shadow-xl"
+            className="absolute right-0 top-9 z-50 w-44 overflow-hidden rounded-2xl border border-[var(--border-card)] bg-[var(--bg-page)] py-1 shadow-[0_16px_40px_-12px_rgba(0,0,0,0.3)]"
           >
-            {/* Edit — always allowed */}
-            <button
-              onClick={(e) => { e.stopPropagation(); onEdit(); setOpen(false) }}
-              className="flex w-full items-center gap-2 px-3 py-2.5 text-xs text-stone-700 hover:bg-amber-50 transition-colors border-b border-amber-50"
-            >
-              <Pencil size={12} className="text-amber-600" /> Edit Book
+            <button onClick={(e) => { e.stopPropagation(); onEdit(); setOpen(false) }} className={item}>
+              <Pencil size={13} className="text-[var(--text-muted)]" /> Edit book
             </button>
-
-            {/* Delete — blocked if locked */}
+            <div className="my-1 h-px bg-[var(--border-subtle)]" />
             <button
               onClick={(e) => {
                 e.stopPropagation()
                 setOpen(false)
-                if (locked) {
-                  onDeleteBlocked()
-                } else {
-                  onDelete()
-                }
+                if (locked) onDeleteBlocked()
+                else onDelete()
               }}
-              className={`flex w-full items-center gap-2 px-3 py-2.5 text-xs transition-colors ${
-                locked
-                  ? 'text-red-600 hover:bg-red-50'
-                  : 'text-red-600 hover:bg-red-50'
-              }`}
+              className={`${item} !text-rose-600 dark:!text-rose-400`}
             >
-              {locked
-                ? <><Trash2 size={12} /> Delete</>
-                : <><Trash2 size={12} /> Delete Book</>
-              }
+              {locked ? <Lock size={13} /> : <Trash2 size={13} />} Delete book
             </button>
           </motion.div>
         )}
@@ -90,6 +81,8 @@ function BookMenu({ book, onEdit, onDelete, onDeleteBlocked }) {
     </div>
   )
 }
+
+const roundMoney = (n) => Math.round(n * 100) / 100
 
 export default function ProjectDetailPage() {
   const { projectId } = useParams()
@@ -192,22 +185,36 @@ export default function ProjectDetailPage() {
 
   // Check if any book in this project is PIN-locked
   const hasLockedBooks = books.some(b => Boolean(b.pinHash))
+  // PIN that authorises deleting the whole project: the project's own, else a locked book's
+  const deletePinSource = project?.pinHash
+    ? { id: projectId, pinHash: project.pinHash, pinLength: project.pinLength }
+    : books.find(b => b.pinHash)
 
   // Project-level PIN
-  const isProjectLocked = Boolean(project?.pinHash) && !isUnlocked(projectId)
+  const isProjectLocked = Boolean(project?.pinHash) && !isUnlocked(projectId, project?.pinHash)
 
   // Project-level summary across all books — includes transfers as visible movement
+  // Transfers between two books of this project only move money around inside
+  // it, so they're left out of the project's cash in / cash out (net is unchanged).
   const projectSummary = useMemo(() => {
-    let totalIn = 0, totalOut = 0
+    let totalIn = 0, totalOut = 0, internalMoved = 0
     books.forEach(book => {
       const entries = entriesByBook[book.id] || []
       entries.forEach(e => {
-        if (e.type === 'income' || e.type === 'transfer_in') totalIn += Number(e.amount)
-        else if (e.type === 'expense' || e.type === 'transfer_out') totalOut += Number(e.amount)
+        const amt = Number(e.amount || 0)
+        const isInternal = e.transferId && e.fromProjectId === projectId && e.toProjectId === projectId
+        if (isInternal) {
+          if (e.type === 'transfer_out') internalMoved += amt
+          return
+        }
+        if (e.type === 'income' || e.type === 'transfer_in') totalIn += amt
+        else if (e.type === 'expense' || e.type === 'transfer_out') totalOut += amt
       })
     })
-    return { totalIn, totalOut, net: totalIn - totalOut }
-  }, [books, entriesByBook])
+    totalIn = roundMoney(totalIn)
+    totalOut = roundMoney(totalOut)
+    return { totalIn, totalOut, net: roundMoney(totalIn - totalOut), internalMoved: roundMoney(internalMoved) }
+  }, [books, entriesByBook, projectId])
 
   const showToast = (msg, type = 'success') => {
     setToast({ msg, type, visible: true })
@@ -233,11 +240,9 @@ export default function ProjectDetailPage() {
     )
   }
 
-  if (loading && !stalled) {
-    return <Loader text="Opening project..." />
-  }
+  if (!project) {
+    if (loading) return <PageSkeleton slow={stalled} hideHeader label="Opening project" />
 
-  if (!loading && !project) {
     return (
       <LayoutShell>
         <div className="flex flex-col items-center justify-center py-16 gap-3">
@@ -253,14 +258,14 @@ export default function ProjectDetailPage() {
     return (
       <LayoutShell>
         <div className="flex flex-col items-center justify-center py-20 gap-5 text-center">
-          <div className="rounded-2xl bg-gradient-to-br from-amber-50 to-orange-50 p-6 shadow-sm border border-amber-100">
-            <Lock size={36} className="text-amber-500" />
-          </div>
+          <span className="flex h-16 w-16 items-center justify-center rounded-2xl bg-[var(--gold-light)] text-[var(--gold-primary)]">
+            <Lock size={28} />
+          </span>
           <div>
-            <h2 className="font-serif text-lg font-semibold text-stone-800">{project.name}</h2>
-            <p className="text-xs text-stone-400 mt-1">This project is PIN-protected</p>
+            <h2 className="text-lg font-semibold text-[var(--text-main)]">{project.name}</h2>
+            <p className="mt-1 text-xs text-[var(--text-subtle)]">This project is PIN-protected</p>
           </div>
-          <Link to="/dashboard" className="text-xs text-stone-400 hover:text-stone-600 transition-colors">
+          <Link to="/dashboard" className="text-xs text-[var(--text-subtle)] hover:text-[var(--text-main)] transition-colors">
             ← Back to dashboard
           </Link>
         </div>
@@ -269,14 +274,17 @@ export default function ProjectDetailPage() {
         <PinModal
           open={true}
           onClose={() => {
-            if (!isUnlocked(projectId)) navigate('/dashboard', { replace: true })
+            if (!isUnlocked(projectId, project.pinHash)) navigate('/dashboard', { replace: true })
           }}
           storedHash={project.pinHash}
+          pinLength={project.pinLength}
+          guardId={projectId}
           itemName={project.name}
           onUnlock={() => {
-            setUnlocked(projectId)
+            setUnlocked(projectId, project.pinHash)
             forceUpdate(n => n + 1)
           }}
+          onRehash={(hash, length) => setPinForProject(projectId, hash, length)}
           onRemovePin={async () => {
             await setPinForProject(projectId, null)
             showToast('PIN removed')
@@ -286,248 +294,215 @@ export default function ProjectDetailPage() {
     )
   }
 
+  const symbol = getCurrencySymbol()
+  const bookStats = (book) => {
+    const entries = entriesByBook[book.id] || []
+    let totalIn = 0, totalOut = 0
+    entries.forEach((e) => {
+      const amt = Number(e.amount || 0)
+      if (e.type === 'income' || e.type === 'transfer_in') totalIn += amt
+      else if (e.type === 'expense' || e.type === 'transfer_out') totalOut += amt
+    })
+    totalIn = roundMoney(totalIn)
+    totalOut = roundMoney(totalOut)
+    return { count: entries.length, totalIn, totalOut, balance: roundMoney(totalIn - totalOut) }
+  }
+  const iconBtn = 'flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border border-[var(--border-card)] bg-[var(--bg-card)] text-[var(--text-muted)] hover:text-[var(--text-main)] hover:border-[var(--text-subtle)] transition-colors cursor-pointer'
+
   return (
-    <LayoutShell>
-      <div className="space-y-4 sm:space-y-5">
-        {loading && (
-          <div className="rounded-2xl border border-red-100 bg-red-50 p-3.5 text-xs text-red-700 leading-relaxed font-medium">
-            ⚠️ Connection is taking longer than expected. Please check your internet connection.
+    <LayoutShell hideHeader>
+      <div className="mx-auto max-w-2xl space-y-5 pb-28">
+        {loading && stalled && (
+          <div className="rounded-2xl border border-[var(--border-card)] bg-[var(--bg-card)] px-4 py-3 text-[11px] text-[var(--text-muted)]">
+            Still syncing — your connection seems slow.
           </div>
         )}
 
-        {/* ── Page header ── */}
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <Link to="/dashboard"
-              className="flex-shrink-0 inline-flex items-center gap-1 rounded-xl border border-amber-100 px-2.5 py-1.5 text-xs text-stone-600 hover:bg-amber-50 transition-colors">
-              <ArrowLeft size={13} />
-            </Link>
-            <div className="min-w-0">
-              <div className="flex items-center gap-1.5">
-                <h1 className="font-serif text-xl sm:text-2xl font-semibold text-stone-800 truncate leading-tight">
-                  {project.name}
-                </h1>
-              </div>
-              {project.description && (
-                <p className="text-xs text-stone-400 truncate mt-0.5">{project.description}</p>
-              )}
-            </div>
-          </div>
-
-          <div className="flex items-center gap-1.5 flex-shrink-0">
-            {/* PIN lock toggle */}
-            <button
-              onClick={() => setSetPinOpen(true)}
-              className="inline-flex items-center gap-1 rounded-xl border border-amber-100 px-2.5 py-1.5 text-xs text-stone-600 hover:bg-amber-50 transition-colors"
-              title={project.pinHash ? 'Change/Remove PIN' : 'Set PIN Lock'}
-            >
-              {project.pinHash ? <Unlock size={13} /> : <Lock size={13} />}
-              <span className="hidden sm:inline">{project.pinHash ? 'PIN' : 'Lock'}</span>
-            </button>
-
-            {/* Delete project */}
-            <button
-              onClick={() => {
-                if (hasLockedBooks || project.pinHash) {
-                  setVerifyProjectPinForDelete(true)
-                } else {
-                  setDeleteProjectConfirm(true)
-                }
-              }}
-              className="inline-flex items-center gap-1 rounded-xl border border-red-100 px-2.5 py-1.5 text-xs text-red-500 hover:bg-red-50 transition-colors"
-            >
-              <Trash2 size={13} />
-              <span className="hidden sm:inline">Delete</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Locked books warning */}
-        {hasLockedBooks && (
-          <div className="flex items-start gap-2.5 rounded-xl bg-amber-50 border border-amber-200 px-3 py-2.5">
-            <ShieldAlert size={14} className="flex-shrink-0 text-amber-600 mt-0.5" />
-            <p className="text-xs text-amber-700 leading-relaxed">
-              <span className="font-semibold">This project has PIN-protected books.</span> You'll need to enter a PIN to delete this project.
+        {/* ── Header ── */}
+        <header className="flex items-center gap-3">
+          <Link to="/dashboard" aria-label="Back to home" className={iconBtn + ' !text-[var(--text-main)]'}>
+            <ArrowLeft size={17} />
+          </Link>
+          <div className="min-w-0 flex-1">
+            <h1 className="font-serif-luxury truncate text-[23px] font-semibold leading-[1.15] tracking-[-0.01em] text-[var(--text-main)]">{project.name}</h1>
+            <p className="font-serif-luxury mt-0.5 truncate text-[13.5px] italic text-[var(--text-muted)]">
+              {project.description || `${books.length} ${books.length === 1 ? 'book' : 'books'}`}
             </p>
           </div>
+          <button
+            onClick={() => setSetPinOpen(true)}
+            className={iconBtn}
+            title={project.pinHash ? 'Change or remove PIN' : 'Set PIN lock'}
+            aria-label={project.pinHash ? 'Change or remove PIN' : 'Set PIN lock'}
+          >
+            {project.pinHash ? <Lock size={16} className="text-[var(--gold-primary)]" /> : <Unlock size={16} />}
+          </button>
+          <button
+            onClick={() => {
+              if (hasLockedBooks || project.pinHash) setVerifyProjectPinForDelete(true)
+              else setDeleteProjectConfirm(true)
+            }}
+            className={iconBtn + ' hover:!text-rose-500 hover:!border-rose-500/40'}
+            title="Delete project"
+            aria-label="Delete project"
+          >
+            <Trash2 size={16} />
+          </button>
+        </header>
+
+        {hasLockedBooks && (
+          <div className="flex items-center gap-2.5 rounded-xl border border-[var(--border-card)] bg-[var(--bg-card)] px-3.5 py-2.5">
+            <ShieldAlert size={14} className="flex-shrink-0 text-[var(--gold-primary)]" />
+            <p className="text-[11px] text-[var(--text-muted)]">Some books in this project are PIN-protected.</p>
+          </div>
         )}
 
-        {/* Project summary */}
+        {/* ── Overview ── */}
         {books.length > 0 && (
           <section>
-            <div className="flex items-center justify-between mb-2">
-              <h2 className="font-serif text-base font-semibold text-stone-700">Project Summary</h2>
+            <div className="mb-2 flex items-center justify-between px-1">
+              <h2 className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[var(--text-subtle)]">Overview</h2>
               <button
                 onClick={toggleSummary}
-                className="rounded-xl border border-amber-100 p-1.5 text-stone-400 hover:bg-amber-50 hover:text-stone-600 transition-colors"
-                title={showSummary ? 'Hide summary' : 'Show summary'}
+                className="flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-medium text-[var(--text-subtle)] hover:text-[var(--text-main)] hover:bg-[var(--border-subtle)] transition-colors cursor-pointer"
               >
-                {showSummary ? <Eye size={14} /> : <EyeOff size={14} />}
+                {showSummary ? <><EyeOff size={13} /> Hide</> : <><Eye size={13} /> Show</>}
               </button>
             </div>
             {showSummary ? (
-              <SummaryStrip
-                net={projectSummary.net}
-                totalIn={projectSummary.totalIn}
-                totalOut={projectSummary.totalOut}
-                delay={0.05}
-              />
+              <>
+                <SummaryStrip
+                  net={projectSummary.net}
+                  totalIn={projectSummary.totalIn}
+                  totalOut={projectSummary.totalOut}
+                  delay={0.05}
+                />
+                {projectSummary.internalMoved > 0 && (
+                  <p className="mt-1.5 px-1 text-[10px] text-[var(--text-subtle)]">
+                    Excludes {symbol}{formatAmount(projectSummary.internalMoved)} moved between books in this project.
+                  </p>
+                )}
+              </>
             ) : (
-              <div className="rounded-2xl border border-amber-100/80 bg-white/88 px-4 py-3 shadow-sm flex items-center justify-between">
-                <span className="text-xs text-stone-400">Summary hidden</span>
-                <button
-                  onClick={toggleSummary}
-                  className="text-xs text-amber-600 hover:text-amber-800 font-medium transition-colors"
-                >
-                  Show
-                </button>
+              <div className="rounded-2xl border border-[var(--border-card)] bg-[var(--bg-card)] px-4 py-3.5 text-center text-xs tracking-[0.3em] text-[var(--text-subtle)]">
+                ••••••
               </div>
             )}
           </section>
         )}
 
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="font-serif text-lg font-semibold text-stone-800">Your Books</h2>
-            <p className="text-xs text-stone-400 mt-0.5">
-              {books.length === 0 ? 'No cashbooks yet' : `${books.length} cashbook${books.length !== 1 ? 's' : ''}`}
-            </p>
+        {/* ── Books ── */}
+        <section>
+          <div className="mb-2 flex items-center justify-between px-1">
+            <h2 className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[var(--text-subtle)]">
+              Books{books.length > 0 ? ` · ${books.length}` : ''}
+            </h2>
+            {books.length > 0 && (
+              <button
+                onClick={toggleBookAmounts}
+                className="flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-medium text-[var(--text-subtle)] hover:text-[var(--text-main)] hover:bg-[var(--border-subtle)] transition-colors cursor-pointer"
+              >
+                {showBookAmounts ? <><EyeOff size={13} /> Hide amounts</> : <><Eye size={13} /> Show amounts</>}
+              </button>
+            )}
           </div>
-          {books.length > 0 && (
-            <button
-              onClick={toggleBookAmounts}
-              className="rounded-xl border border-amber-100 p-1.5 text-stone-400 hover:bg-amber-50 hover:text-stone-600 transition-colors"
-              title={showBookAmounts ? 'Hide amounts' : 'Show amounts'}
-            >
-              {showBookAmounts ? <Eye size={14} /> : <EyeOff size={14} />}
-            </button>
-          )}
-        </div>
 
-        {/* ── Books list ── */}
-        {books.length === 0 ? (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-            className="flex flex-col items-center justify-center gap-4 py-16 text-center">
-            <div>
-              <p className="font-serif text-base font-medium text-stone-600">No cashbooks yet</p>
-              <p className="mt-1 text-xs text-stone-400">Create your first cashbook to start tracking</p>
-            </div>
-            <button onClick={() => { setEditingBook(null); setModalOpen(true) }}
-              className="rounded-xl bg-amber-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-amber-700 transition-colors shadow-sm">
-              Create First Book
-            </button>
-          </motion.div>
-        ) : (
-          <div className="grid gap-3 sm:gap-4">
-            {books.map((book, idx) => {
-              const entries = entriesByBook[book.id] || []
-              // Calculate balance by summing all entries (same as BookPage)
-              // This avoids timestamp ordering issues with balanceAfter
-              const totalIn = entries
-                .filter((e) => e.type === 'income' || e.type === 'transfer_in')
-                .reduce((s, e) => s + Number(e.amount), 0)
-              const totalOut = entries
-                .filter((e) => e.type === 'expense' || e.type === 'transfer_out')
-                .reduce((s, e) => s + Number(e.amount), 0)
-              const balance = totalIn - totalOut
-              const isBookLocked = Boolean(book.pinHash) && !isUnlocked(book.id)
-              const symbol = getCurrencySymbol()
-
-              return (
-                <motion.div key={book.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: idx * 0.06 }}>
-                  <div
+          {books.length === 0 ? (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+              className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-[var(--border-card)] py-14 text-center">
+              <span className="flex h-11 w-11 items-center justify-center rounded-full bg-[var(--gold-light)] text-[var(--gold-primary)]">
+                <BookOpen size={20} />
+              </span>
+              <div>
+                <p className="text-sm font-semibold text-[var(--text-main)]">No books yet</p>
+                <p className="mt-1 text-xs text-[var(--text-subtle)]">Create a book to start recording cash in and cash out.</p>
+              </div>
+              <button onClick={() => { setEditingBook(null); setModalOpen(true) }}
+                className="mt-1 rounded-xl bg-[var(--gold-primary)] px-4 py-2.5 text-xs font-semibold text-white hover:bg-[var(--gold-hover)] transition-colors cursor-pointer">
+                Create book
+              </button>
+            </motion.div>
+          ) : (
+            <div className="divide-y divide-[var(--border-subtle)] rounded-2xl border border-[var(--border-card)] bg-[var(--bg-card)]">
+              {books.map((book, idx) => {
+                const stats = bookStats(book)
+                const isBookLocked = Boolean(book.pinHash) && !isUnlocked(book.id, book.pinHash)
+                const subline = book.description
+                  || `${stats.count} ${stats.count === 1 ? 'entry' : 'entries'}${book.updatedAt ? ` · Updated ${format(new Date(book.updatedAt), 'd MMM')}` : ''}`
+                return (
+                  <motion.div
+                    key={book.id}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: Math.min(idx * 0.03, 0.2) }}
                     onClick={() => {
-                      if (isBookLocked) {
-                        setPinTarget(book)
-                      } else {
-                        navigate(`/projects/${projectId}/books/${book.id}`)
-                      }
+                      if (isBookLocked) setPinTarget(book)
+                      else navigate(`/projects/${projectId}/books/${book.id}`)
                     }}
-                    className="cursor-pointer rounded-2xl border border-amber-100/80 bg-white/88 p-3 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
+                    className="flex cursor-pointer items-center gap-3 py-3 pl-4 pr-2 transition-colors hover:bg-[var(--border-subtle)]/60 first:rounded-t-2xl last:rounded-b-2xl"
                   >
-                    <div className="flex items-center justify-between gap-2 mb-2">
-                      <div className="flex items-center gap-2 min-w-0">
-                        {isBookLocked && (
-                          <div className="flex-shrink-0 rounded-lg p-1.5 bg-amber-100">
-                            <Lock size={13} className="text-amber-700" />
-                          </div>
-                        )}
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-1.5">
-                            <h3 className="text-sm font-semibold text-stone-800 truncate leading-tight">
-                              {book.name}
-                            </h3>
-                            {book.pinHash && isUnlocked(book.id) && (
-                              <span className="text-[9px] text-emerald-600 bg-emerald-50 border border-emerald-100 rounded-full px-1.5 py-0.5 font-medium flex-shrink-0">
-                                Unlocked
-                              </span>
-                            )}
-                          </div>
-                          {book.description && (
-                            <p className="text-[11px] text-stone-400 truncate">{book.description}</p>
-                          )}
-                        </div>
+                    <span className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl text-sm font-bold uppercase ${
+                      isBookLocked ? 'bg-[var(--border-subtle)] text-[var(--text-subtle)]' : 'bg-[var(--gold-light)] text-[var(--gold-primary)]'
+                    }`}>
+                      {isBookLocked ? <Lock size={15} /> : book.name.charAt(0)}
+                    </span>
+
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5">
+                        <p className="truncate text-[14px] font-semibold text-[var(--text-main)]">{book.name}</p>
+                        {book.pinHash && !isBookLocked && <Unlock size={11} className="flex-shrink-0 text-[var(--text-subtle)]" />}
                       </div>
-                      <div className="flex items-center gap-1.5 flex-shrink-0">
-                        <div className="text-right">
-                          <p className={`text-sm font-bold ${balance >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>
-                            {showBookAmounts
-                              ? `${balance < 0 ? '-' : ''}${symbol}${formatAmount(Math.abs(balance))}`
-                              : '●●●'
-                            }
-                          </p>
-                        </div>
-                        {/* Transfer button — only shown when at least one destination exists */}
-                        {hasAnyTransferTarget && !isBookLocked && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              setTransferSource(book)
-                            }}
-                            className="rounded-lg p-1.5 text-blue-400 hover:bg-blue-50 hover:text-blue-600 transition-colors"
-                            title="Transfer to another book"
-                          >
-                            <ArrowRight size={13} />
-                          </button>
-                        )}
-                        <BookMenu
-                          book={book}
-                          onEdit={() => { setEditingBook(book); setModalOpen(true) }}
-                          onDelete={() => setDeleteTarget(book)}
-                          onDeleteBlocked={() => setPinForDeleteTarget(book)}
-                        />
-                      </div>
+                      <p className="truncate text-[11px] text-[var(--text-subtle)]">{subline}</p>
                     </div>
-                    <div className="flex items-center gap-2 text-[11px]">
-                      <span className="text-stone-500">{entries.length} entries</span>
-                      <span className="text-stone-300">·</span>
-                      <span className="text-emerald-700 font-medium">
-                        {showBookAmounts ? `+${symbol}${formatAmount(totalIn, 0)}` : '●●●'}
-                      </span>
-                      <span className="text-stone-300">·</span>
-                      <span className="text-red-600 font-medium">
-                        {showBookAmounts ? `-${symbol}${formatAmount(totalOut, 0)}` : '●●●'}
-                      </span>
-                      <span className="ml-auto text-stone-400">
-                        {book.updatedAt ? format(new Date(book.updatedAt), 'dd MMM') : ''}
-                      </span>
+
+                    <div className="flex-shrink-0 text-right">
+                      <p className={`text-[14px] font-semibold tabular-nums ${stats.balance < 0 ? 'text-rose-600 dark:text-rose-400' : 'text-[var(--text-main)]'}`}>
+                        {isBookLocked || !showBookAmounts ? '•••••' : `${stats.balance < 0 ? '−' : ''}${symbol}${formatAmount(Math.abs(stats.balance))}`}
+                      </p>
+                      {!isBookLocked && showBookAmounts && (stats.totalIn > 0 || stats.totalOut > 0) && (
+                        <p className="text-[10px] tabular-nums text-[var(--text-subtle)]">
+                          <span className="text-emerald-600 dark:text-emerald-400">+{formatAmount(stats.totalIn, 0)}</span>
+                          {' · '}
+                          <span>−{formatAmount(stats.totalOut, 0)}</span>
+                        </p>
+                      )}
                     </div>
-                  </div>
-                </motion.div>
-              )
-            })}
-          </div>
-        )}
+
+                    <div className="flex items-center" onClick={(e) => e.stopPropagation()}>
+                      {hasAnyTransferTarget && !isBookLocked && (
+                        <button
+                          onClick={() => setTransferSource(book)}
+                          className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--text-subtle)] hover:bg-[var(--gold-light)] hover:text-[var(--gold-primary)] transition-colors cursor-pointer"
+                          title="Transfer money"
+                          aria-label={`Transfer money from ${book.name}`}
+                        >
+                          <ArrowLeftRight size={15} />
+                        </button>
+                      )}
+                      <BookMenu
+                        book={book}
+                        onEdit={() => { setEditingBook(book); setModalOpen(true) }}
+                        onDelete={() => setDeleteTarget(book)}
+                        onDeleteBlocked={() => setPinForDeleteTarget(book)}
+                      />
+                    </div>
+                  </motion.div>
+                )
+              })}
+            </div>
+          )}
+        </section>
       </div>
 
-      {/* ── FAB ── */}
-      <motion.button whileTap={{ scale: 0.95 }}
-        onClick={() => { setEditingBook(null); setModalOpen(true) }}
-        className="fixed bottom-20 right-4 sm:right-6 inline-flex items-center gap-2 rounded-2xl bg-amber-700 px-4 py-3 text-sm font-medium text-white shadow-lg hover:bg-amber-800 transition-colors">
-        <Plus size={18} />
-        <span className="hidden sm:inline">New Book</span>
-      </motion.button>
+      {/* ── New book ── */}
+      {books.length > 0 && (
+        <motion.button whileTap={{ scale: 0.95 }}
+          onClick={() => { setEditingBook(null); setModalOpen(true) }}
+          className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] right-4 sm:right-6 z-30 inline-flex items-center gap-2 rounded-full bg-[var(--gold-primary)] px-5 py-3.5 text-[13px] font-semibold text-white shadow-[0_12px_30px_-8px_rgba(197,160,89,0.6)] hover:bg-[var(--gold-hover)] transition-colors cursor-pointer">
+          <Plus size={17} strokeWidth={2.4} />
+          New book
+        </motion.button>
+      )}
 
       {/* ── Book modal ── */}
       <BookModal
@@ -580,7 +555,9 @@ export default function ProjectDetailPage() {
       <PinVerificationModal
         open={verifyProjectPinForDelete}
         onClose={() => setVerifyProjectPinForDelete(false)}
-        storedHash={project?.pinHash || books.find(b => b.pinHash)?.pinHash || ''}
+        storedHash={deletePinSource?.pinHash || ''}
+        pinLength={deletePinSource?.pinLength}
+        guardId={deletePinSource?.id}
         itemType="project"
         itemName={project?.name}
         onVerified={async (pin) => {
@@ -602,9 +579,13 @@ export default function ProjectDetailPage() {
         onClose={() => setSetPinOpen(false)}
         hasPin={Boolean(project?.pinHash)}
         storedHash={project?.pinHash}
-        onSet={async (hash) => {
-          await setPinForProject(projectId, hash)
-          showToast('Project PIN set 🔒')
+        pinLength={project?.pinLength}
+        guardId={projectId}
+        itemName={project?.name}
+        onSet={async (hash, length) => {
+          setUnlocked(projectId, hash)
+          await setPinForProject(projectId, hash, length)
+          showToast(`${length}-digit project PIN set`)
         }}
         onRemove={async () => {
           await setPinForProject(projectId, null)
@@ -618,9 +599,12 @@ export default function ProjectDetailPage() {
         open={Boolean(pinTarget)}
         onClose={() => setPinTarget(null)}
         storedHash={pinTarget?.pinHash}
+        pinLength={pinTarget?.pinLength}
+        guardId={pinTarget?.id}
         itemName={pinTarget?.name || ''}
+        onRehash={(hash, length) => setPinForBook(projectId, pinTarget.id, hash, length)}
         onUnlock={() => {
-          setUnlocked(pinTarget.id)
+          setUnlocked(pinTarget.id, pinTarget.pinHash)
           const bookId = pinTarget.id
           setPinTarget(null)
           forceUpdate(n => n + 1)
@@ -637,10 +621,12 @@ export default function ProjectDetailPage() {
         open={Boolean(pinForDeleteTarget)}
         onClose={() => setPinForDeleteTarget(null)}
         storedHash={pinForDeleteTarget?.pinHash}
-        itemName={`Unlock "${pinForDeleteTarget?.name || ''}" to delete`}
+        pinLength={pinForDeleteTarget?.pinLength}
+        guardId={pinForDeleteTarget?.id}
+        itemName={pinForDeleteTarget?.name || ''}
         onUnlock={() => {
           // After PIN verified, mark as unlocked and open the delete confirm
-          setUnlocked(pinForDeleteTarget.id)
+          setUnlocked(pinForDeleteTarget.id, pinForDeleteTarget.pinHash)
           const book = pinForDeleteTarget
           setPinForDeleteTarget(null)
           forceUpdate(n => n + 1)
@@ -662,16 +648,12 @@ export default function ProjectDetailPage() {
           currentBook={transferSource}
           projects={projects}
           booksByProject={booksByProject}
-          currentBalance={(() => {
-            const ents = entriesByBook[transferSource.id] || []
-            const totalIn = ents
-              .filter((e) => e.type === 'income' || e.type === 'transfer_in')
-              .reduce((s, e) => s + Number(e.amount), 0)
-            const totalOut = ents
-              .filter((e) => e.type === 'expense' || e.type === 'transfer_out')
-              .reduce((s, e) => s + Number(e.amount), 0)
-            return totalIn - totalOut
-          })()}
+          currentBalance={bookStats(transferSource).balance}
+          getBookBalance={(id) => {
+            const owner = projects.find((p) => (booksByProject[p.id] || []).some((b) => b.id === id))
+            const target = (booksByProject[owner?.id] || []).find((b) => b.id === id)
+            return target ? bookStats(target).balance : 0
+          }}
           onTransfer={async ({ destinationProjectId, destinationBookId, amount, note }) => {
             await transferBetweenBooks({
               sourceProjectId: projectId,
@@ -681,8 +663,7 @@ export default function ProjectDetailPage() {
               amount,
               note,
             })
-            const symbol = getCurrencySymbol()
-            showToast(`${symbol}${formatAmount(amount, 0)} transferred 🔄`)
+            showToast(`${symbol}${formatAmount(amount)} transferred`)
             setTransferSource(null)
           }}
         />

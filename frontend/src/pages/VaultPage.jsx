@@ -190,7 +190,7 @@ export default function VaultPage() {
 
   return (
     <LayoutShell>
-      <div className="space-y-4 pb-6 max-w-lg mx-auto">
+      <div className="space-y-4 pb-8">
         {/* Header */}
         <div className="flex items-center justify-between">
           <button
@@ -199,11 +199,6 @@ export default function VaultPage() {
           >
             <ArrowLeft size={13} /> Back to Settings
           </button>
-          {isUnlocked && (
-            <span className="text-[10px] text-emerald-600 bg-emerald-500/10 px-2 py-0.5 rounded-full font-semibold dark:text-emerald-400">
-              Verified Session
-            </span>
-          )}
         </div>
 
         <AnimatePresence mode="wait">
@@ -215,51 +210,51 @@ export default function VaultPage() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -15 }}
               transition={{ duration: 0.3 }}
-              className="rounded-3xl border border-amber-100 bg-white p-6 shadow-xl space-y-6 text-center dark:bg-stone-900 dark:border-amber-950"
+              className="premium-card p-6 sm:p-8 space-y-6 text-center"
             >
               {/* Lock Icon */}
               <div className="flex justify-center">
-                <div className="rounded-full bg-amber-50 border border-amber-100 p-5 text-amber-700 shadow-sm dark:bg-amber-950/20 dark:border-amber-950/40">
-                  <Lock size={32} className="text-amber-750 dark:text-amber-500" />
+                <div className="rounded-full bg-[var(--gold-light)] border border-[var(--border-card)] p-5 text-[var(--gold-primary)] shadow-sm">
+                  <Lock size={32} />
                 </div>
               </div>
 
               <div>
-                <h1 className="font-serif text-xl font-bold text-stone-850 dark:text-stone-100">Deep Analytics & Vault</h1>
-                <p className="text-xs text-stone-400 mt-2 leading-relaxed px-4 dark:text-stone-400">
-                  Please verify your credentials to unlock private statistics.
+                <h1 className="font-serif-luxury text-xl sm:text-2xl font-bold text-[var(--text-main)]">Private Vault & Analytics</h1>
+                <p className="text-xs text-[var(--text-muted)] mt-2 leading-relaxed max-w-sm mx-auto">
+                  Verify your account credentials to view private ledger analytics and hidden balances.
                 </p>
               </div>
 
-              <form onSubmit={handleUnlock} className="space-y-4 text-left">
+              <form onSubmit={handleUnlock} className="space-y-4 text-left max-w-sm mx-auto">
                 {isPasswordUser ? (
                   <div>
-                    <label className="block text-xs font-semibold text-stone-500 uppercase tracking-wider mb-2 dark:text-stone-400">
+                    <label className="block text-[10px] font-semibold text-[var(--text-subtle)] uppercase tracking-wider mb-2">
                       Account Password
                     </label>
                     <div className="relative">
-                      <KeyRound size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400" />
+                      <KeyRound size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--text-subtle)]" />
                       <input
                         type={showPassword ? 'text' : 'password'}
                         value={password}
                         onChange={(e) => { setPassword(e.target.value); setError('') }}
                         placeholder="••••••••"
-                        className="w-full rounded-2xl border border-amber-100 bg-amber-50/20 pl-10 pr-10 py-3 text-sm focus:border-amber-400 focus:bg-white outline-none transition-colors dark:border-amber-950 dark:bg-amber-950/10 dark:focus:bg-stone-950"
+                        className="w-full rounded-2xl border border-[var(--border-card)] bg-[var(--bg-page)] pl-10 pr-10 py-3 text-sm text-[var(--text-main)] placeholder-[var(--text-subtle)] focus:border-[var(--gold-primary)] outline-none transition-colors"
                       />
                       <button
                         type="button"
                         onClick={() => setShowPassword(v => !v)}
-                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600 transition-colors"
+                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[var(--text-subtle)] hover:text-[var(--text-main)] transition-colors cursor-pointer"
                       >
-                        {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                        {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                       </button>
                     </div>
                   </div>
                 ) : (
-                  <div className="rounded-2xl border border-amber-100 bg-amber-50/30 p-4 text-center space-y-3 dark:border-amber-950 dark:bg-amber-950/10">
-                    <Globe size={20} className="text-amber-600 mx-auto" />
-                    <p className="text-xs text-stone-600 leading-relaxed dark:text-stone-300">
-                      Re-verify Google session to unlock.
+                  <div className="rounded-2xl border border-[var(--border-card)] bg-[var(--gold-light)] p-4 text-center space-y-3">
+                    <Globe size={20} className="text-[var(--gold-primary)] mx-auto" />
+                    <p className="text-xs text-[var(--text-main)] font-medium leading-relaxed">
+                      Re-verify Google session to unlock your vault.
                     </p>
                   </div>
                 )}
@@ -268,35 +263,37 @@ export default function VaultPage() {
                   <motion.div
                     initial={{ opacity: 0, y: -4 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="rounded-2xl bg-red-50 border border-red-100 p-3 flex gap-2 dark:bg-rose-955/20 dark:border-rose-955/40"
+                    className="rounded-2xl bg-rose-500/10 border border-rose-500/30 p-3 flex gap-2"
                   >
-                    <ShieldAlert size={14} className="text-red-500 flex-shrink-0 mt-0.5 dark:text-rose-500" />
-                    <p className="text-xs text-red-705 leading-relaxed font-medium dark:text-rose-400">{error}</p>
+                    <ShieldAlert size={16} className="text-rose-500 flex-shrink-0 mt-0.5" />
+                    <p className="text-xs text-rose-500 leading-relaxed font-medium">{error}</p>
                   </motion.div>
                 )}
 
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full rounded-2xl bg-amber-600 py-3 text-sm font-bold text-white hover:bg-amber-700 transition-colors shadow-md disabled:opacity-50 flex items-center justify-center gap-2"
+                  className="w-full rounded-2xl bg-[var(--gold-primary)] py-3 text-xs font-bold text-white hover:bg-[var(--gold-hover)] transition-all shadow-md disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
                 >
-                  <Unlock size={14} />
-                  {loading ? 'Verifying...' : 'Unlock Vault'}
+                  <Unlock size={15} />
+                  {loading ? 'Verifying...' : 'Unlock Private Vault'}
                 </button>
               </form>
             </motion.div>
           ) : (
-            /* ── Streamlined Unlocked Dashboard (Unified Canvas Card) ── */
+            /* ── Streamlined Unlocked Dashboard ── */
             <motion.div
               key="unlocked-dashboard"
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="rounded-3xl border border-amber-100 bg-white p-5 shadow-sm space-y-4 dark:bg-stone-900 dark:border-amber-950"
+              className="premium-card p-6 space-y-4"
             >
               {/* Header Title */}
-              <div className="flex items-center justify-between pb-2 border-b border-stone-100 dark:border-stone-800">
-                <h1 className="font-serif text-lg font-bold text-stone-850 dark:text-stone-100">Deep Analytics</h1>
-                <span className="text-[10px] text-stone-400 font-semibold">{filteredEntries.length} items</span>
+              <div className="flex items-center justify-between pb-3 border-b border-[var(--border-subtle)]">
+                <h1 className="font-serif-luxury text-lg font-bold text-[var(--text-main)]">Private Analytics</h1>
+                <span className="text-[11px] text-[var(--gold-primary)] bg-[var(--gold-light)] px-2.5 py-1 rounded-full font-bold">
+                  Verified Session ✓
+                </span>
               </div>
 
               {/* Minimalist Date Filters */}

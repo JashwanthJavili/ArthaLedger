@@ -1,40 +1,57 @@
 import { NavLink } from 'react-router-dom'
-import { BarChart3, Home, Settings, Compass } from 'lucide-react'
+import { Home, BarChart3, Compass, Settings } from 'lucide-react'
 
-const nav = [
+const navItems = [
   { to: '/dashboard', label: 'Home', icon: Home },
   { to: '/analytics', label: 'Analytics', icon: BarChart3 },
   { to: '/trips', label: 'Groups', icon: Compass },
   { to: '/settings', label: 'Settings', icon: Settings },
 ]
 
-export default function LayoutShell({ children }) {
+/**
+ * App frame: page content + fixed bottom navigation (all screen sizes).
+ * There is no top header; each page renders its own title.
+ * `hideHeader` is accepted for backward compatibility and ignored.
+ */
+// eslint-disable-next-line no-unused-vars
+export default function LayoutShell({ children, hideHeader }) {
   return (
-    <div className="mx-auto min-h-screen max-w-5xl px-3 sm:px-5 lg:px-6 pb-24 pt-4 sm:pt-5">
-      {/* Page content */}
-      <main>{children}</main>
+    <div className="min-h-screen flex flex-col bg-[var(--bg-page)] text-[var(--text-main)] transition-colors duration-300">
+      <main
+        className="flex-1 mx-auto w-full max-w-6xl px-4 sm:px-6 pb-36"
+        style={{ paddingTop: 'max(1.25rem, env(safe-area-inset-top))' }}
+      >
+        {children}
+      </main>
 
-      {/* Bottom nav bar */}
-      <nav className="fixed bottom-3 left-1/2 z-40 flex w-[min(96vw,400px)] -translate-x-1/2 items-center justify-around rounded-2xl border border-amber-100/80 bg-white/92 px-2 py-1.5 shadow-xl backdrop-blur-md">
-        {nav.map((item) => {
-          const Icon = item.icon
-          return (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              className={({ isActive }) =>
-                `inline-flex flex-col items-center gap-0.5 rounded-xl px-5 py-2 text-xs font-medium transition-all duration-200 ${
-                  isActive
-                    ? 'bg-amber-100 text-amber-800'
-                    : 'text-stone-500 hover:text-stone-700 hover:bg-amber-50'
-                }`
-              }
-            >
-              <Icon size={19} />
-              <span className="text-[10px]">{item.label}</span>
-            </NavLink>
-          )
-        })}
+      <nav
+        aria-label="Primary"
+        className="fixed inset-x-0 bottom-0 z-40 border-t border-[var(--border-card)] bg-[var(--bg-page)]/95 backdrop-blur-xl"
+        style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+      >
+        <div className="mx-auto grid max-w-md grid-cols-4">
+          {navItems.map((item) => {
+            const Icon = item.icon
+            return (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                className={({ isActive }) =>
+                  `relative flex h-16 flex-col items-center justify-center gap-1 transition-colors ${
+                    isActive ? 'text-[var(--gold-primary)]' : 'text-[var(--text-subtle)] hover:text-[var(--text-main)]'
+                  }`
+                }
+              >
+                {({ isActive }) => (
+                  <>
+                    <Icon size={20} strokeWidth={isActive ? 2.2 : 1.8} />
+                    <span className={`text-[10px] tracking-wide ${isActive ? 'font-semibold' : 'font-medium'}`}>{item.label}</span>
+                  </>
+                )}
+              </NavLink>
+            )
+          })}
+        </div>
       </nav>
     </div>
   )

@@ -1,9 +1,10 @@
-import { useState, useEffect, useRef, useMemo } from 'react'
+import { useState, useEffect, useLayoutEffect, useRef, useMemo } from 'react'
+import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  X, TrendingUp, TrendingDown, ChevronDown, ChevronUp,
-  Wallet, Smartphone, Plus, Trash2, Tag, Calendar, User, FileText,
+  X, ChevronDown, ChevronLeft, ChevronRight, Wallet, Smartphone, Trash2, Calendar, User, FileText,
   PiggyBank, Check, Compass, Repeat, Zap, AlertTriangle, ShieldAlert, Layers,
+  ArrowDownLeft, ArrowUpRight, Clock,
 } from 'lucide-react'
 import CategoryManager from './CategoryManager'
 import { triggerBudgetAlertNotification } from '../../lib/notifications'
@@ -11,6 +12,11 @@ import { triggerBudgetAlertNotification } from '../../lib/notifications'
 const MODES = [
   { id: 'Cash', label: 'Cash', icon: Wallet },
   { id: 'UPI',  label: 'UPI',  icon: Smartphone },
+]
+
+const TYPES = [
+  { id: 'income',  label: 'Cash In',  icon: ArrowDownLeft },
+  { id: 'expense', label: 'Cash Out', icon: ArrowUpRight },
 ]
 
 const currencyMap = { INR: '₹', USD: '$', EUR: '€', GBP: '£', JPY: '¥', AED: 'د.إ', SGD: 'S$' }
@@ -33,6 +39,9 @@ export default function EntryModal({
   templates = [], onSaveTemplate, onDeleteTemplate,
   budgets = {}, spentByCategory = {},
 }) {
+  // The entry type lives inside the modal so users can flip between
+  // Cash In / Cash Out without losing anything they've typed.
+  const [entryType,   setEntryType]   = useState(type || 'income')
   const [amount,      setAmount]      = useState('')
   const [description, setDesc]        = useState('')
   const [category,    setCategory]    = useState('')
@@ -49,7 +58,6 @@ export default function EntryModal({
   const [errors,       setErrors]       = useState({})
   const [showMore,     setShowMore]     = useState(false)
   const [showCatPanel, setShowCatPanel] = useState(false)
-  const [newCatInput,  setNewCatInput]  = useState('')
   const [saveAsTemplate,   setSaveAsTemplate]   = useState(false)
   const [templateLabel,   setTemplateLabel]     = useState('')
   const [manageTemplates, setManageTemplates]   = useState(false)
@@ -61,6 +69,8 @@ export default function EntryModal({
   const formRef     = useRef(null)
   const [validationAlert, setValidationAlert] = useState(null)
   const [catSavedToast, setCatSavedToast] = useState(false)
+  const [descFocused, setDescFocused] = useState(false)
+  const [activeSugg, setActiveSugg] = useState(-1)
 
   const loadLastEntryDefaults = () => {
     try {
@@ -70,12 +80,15 @@ export default function EntryModal({
     }
   }
 
-  useEffect(() => {
+  // Layout effect: the form is filled before the first paint, so the sheet
+  // opens at its final height instead of growing (and jumping) a frame later.
+  useLayoutEffect(() => {
     if (open && !isOpenRef.current) {
       isOpenRef.current = true
       setValidationAlert(null)
       const cats = categories?.length ? categories : ['General']
       const saved = initial ? {} : loadLastEntryDefaults()
+      setEntryType(initial?.type || type || 'income')
       setLocalCats(cats)
       setAmount(initial?.amount != null ? String(initial.amount) : '')
       setDesc(initial?.description || '')
@@ -99,7 +112,6 @@ export default function EntryModal({
       setErrors({})
       setShowMore(Boolean(initial?.notes || initial?.enteredBy || initial?.isSavings || initialTripId))
       setShowCatPanel(false)
-      setNewCatInput('')
       setSaveAsTemplate(false)
       setTemplateLabel('')
       setManageTemplates(false)
@@ -111,7 +123,7 @@ export default function EntryModal({
       isOpenRef.current = false
       setValidationAlert(null)
     }
-  }, [open, initial, categories, trips, projectId, bookId])
+  }, [open, initial, categories, trips, projectId, bookId, type])
 
   useEffect(() => {
     if (open && isOpenRef.current && categories?.length) {
@@ -138,9 +150,12 @@ export default function EntryModal({
   if (!open) return null
 
   const symbol   = currencyMap[localStorage.getItem('sl_currency') || 'INR'] || '₹'
-  const isIncome = type === 'income'
-  const matchingTemplates = templates.filter(t => t.type === type)
+  const isIncome = entryType === 'income'
+  // Savings only applies to Cash In; the toggle value is kept if the user flips back.
+  const savingsOn = isIncome && isSavings
+  const matchingTemplates = templates.filter(t => t.type === entryType)
 
+  const hasBudgets = Object.values(budgets || {}).some(b => b?.soft > 0)
   const budgetHint = (() => {
     if (isIncome || !category) return null
     const cfg = budgets[category]
@@ -156,71 +171,54 @@ export default function EntryModal({
     const totalAfterEntry = spent + currentAmount
     const remainingAfter = soft - totalAfterEntry
 
-    const pctBefore = soft > 0 ? (spent / soft) * 100 : 0
     const pctAfter = soft > 0 ? (totalAfterEntry / soft) * 100 : 0
 
     const overHard = hard > 0 && totalAfterEntry > hard
     const overSoft = totalAfterEntry > soft
     const isWarn = pctAfter >= warnAt && !overSoft
+    const fmt = n => `${symbol}${Math.abs(n).toLocaleString('en-IN')}`
 
-    let barColor, bgClass, borderClass, textClass, icon, title, message
+    let barColor, textClass, icon, title, message
 
     if (overHard) {
-      barColor = '#ef4444'
-      bgClass = 'bg-red-50'
-      borderClass = 'border-red-300'
-      textClass = 'text-red-700'
-      icon = <ShieldAlert size={14} className="text-red-500 flex-shrink-0" />
-      title = 'Hard limit hit!'
+      barColor = '#dc2626'
+      textClass = 'text-red-600 dark:text-red-400'
+      icon = <ShieldAlert size={14} className="flex-shrink-0" />
+      title = `Hard limit crossed by ${fmt(totalAfterEntry - hard)}`
       message = currentAmount > 0
-        ? `This entry brings total spent to ${symbol}${totalAfterEntry.toLocaleString('en-IN')}, exceeding hard limit of ${symbol}${hard.toLocaleString('en-IN')} by ${symbol}${Math.abs(totalAfterEntry - hard).toLocaleString('en-IN')}!`
-        : `Already at hard limit! ${symbol}${Math.abs(spent - hard).toLocaleString('en-IN')} over limit`
+        ? `Total after this entry: ${fmt(totalAfterEntry)} — ${fmt(totalAfterEntry - hard)} over the hard limit of ${fmt(hard)}.`
+        : `Already ${fmt(spent - hard)} over the hard limit.`
     } else if (overSoft) {
-      barColor = '#f97316'
-      bgClass = 'bg-orange-50'
-      borderClass = 'border-orange-300'
-      textClass = 'text-orange-700'
-      icon = <AlertTriangle size={14} className="text-orange-500 flex-shrink-0" />
-      title = 'Over budget!'
+      barColor = '#ea580c'
+      textClass = 'text-orange-600 dark:text-orange-400'
+      icon = <AlertTriangle size={14} className="flex-shrink-0" />
+      title = `${fmt(totalAfterEntry - soft)} over budget`
       message = currentAmount > 0
-        ? `Remaining before: ${symbol}${remainingBefore.toLocaleString('en-IN')}. This entry will exceed budget by ${symbol}${Math.abs(remainingAfter).toLocaleString('en-IN')}`
-        : `Already over budget by ${symbol}${Math.abs(remainingBefore).toLocaleString('en-IN')}`
+        ? `${fmt(remainingBefore)} was remaining. This entry exceeds the budget by ${fmt(remainingAfter)}.`
+        : `Already over budget by ${fmt(remainingBefore)}.`
     } else if (isWarn) {
-      barColor = '#f59e0b'
-      bgClass = 'bg-amber-50'
-      borderClass = 'border-amber-200'
-      textClass = 'text-amber-700'
-      icon = <AlertTriangle size={14} className="text-amber-500 flex-shrink-0" />
-      title = `Near limit (${Math.round(pctAfter)}% used)`
+      barColor = '#d97706'
+      textClass = 'text-amber-600 dark:text-amber-400'
+      icon = <AlertTriangle size={14} className="flex-shrink-0" />
+      title = `Near limit · ${fmt(remainingAfter)} left${currentAmount > 0 ? ' after this' : ''}`
       message = currentAmount > 0
-        ? `${symbol}${remainingBefore.toLocaleString('en-IN')} remaining (${symbol}${remainingAfter.toLocaleString('en-IN')} left after entry)`
-        : `${symbol}${remainingBefore.toLocaleString('en-IN')} remaining this month (${Math.round(pctBefore)}% used)`
+        ? `${fmt(remainingBefore)} remaining · ${fmt(remainingAfter)} after this entry`
+        : `${fmt(remainingBefore)} remaining this month`
     } else {
-      barColor = '#22c55e'
-      bgClass = 'bg-emerald-50'
-      borderClass = 'border-emerald-200'
-      textClass = 'text-emerald-700'
-      icon = <Check size={14} className="text-emerald-600 flex-shrink-0" />
-      title = `${symbol}${remainingBefore.toLocaleString('en-IN')} remaining this month`
+      barColor = '#059669'
+      textClass = 'text-emerald-600 dark:text-emerald-400'
+      icon = <Check size={14} className="flex-shrink-0" />
+      title = `${fmt(remainingAfter)} left this month${currentAmount > 0 ? ' after this' : ''}`
       message = currentAmount > 0
-        ? `Budget: ${symbol}${soft.toLocaleString('en-IN')} · Spent: ${symbol}${spent.toLocaleString('en-IN')} · After entry: ${symbol}${remainingAfter.toLocaleString('en-IN')} left`
-        : `Budget: ${symbol}${soft.toLocaleString('en-IN')} · Already spent: ${symbol}${spent.toLocaleString('en-IN')}`
+        ? `Budget ${fmt(soft)} · Spent ${fmt(spent)} · ${fmt(remainingAfter)} left after this entry`
+        : `Budget ${fmt(soft)} · Spent ${fmt(spent)}`
     }
 
     return {
-      spent,
-      soft,
-      hard,
-      remainingBefore,
-      remainingAfter,
-      pctBefore,
+      softLimit: soft,
+      totalAfter: totalAfterEntry,
       pctAfter,
-      overHard,
-      overSoft,
-      isWarn,
       barColor,
-      bgClass,
-      borderClass,
       textClass,
       icon,
       title,
@@ -228,13 +226,38 @@ export default function EntryModal({
     }
   })()
 
-  const accent = isIncome
-    ? { ring: 'focus:border-emerald-400', chip: 'border-emerald-400 bg-emerald-50 text-emerald-800', btn: 'bg-emerald-600 hover:bg-emerald-700', modeActive: 'border-emerald-400 bg-emerald-50 text-emerald-800' }
-    : { ring: 'focus:border-rose-400',    chip: 'border-rose-400 bg-rose-50 text-rose-800',          btn: 'bg-rose-500 hover:bg-rose-600',       modeActive: 'border-rose-400 bg-rose-50 text-rose-800' }
+  const tone = savingsOn
+    ? {
+        text: 'text-violet-600 dark:text-violet-400',
+        hero: 'bg-violet-500/[0.07] border-violet-500/25',
+        btn: 'bg-violet-600 hover:bg-violet-700 shadow-violet-600/25',
+        caption: 'Amount to savings',
+      }
+    : isIncome
+      ? {
+          text: 'text-emerald-600 dark:text-emerald-400',
+          hero: 'bg-emerald-500/[0.07] border-emerald-500/25',
+          btn: 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/25',
+          caption: 'Amount received',
+        }
+      : {
+          text: 'text-rose-600 dark:text-rose-400',
+          hero: 'bg-rose-500/[0.07] border-rose-500/25',
+          btn: 'bg-rose-600 hover:bg-rose-700 shadow-rose-600/25',
+          caption: 'Amount paid',
+        }
+
+  const labelCls = 'flex items-center gap-1.5 text-[11px] font-semibold text-[var(--text-muted)] mb-2'
+  const fieldCls = 'w-full rounded-xl border border-[var(--border-card)] bg-[var(--bg-card)] px-3.5 py-2.5 text-[13px] text-[var(--text-main)] placeholder-[var(--text-subtle)] outline-none transition-colors focus:border-[var(--gold-primary)]'
 
   const clearErr = key => {
     setErrors(e => ({ ...e, [key]: '' }))
     setValidationAlert(null)
+  }
+
+  const switchType = (next) => {
+    if (next === entryType) return
+    setEntryType(next)
   }
 
   const validate = () => {
@@ -283,14 +306,14 @@ export default function EntryModal({
         mode,
         enteredBy,
         notes,
-        type,
-        isSavings,
+        type: entryType,
+        isSavings: savingsOn,
         timestamp: new Date(timestamp).getTime(),
         _localCategories: localCats,
         tripId,
       })
       if (!initial) {
-        localStorage.setItem(LAST_ENTRY_KEY, JSON.stringify({ category, mode, enteredBy, isSavings }))
+        localStorage.setItem(LAST_ENTRY_KEY, JSON.stringify({ category, mode, enteredBy, isSavings: savingsOn }))
         if (saveAsTemplate && onSaveTemplate) {
           await onSaveTemplate({
             label: templateLabel.trim() || description,
@@ -299,8 +322,8 @@ export default function EntryModal({
             category,
             subcategory,
             mode,
-            type,
-            isSavings,
+            type: entryType,
+            isSavings: savingsOn,
           })
         }
       }
@@ -319,7 +342,7 @@ export default function EntryModal({
     }
   }
 
-  const useTemplate = async (tpl) => {
+  const applyTemplate = async (tpl) => {
     if (quickAdding) return
     setQuickAdding(tpl.id)
     try {
@@ -331,7 +354,7 @@ export default function EntryModal({
         mode: tpl.mode || mode,
         enteredBy,
         notes,
-        type,
+        type: entryType,
         isSavings: Boolean(tpl.isSavings),
         timestamp: Date.now(),
         _localCategories: localCats,
@@ -343,9 +366,53 @@ export default function EntryModal({
     }
   }
 
-  const applyDescriptionSuggestion = (description) => {
-    setDesc(description)
+  // Autocomplete: filter by what's typed, prefer same-type and prefix matches.
+  const descQuery = description.trim().toLowerCase()
+  const filteredSuggestions = initial ? [] : descriptionSuggestions
+    .filter(item => {
+      const d = String(item.description || '').toLowerCase()
+      return d && d !== descQuery && (!descQuery || d.includes(descQuery))
+    })
+    .map((item, i) => ({ item, i }))
+    .sort((a, b) =>
+      ((b.item.type === entryType) - (a.item.type === entryType)) ||
+      ((b.item.description.toLowerCase().startsWith(descQuery)) - (a.item.description.toLowerCase().startsWith(descQuery))) ||
+      a.i - b.i)
+    .slice(0, 4)
+    .map(({ item }) => item)
+  const showSuggestions = descFocused && filteredSuggestions.length > 0
+
+  const applyDescriptionSuggestion = (item) => {
+    setDesc(item.description)
+    if (item.category && catList.some(c => c.name === item.category)) {
+      setCategory(item.category)
+      const subs = catList.find(c => c.name === item.category)?.subcategories || []
+      setSubcategory(item.subcategory && subs.includes(item.subcategory) ? item.subcategory : '')
+    }
+    if (MODES.some(m => m.id === item.mode)) setMode(item.mode)
+    if (!amount && Number(item.amount) > 0 && item.type === entryType) setAmount(String(item.amount))
     setErrors({})
+    setValidationAlert(null)
+    setDescFocused(false)
+    setActiveSugg(-1)
+  }
+
+  const handleDescKeyDown = (e) => {
+    if (!showSuggestions) return
+    if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      setActiveSugg(i => (i + 1) % filteredSuggestions.length)
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      setActiveSugg(i => (i <= 0 ? filteredSuggestions.length - 1 : i - 1))
+    } else if (e.key === 'Enter' && activeSugg >= 0) {
+      e.preventDefault()
+      applyDescriptionSuggestion(filteredSuggestions[activeSugg])
+    } else if (e.key === 'Escape') {
+      e.preventDefault()
+      e.stopPropagation()
+      setDescFocused(false)
+    }
   }
 
   const handleKeyDown = (e) => {
@@ -366,85 +433,120 @@ export default function EntryModal({
     }
   }
 
-  // addCat: only touches localCats + category — amount/description untouched
-  const addCat = () => {
-    const t = newCatInput.trim()
-    if (!t || localCats.includes(t)) return
-    const updated = [...localCats, t]
-    setLocalCats(updated)
-    setCategory(t)
-    setNewCatInput('')
-    onSaveCategories?.(updated)
-    setShowCatPanel(false)
-  }
+  return createPortal(
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+      <motion.div
+        initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.18 }}
+        className="absolute inset-0 bg-black/55 backdrop-blur-[3px]" onClick={onClose}
+      />
 
-  const removeCat = (cat) => {
-    const updated = localCats.filter(c => c !== cat)
-    setLocalCats(updated)
-    if (category === cat) setCategory(updated[0] || '')
-    onSaveCategories?.(updated)
-  }
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-
-      <div
-        className="relative w-full sm:max-w-sm sm:rounded-3xl rounded-t-3xl bg-white shadow-2xl flex flex-col overflow-hidden"
-        style={{ maxHeight: '92vh' }}
+      <motion.div
+        initial={{ y: 56, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ y: { duration: 0.32, ease: [0.16, 1, 0.3, 1] }, opacity: { duration: 0.12 } }}
+        className="relative w-full sm:max-w-[460px] will-change-transform"
       >
-        {/* Coloured header — live amount preview */}
-        <div className={`flex-shrink-0 px-5 pt-5 pb-4 ${isSavings ? 'bg-violet-600' : isIncome ? 'bg-emerald-600' : 'bg-rose-500'}`}>
-          <div className="w-8 h-1 rounded-full bg-white/30 mx-auto mb-4 sm:hidden" />
-          <div className="flex items-start justify-between">
-            <div>
-              <div className="flex items-center gap-2 mb-0.5">
-                <p className="text-[10px] font-semibold uppercase tracking-widest text-white/60">
-                  {initial ? 'Edit Entry' : isIncome ? 'Money In' : 'Money Out'}
-                </p>
-                {isSavings && (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-white/20 px-2 py-0.5 text-[9px] font-bold text-white uppercase tracking-wider">
-                    <PiggyBank size={9} /> Savings
-                  </span>
-                )}
-              </div>
-              <div className="flex items-baseline gap-1.5">
-                <span className="text-2xl font-light text-white/70">{symbol}</span>
-                <span className={`text-4xl font-bold tracking-tight ${amount ? 'text-white' : 'text-white/30'}`}>
-                  {amount || '0.00'}
-                </span>
-              </div>
-            </div>
-            <button
-              type="button" onClick={onClose}
-              className="rounded-xl p-2 bg-white/15 hover:bg-white/25 text-white transition-colors mt-0.5"
-            >
-              <X size={16} />
-            </button>
+        {/* Floating close button */}
+        <button
+          type="button" onClick={onClose} aria-label="Close"
+          className="absolute left-1/2 -top-[60px] -translate-x-1/2 flex h-11 w-11 items-center justify-center rounded-full border border-white/20 bg-[var(--bg-page)] text-[var(--text-main)] shadow-[0_8px_24px_rgba(0,0,0,0.3)] hover:scale-105 active:scale-95 transition-transform cursor-pointer"
+        >
+          <X size={20} />
+        </button>
+
+        <div
+          className="sm:rounded-3xl rounded-t-3xl bg-[var(--bg-page)] border border-[var(--border-card)] shadow-[0_30px_80px_-20px_rgba(0,0,0,0.45)] flex flex-col overflow-hidden"
+          style={{ maxHeight: 'calc(94vh - 72px)' }}
+        >
+        {/* Cash In / Cash Out switch */}
+        <div className="flex-shrink-0 px-5 pt-5">
+          <div role="tablist" aria-label="Entry type" className="relative isolate grid grid-cols-2 rounded-2xl bg-[var(--border-subtle)] p-1">
+            {/* Sliding pill — plain x transform, so nothing flies in when the sheet opens */}
+            <motion.span
+              aria-hidden
+              initial={false}
+              animate={{ x: entryType === 'income' ? '0%' : '100%' }}
+              transition={{ type: 'spring', stiffness: 500, damping: 40 }}
+              className="absolute inset-y-1 left-1 -z-10 w-[calc(50%-4px)] rounded-xl bg-[var(--bg-card)] shadow-[0_1px_3px_rgba(0,0,0,0.12)]"
+            />
+            {TYPES.map(({ id, label, icon: Icon }) => {
+              const active = entryType === id
+              const activeText = id === 'income' ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  role="tab"
+                  aria-selected={active}
+                  onClick={() => switchType(id)}
+                  className={`relative flex items-center justify-center gap-1.5 rounded-xl py-2.5 text-[13px] font-semibold transition-colors cursor-pointer ${
+                    active ? activeText : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
+                  }`}
+                >
+                  <Icon size={15} strokeWidth={2.2} />
+                  {label}
+                </button>
+              )
+            })}
           </div>
         </div>
 
-        <form ref={formRef} onSubmit={handleSubmit} onKeyDown={handleKeyDown} className="flex flex-col flex-1 overflow-hidden bg-white">
-          <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+        <form ref={formRef} onSubmit={handleSubmit} onKeyDown={handleKeyDown} className="flex flex-col flex-1 overflow-hidden">
+          <div className="flex-1 overflow-y-auto px-5 pt-4 pb-5 space-y-5">
 
-            {/* Validation Popup Alert */}
+            {/* Amount */}
+            <div>
+              <label
+                htmlFor="entry-amount"
+                className={`flex items-center gap-3 rounded-2xl border px-4 py-2.5 transition-colors duration-300 cursor-text ${tone.hero} ${
+                  errors.amount ? '!border-rose-500' : ''
+                }`}
+              >
+                <span className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-[var(--bg-card)] text-lg font-semibold shadow-[0_1px_2px_rgba(0,0,0,0.06)] ${tone.text}`}>
+                  {symbol}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className={`block text-[10px] font-semibold uppercase tracking-[0.12em] ${tone.text}`}>
+                    {tone.caption}
+                  </span>
+                  <input
+                    id="entry-amount"
+                    ref={amountRef}
+                    type="number" inputMode="decimal" min="0.01" step="0.01"
+                    value={amount}
+                    onChange={e => { setAmount(e.target.value); clearErr('amount') }}
+                    onKeyDown={e => {
+                      // Enter moves to the description instead of submitting
+                      if (e.key === 'Enter' && !e.ctrlKey && !e.metaKey) {
+                        e.preventDefault()
+                        descRef.current?.focus()
+                      }
+                    }}
+                    enterKeyHint="next"
+                    placeholder="0.00"
+                    className="no-spin block w-full bg-transparent text-[24px] leading-tight font-bold tracking-tight tabular-nums text-[var(--text-main)] placeholder-[var(--text-subtle)]/50 outline-none"
+                  />
+                </span>
+              </label>
+              {errors.amount && <p className="mt-1.5 text-[11px] text-rose-500">{errors.amount}</p>}
+            </div>
+
+            {/* Validation alert */}
             <AnimatePresence>
               {validationAlert && (
                 <motion.div
-                  initial={{ opacity: 0, y: -6, scale: 0.98 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: -6, scale: 0.98 }}
-                  className="rounded-2xl border border-red-200 bg-red-50 p-3.5 flex items-start gap-3 shadow-sm"
+                  initial={{ opacity: 0, y: -4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -4 }}
+                  className="rounded-xl border border-rose-500/30 bg-rose-500/[0.06] px-3.5 py-3 flex items-start gap-2.5"
                 >
-                  <AlertTriangle size={18} className="text-red-500 flex-shrink-0 mt-0.5" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-bold text-red-800">Please complete required fields</p>
-                    <p className="text-xs text-red-600 mt-0.5 font-medium leading-relaxed">{validationAlert}</p>
-                  </div>
+                  <AlertTriangle size={15} className="text-rose-600 dark:text-rose-400 flex-shrink-0 mt-px" />
+                  <p className="flex-1 text-xs leading-relaxed text-rose-700 dark:text-rose-300">{validationAlert}</p>
                   <button
                     type="button"
                     onClick={() => setValidationAlert(null)}
-                    className="p-1 text-red-400 hover:text-red-600 rounded-lg transition-colors"
+                    aria-label="Dismiss"
+                    className="text-rose-400 hover:text-rose-600 transition-colors cursor-pointer"
                   >
                     <X size={14} />
                   </button>
@@ -452,47 +554,47 @@ export default function EntryModal({
               )}
             </AnimatePresence>
 
-            {/* Quick Add strip — one-tap recurring templates (new entries only) */}
+            {/* Quick Add — one-tap recurring templates (new entries only) */}
             {!initial && matchingTemplates.length > 0 && (
               <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className="flex items-center gap-1.5 text-[10px] font-semibold text-stone-400 uppercase tracking-wider">
-                    <Zap size={10} /> Quick Add
-                  </label>
+                <div className="flex items-center justify-between mb-2">
+                  <span className={labelCls + ' !mb-0'}>
+                    <Zap size={11} /> Quick add
+                  </span>
                   <button
                     type="button" onClick={() => setManageTemplates(v => !v)}
-                    className={`flex items-center gap-1 text-[10px] font-semibold px-2 py-1 rounded-lg transition-colors ${
-                      manageTemplates ? 'bg-stone-800 text-white' : 'bg-stone-100 text-stone-500 hover:bg-stone-200'
-                    }`}
+                    className="text-[11px] font-medium text-[var(--text-subtle)] hover:text-[var(--text-main)] transition-colors cursor-pointer"
                   >
-                    {manageTemplates ? (<><Check size={9} strokeWidth={3} /> Done</>) : 'Manage'}
+                    {manageTemplates ? 'Done' : 'Manage'}
                   </button>
                 </div>
-                <div className="flex gap-1.5 overflow-x-auto pb-1.5 snap-x snap-mandatory">
+                <div className="flex gap-2 overflow-x-auto pb-1 snap-x snap-mandatory">
                   {matchingTemplates.map(tpl => (
                     <div
                       key={tpl.id}
-                      className={`snap-start inline-flex items-center rounded-2xl border text-xs font-medium flex-shrink-0 overflow-hidden ${accent.chip}`}
+                      className="snap-start inline-flex items-stretch rounded-xl border border-[var(--border-card)] bg-[var(--bg-card)] flex-shrink-0 overflow-hidden hover:border-[var(--gold-primary)] transition-colors"
                     >
                       <button
                         type="button"
                         disabled={submitting || Boolean(quickAdding)}
-                        onClick={() => useTemplate(tpl)}
-                        className="pl-3 pr-2 py-2 text-left disabled:opacity-50"
+                        onClick={() => applyTemplate(tpl)}
+                        className="px-3 py-2 text-left disabled:opacity-50 cursor-pointer"
                       >
-                        <span className="block leading-tight">{tpl.label || tpl.description}</span>
-                        <span className="block text-[10px] opacity-70 leading-tight">
-                          {symbol}{Number(tpl.amount).toFixed(2)}{tpl.subcategory ? ` · ${tpl.subcategory}` : ''}
+                        <span className="block text-xs font-medium text-[var(--text-main)] leading-tight">
+                          {quickAdding === tpl.id ? 'Adding…' : (tpl.label || tpl.description)}
+                        </span>
+                        <span className="block mt-0.5 text-[11px] tabular-nums text-[var(--text-subtle)] leading-tight">
+                          {symbol}{Number(tpl.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}{tpl.subcategory ? ` · ${tpl.subcategory}` : ''}
                         </span>
                       </button>
                       {manageTemplates && (
                         <button
                           type="button"
                           onClick={() => onDeleteTemplate?.(tpl.id)}
-                          className="pr-2.5 pl-1 py-2 text-stone-400 hover:text-red-500 transition-colors self-stretch"
+                          className="px-2.5 border-l border-[var(--border-subtle)] text-[var(--text-subtle)] hover:text-rose-500 transition-colors cursor-pointer"
                           title={`Remove ${tpl.label || tpl.description}`}
                         >
-                          <Trash2 size={11} />
+                          <Trash2 size={12} />
                         </button>
                       )}
                     </div>
@@ -501,425 +603,747 @@ export default function EntryModal({
               </div>
             )}
 
-            {/* Amount */}
-            <div>
-              <label className="block text-[10px] font-semibold text-stone-400 uppercase tracking-wider mb-1.5">
-                Amount
-              </label>
-              <div className="relative">
-                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400 font-bold text-base select-none">
-                  {symbol}
-                </span>
-                <input
-                  ref={amountRef}
-                  type="number" inputMode="decimal" min="0.01" step="0.01"
-                  value={amount}
-                  onChange={e => { setAmount(e.target.value); clearErr('amount') }}
-                  placeholder="0.00"
-                  className={`w-full rounded-2xl border bg-stone-50 pl-9 pr-4 py-3 text-2xl font-bold text-stone-800 placeholder-stone-300 focus:bg-white outline-none transition-colors ${
-                    errors.amount ? 'border-red-300' : `border-stone-200 ${accent.ring}`
-                  }`}
-                />
-              </div>
-              {errors.amount && <p className="mt-1 text-[11px] text-red-500">{errors.amount}</p>}
-            </div>
-
-            {/* Description */}
-            <div>
-              <label className="block text-[10px] font-semibold text-stone-400 uppercase tracking-wider mb-1.5">
-                Description
-              </label>
+            {/* Description with autocomplete (suggestions float over the form, so its height never changes) */}
+            <div className="relative z-30">
+              <label htmlFor="entry-desc" className={labelCls}>Description</label>
               <input
+                id="entry-desc"
                 ref={descRef}
                 value={description}
-                onChange={e => { setDesc(e.target.value); clearErr('description') }}
-                placeholder="e.g. Groceries, Salary, Rent…"
-                className={`w-full rounded-2xl border bg-stone-50 px-4 py-2.5 text-sm text-stone-800 placeholder-stone-400 focus:bg-white outline-none transition-colors ${
-                  errors.description ? 'border-red-300' : `border-stone-200 ${accent.ring}`
-                }`}
+                autoComplete="off"
+                onChange={e => { setDesc(e.target.value); clearErr('description'); setDescFocused(true); setActiveSugg(-1) }}
+                onFocus={() => setDescFocused(true)}
+                onBlur={() => { setDescFocused(false); setActiveSugg(-1) }}
+                onKeyDown={handleDescKeyDown}
+                placeholder={isIncome ? 'e.g. Salary, Client payment' : 'e.g. Groceries, Rent'}
+                role="combobox"
+                aria-expanded={showSuggestions}
+                aria-controls="entry-desc-suggestions"
+                className={`${fieldCls} ${errors.description ? '!border-rose-500' : ''} ${showSuggestions ? '!border-[var(--gold-primary)]' : ''}`}
               />
-              {errors.description && <p className="mt-1 text-[11px] text-red-500">{errors.description}</p>}
+              {errors.description && <p className="mt-1.5 text-[11px] text-rose-500">{errors.description}</p>}
 
-              {!initial && descriptionSuggestions?.length > 0 && (
-                <div className="space-y-1 mt-2.5">
-                  <span className="text-[9px] font-bold text-stone-400 uppercase tracking-wider block">Suggestions</span>
-                  <div className="flex gap-1.5 overflow-x-auto pb-1.5 snap-x snap-mandatory">
-                    {descriptionSuggestions.slice(0, 6).map((item) => (
-                      <button
-                        key={item.description}
-                        type="button"
-                        onClick={() => applyDescriptionSuggestion(item.description)}
-                        className="snap-start rounded-full border border-amber-100 bg-amber-50/20 px-3 py-1 text-xs text-stone-600 font-medium hover:border-amber-200 hover:bg-amber-50/40 transition-all flex-shrink-0 cursor-pointer whitespace-nowrap dark:border-amber-900/40 dark:bg-amber-950/15 dark:text-stone-300"
-                      >
-                        {item.description}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
+              <AnimatePresence initial={false}>
+                {showSuggestions && (
+                  <motion.div
+                    key="desc-suggestions"
+                    initial={{ opacity: 0, y: -4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -4 }}
+                    transition={{ duration: 0.14 }}
+                    className="absolute inset-x-0 top-full"
+                  >
+                    <ul
+                      id="entry-desc-suggestions"
+                      role="listbox"
+                      className="mt-1.5 rounded-xl border border-[var(--border-card)] bg-[var(--bg-page)] py-1 shadow-[0_14px_36px_-12px_rgba(0,0,0,0.35)]"
+                    >
+                      {filteredSuggestions.map((item, idx) => (
+                        <li key={item.description} role="option" aria-selected={idx === activeSugg}>
+                          <button
+                            type="button"
+                            onPointerDown={e => e.preventDefault()}
+                            onMouseDown={e => e.preventDefault()}
+                            onMouseEnter={() => setActiveSugg(idx)}
+                            onClick={() => applyDescriptionSuggestion(item)}
+                            className={`w-full flex items-center gap-2.5 px-3 py-1.5 text-left transition-colors cursor-pointer ${
+                              idx === activeSugg ? 'bg-[var(--gold-light)]' : ''
+                            }`}
+                          >
+                            <span className={`h-1.5 w-1.5 flex-shrink-0 rounded-full ${item.type === 'income' ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+                            <span className="min-w-0 flex-1 truncate text-[13px] text-[var(--text-main)]">
+                              <HighlightMatch text={item.description} query={descQuery} />
+                              {item.category && <span className="ml-1.5 text-[11px] text-[var(--text-subtle)]">· {item.category}</span>}
+                            </span>
+                            {Number(item.amount) > 0 && (
+                              <span className="flex-shrink-0 text-[11px] font-medium tabular-nums text-[var(--text-muted)]">
+                                {symbol}{Number(item.amount).toLocaleString('en-IN')}
+                              </span>
+                            )}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
 
             {/* Category & Subcategory */}
             <div>
               <div className="flex items-center justify-between mb-2">
-                <label className="flex items-center gap-1.5 text-[10px] font-semibold text-stone-400 uppercase tracking-wider">
-                  <Tag size={10} /> Category
-                </label>
+                <span className={labelCls + ' !mb-0'}>Category</span>
                 <button
-                  type="button" onClick={() => setShowCatPanel(v => !v)}
-                  className={`flex items-center gap-1 text-[10px] font-semibold px-2 py-1 rounded-lg transition-colors ${
-                    showCatPanel
-                      ? 'bg-stone-800 text-white'
-                      : 'bg-stone-100 text-stone-500 hover:bg-stone-200'
-                  }`}
+                  type="button" onClick={() => setShowCatPanel(true)}
+                  className="text-[11px] font-medium text-[var(--gold-primary)] hover:text-[var(--gold-hover)] transition-colors cursor-pointer"
                 >
-                  {showCatPanel ? (
-                    <><Check size={9} strokeWidth={3} /> Done</>
-                  ) : (
-                    <><Plus size={9} strokeWidth={3} /> Manage</>
-                  )}
+                  Manage
                 </button>
               </div>
 
-              {/* Category Saved Popup Toast */}
-              <AnimatePresence>
-                {catSavedToast && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -4, scale: 0.96 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: -4, scale: 0.96 }}
-                    className="mb-2 rounded-xl bg-emerald-600 px-3 py-2 text-xs font-semibold text-white flex items-center justify-between shadow-sm"
-                  >
-                    <span className="flex items-center gap-1.5">
-                      <Check size={14} /> Categories & subcategories saved!
-                    </span>
-                    <button type="button" onClick={() => setCatSavedToast(false)} className="text-white/80 hover:text-white">
-                      <X size={12} />
-                    </button>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-              {/* Category chips — always visible */}
-              <div className="flex flex-wrap gap-1.5 mb-2">
-                {catList.map(cat => (
-                  <button
-                    key={cat.name} type="button"
-                    onClick={() => {
-                      setCategory(cat.name)
-                      setSubcategory('')
-                    }}
-                    className={`rounded-full border px-3 py-1 text-xs font-medium transition-all ${
-                      category === cat.name
-                        ? accent.chip
-                        : 'border-stone-200 bg-stone-50 text-stone-500 hover:border-stone-300 hover:bg-stone-100'
-                    }`}
-                  >
-                    {cat.name}
-                  </button>
-                ))}
-              </div>
-
-              {/* Subcategory chips (if available for selected main category) */}
-              {availableSubcats.length > 0 && (
-                <div className="mt-2.5 pt-2 border-t border-stone-100 space-y-1.5">
-                  <label className="flex items-center gap-1.5 text-[10px] font-semibold text-amber-700 uppercase tracking-wider">
-                    <Layers size={10} /> Subcategory
-                  </label>
-                  <div className="flex flex-wrap gap-1.5">
+              <div className="flex flex-wrap gap-2">
+                {catList.map(cat => {
+                  const active = category === cat.name
+                  const subs = cat.subcategories.length
+                  return (
                     <button
-                      type="button"
-                      onClick={() => setSubcategory('')}
-                      className={`rounded-full border px-2.5 py-1 text-xs font-medium transition-all ${
-                        !subcategory
-                          ? 'border-amber-400 bg-amber-50 text-amber-800 font-bold'
-                          : 'border-stone-200 bg-stone-50 text-stone-500 hover:bg-stone-100'
+                      key={cat.name} type="button"
+                      onClick={() => {
+                        if (active) return
+                        setCategory(cat.name)
+                        setSubcategory('')
+                      }}
+                      aria-pressed={active}
+                      className={`inline-flex items-center gap-1.5 rounded-xl border px-3 py-2 text-xs transition-all cursor-pointer ${
+                        active
+                          ? 'border-[var(--gold-primary)] bg-[var(--gold-light)] text-[var(--text-main)] font-semibold shadow-[0_0_0_3px_rgba(197,160,89,0.12)]'
+                          : 'border-[var(--border-card)] bg-[var(--bg-card)] text-[var(--text-muted)] font-medium hover:border-[var(--text-subtle)] hover:text-[var(--text-main)]'
                       }`}
                     >
-                      None
+                      {active && <Check size={12} strokeWidth={3} className="text-[var(--gold-primary)]" />}
+                      {cat.name}
+                      {subs > 0 && (
+                        <span className={`rounded-md px-1 text-[10px] font-semibold tabular-nums ${
+                          active ? 'bg-[var(--gold-primary)]/15 text-[var(--gold-primary)]' : 'bg-[var(--border-subtle)] text-[var(--text-subtle)]'
+                        }`}>
+                          {subs}
+                        </span>
+                      )}
                     </button>
-                    {availableSubcats.map(sub => (
-                      <button
-                        key={sub}
-                        type="button"
-                        onClick={() => setSubcategory(sub)}
-                        className={`rounded-full border px-2.5 py-1 text-xs font-medium transition-all ${
-                          subcategory === sub
-                            ? 'border-amber-500 bg-amber-100 text-amber-900 font-bold shadow-2xs'
-                            : 'border-amber-200/80 bg-amber-50/30 text-stone-600 hover:bg-amber-50'
-                        }`}
-                      >
-                        {sub}
-                      </button>
-                    ))}
-                  </div>
+                  )
+                })}
+              </div>
+
+              {/* Subcategories — fixed one-line strip; content cross-fades so the sheet never resizes */}
+              <div className="relative mt-2.5 h-9">
+                <AnimatePresence initial={false} mode="popLayout">
+                  <motion.div
+                    key={category || 'none'}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.14 }}
+                    className="absolute inset-0 flex items-center gap-1.5 overflow-x-auto overflow-y-hidden whitespace-nowrap [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                  >
+                    <Layers size={12} className="flex-shrink-0 text-[var(--gold-primary)]" />
+                    {availableSubcats.length > 0 ? (
+                      availableSubcats.map(sub => {
+                        const active = subcategory === sub
+                        return (
+                          <button
+                            key={sub}
+                            type="button"
+                            onClick={() => setSubcategory(active ? '' : sub)}
+                            aria-pressed={active}
+                            className={`inline-flex flex-shrink-0 items-center gap-1 rounded-full border px-3 py-1 text-[11px] transition-colors cursor-pointer ${
+                              active
+                                ? 'border-[var(--gold-primary)] bg-[var(--gold-light)] text-[var(--gold-primary)] font-semibold'
+                                : 'border-[var(--border-card)] bg-[var(--bg-card)] text-[var(--text-muted)] font-medium hover:text-[var(--text-main)]'
+                            }`}
+                          >
+                            {active && <Check size={11} strokeWidth={3} />}
+                            {sub}
+                          </button>
+                        )
+                      })
+                    ) : (
+                      <span className="text-[11px] text-[var(--text-subtle)]">
+                        No subcategories{category ? ` for ${category}` : ''} ·{' '}
+                        <button type="button" onClick={() => setShowCatPanel(true)} className="font-medium text-[var(--gold-primary)] cursor-pointer">Add</button>
+                      </span>
+                    )}
+                  </motion.div>
+                </AnimatePresence>
+              </div>
+
+              {/* Budget — fixed-height line (reserved whenever budgets exist) */}
+              {!isIncome && hasBudgets && (
+                <div className="mt-2 h-[52px] rounded-xl border border-[var(--border-card)] bg-[var(--bg-card)] px-3.5 py-2">
+                  {budgetHint ? (
+                    <>
+                      <div className="flex items-center justify-between gap-2">
+                        <span className={`flex min-w-0 items-center gap-1.5 truncate text-[12px] font-semibold ${budgetHint.textClass}`}>
+                          {budgetHint.icon}
+                          <span className="truncate" title={budgetHint.message}>{budgetHint.title}</span>
+                        </span>
+                        <span className="flex-shrink-0 text-[11px] font-medium tabular-nums text-[var(--text-muted)]">
+                          {Math.round(budgetHint.pctAfter)}% used
+                        </span>
+                      </div>
+                      <div className="mt-2 h-1 overflow-hidden rounded-full bg-[var(--border-subtle)]">
+                        <motion.div
+                          initial={false}
+                          animate={{ width: `${Math.min(budgetHint.pctAfter, 100)}%` }}
+                          transition={{ duration: 0.4, ease: 'easeOut' }}
+                          className="h-full rounded-full"
+                          style={{ backgroundColor: budgetHint.barColor }}
+                        />
+                      </div>
+                    </>
+                  ) : (
+                    <p className="flex h-full items-center text-[11px] text-[var(--text-subtle)]">
+                      No monthly budget for {category || 'this category'}
+                    </p>
+                  )}
                 </div>
               )}
 
-              {/* ── Budget threshold hint card ── */}
-              <AnimatePresence>
-                {!isIncome && budgetHint && (
-                  <motion.div
-                    key={category}
-                    initial={{ opacity: 0, y: -4, scale: 0.98 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: -4, scale: 0.98 }}
-                    transition={{ duration: 0.18 }}
-                    className={`mt-2.5 rounded-2xl border p-3 space-y-2 ${budgetHint.bgClass} ${budgetHint.borderClass}`}
-                  >
-                    {/* Title & Icon row */}
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-1.5 min-w-0">
-                        {budgetHint.icon}
-                        <span className={`text-xs font-bold ${budgetHint.textClass} truncate`}>
-                          {budgetHint.title}
-                        </span>
-                      </div>
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/70 border border-current ${budgetHint.textClass}`}>
-                        {Math.round(Math.min(budgetHint.pctAfter, 100))}% used
-                      </span>
-                    </div>
-
-                    {/* Threshold progress bar */}
-                    <div className="h-2 rounded-full bg-black/10 overflow-hidden relative">
-                      <motion.div
-                        initial={{ width: 0 }}
-                        animate={{ width: `${Math.min(budgetHint.pctAfter, 100)}%` }}
-                        transition={{ duration: 0.45, ease: 'easeOut' }}
-                        className={`h-full rounded-full ${budgetHint.overHard ? 'animate-pulse' : ''}`}
-                        style={{ backgroundColor: budgetHint.barColor }}
-                      />
-                    </div>
-
-                    {/* Explanatory detail */}
-                    <p className={`text-[11px] leading-relaxed font-medium ${budgetHint.textClass}`}>
-                      {budgetHint.message}
-                    </p>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-              {/* Manage panel — slides in below hint */}
-              {showCatPanel && (
-                <div className="mt-2.5">
-                  <CategoryManager
-                    categories={localCats}
-                    onSave={(updated) => {
-                      setLocalCats(updated)
-                      onSaveCategories?.(updated)
-                      setShowCatPanel(false)
-                      setCatSavedToast(true)
-                      setTimeout(() => setCatSavedToast(false), 3000)
-                    }}
-                  />
-                </div>
+              <CategoryManager
+                open={showCatPanel}
+                categories={localCats}
+                onClose={() => setShowCatPanel(false)}
+                onSave={async (updated) => {
+                  setLocalCats(updated)
+                  // Keep the selection valid if the chosen category was renamed or removed
+                  if (!updated.some(c => (typeof c === 'string' ? c : c.name) === category)) {
+                    const first = updated[0]
+                    setCategory(typeof first === 'string' ? first : first?.name || '')
+                    setSubcategory('')
+                  }
+                  setShowCatPanel(false)
+                  setCatSavedToast(true)
+                  setTimeout(() => setCatSavedToast(false), 3000)
+                  await onSaveCategories?.(updated)
+                }}
+              />
+              {catSavedToast && (
+                <p className="mt-2 flex items-center gap-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
+                  <Check size={12} /> Categories saved
+                </p>
               )}
             </div>
 
-            {/* Payment Mode & Date hidden under More Details to keep primary form ultra-clean */}
-
-            {/* More details toggle button */}
-            <button
-              type="button" onClick={() => setShowMore(v => !v)}
-              className="w-full flex items-center justify-between rounded-2xl border border-dashed border-stone-200 px-4 py-2.5 text-xs font-semibold text-stone-500 hover:border-amber-300 hover:text-amber-700 hover:bg-amber-50/20 transition-all cursor-pointer"
-            >
-              <span className="flex items-center gap-1.5">
-                <Compass size={13} className="text-amber-600" />
-                {isIncome ? 'More Options (Payment Mode, Date, Notes & Savings)' : 'More Options (Payment Mode, Date, Notes & Group)'}
-              </span>
-              {showMore ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
-            </button>
-
-            {showMore && (
-              <div className="space-y-4 pt-1 border-t border-stone-100">
-                {/* Payment Mode */}
-                <div>
-                  <label className="block text-[10px] font-semibold text-stone-400 uppercase tracking-wider mb-1.5">
-                    Payment Mode
-                  </label>
-                  <div className="grid grid-cols-2 gap-2">
-                    {MODES.map(({ id, label, icon: Icon }) => {
-                      const active = mode === id
-                      return (
-                        <button key={id} type="button" onClick={() => setMode(id)}
-                          className={`flex items-center justify-center gap-2 rounded-2xl border py-2.5 text-xs font-semibold transition-all cursor-pointer ${
-                            active ? accent.modeActive : 'border-stone-200 bg-stone-50 text-stone-500 hover:bg-stone-100'
-                          }`}
-                        >
-                          <Icon size={14} strokeWidth={active ? 2.5 : 1.8} />
-                          {label}
-                        </button>
-                      )
-                    })}
-                  </div>
-                </div>
-
-                {/* Date & Time */}
-                <div>
-                  <label className="flex items-center gap-1.5 text-[10px] font-semibold text-stone-400 uppercase tracking-wider mb-1.5">
-                    <Calendar size={10} /> Date & Time
-                  </label>
-                  <input
-                    type="datetime-local"
-                    value={timestamp}
-                    onChange={e => setTimestamp(e.target.value)}
-                    className={`w-full rounded-2xl border bg-stone-50 px-4 py-2.5 text-xs font-medium text-stone-800 focus:bg-white outline-none transition-colors border-stone-200 ${accent.ring}`}
-                  />
-                </div>
-                {/* Savings toggle — inside More details, only for income */}
-                {isIncome && (
-                  <button
-                    type="button"
-                    onClick={() => setIsSavings(v => !v)}
-                    className={`w-full flex items-center justify-between rounded-2xl border px-4 py-3 transition-all ${
-                      isSavings
-                        ? 'border-violet-300 bg-violet-50'
-                        : 'border-stone-200 bg-stone-50 hover:border-stone-300'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <div className={`rounded-xl p-1.5 ${isSavings ? 'bg-violet-100' : 'bg-stone-100'}`}>
-                        <PiggyBank size={14} className={isSavings ? 'text-violet-600' : 'text-stone-400'} />
-                      </div>
-                      <div className="text-left">
-                        <p className={`text-xs font-semibold ${isSavings ? 'text-violet-700' : 'text-stone-600'}`}>
-                          Mark as Savings
-                        </p>
-                        <p className="text-[10px] text-stone-400 mt-0.5">
-                          Excluded from spending analytics
-                        </p>
-                      </div>
-                    </div>
-                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
-                      isSavings ? 'border-violet-500 bg-violet-500' : 'border-stone-300 bg-white'
-                    }`}>
-                      {isSavings && <Check size={11} className="text-white" strokeWidth={3} />}
-                    </div>
-                  </button>
-                )}
-
-                {!initial && onSaveTemplate && (
-                  <div className="rounded-2xl border border-stone-200 bg-stone-50 overflow-hidden">
-                    <button
-                      type="button"
-                      onClick={() => setSaveAsTemplate(v => !v)}
-                      className={`w-full flex items-center justify-between px-4 py-3 transition-all ${
-                        saveAsTemplate ? 'bg-sky-50' : 'hover:bg-stone-100'
+            {/* Payment mode */}
+            <div>
+              <span className={labelCls}>Payment mode</span>
+              <div className="grid grid-cols-2 gap-1 rounded-xl bg-[var(--border-subtle)] p-1">
+                {MODES.map(({ id, label, icon: Icon }) => {
+                  const active = mode === id
+                  return (
+                    <button key={id} type="button" onClick={() => setMode(id)}
+                      className={`flex items-center justify-center gap-1.5 rounded-lg py-2 text-xs transition-all cursor-pointer ${
+                        active
+                          ? 'bg-[var(--bg-card)] text-[var(--text-main)] font-semibold shadow-[0_1px_3px_rgba(0,0,0,0.1)]'
+                          : 'text-[var(--text-muted)] font-medium hover:text-[var(--text-main)]'
                       }`}
                     >
-                      <div className="flex items-center gap-2.5">
-                        <div className={`rounded-xl p-1.5 ${saveAsTemplate ? 'bg-sky-100' : 'bg-stone-100'}`}>
-                          <Repeat size={14} className={saveAsTemplate ? 'text-sky-600' : 'text-stone-400'} />
-                        </div>
-                        <div className="text-left">
-                          <p className={`text-xs font-semibold ${saveAsTemplate ? 'text-sky-700' : 'text-stone-600'}`}>
-                            Save as recurring template
-                          </p>
-                          <p className="text-[10px] text-stone-400 mt-0.5">
-                            Adds this to Quick Add for next time (rent, salary, EMI…)
-                          </p>
-                        </div>
-                      </div>
-                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all flex-shrink-0 ${
-                        saveAsTemplate ? 'border-sky-500 bg-sky-500' : 'border-stone-300 bg-white'
-                      }`}>
-                        {saveAsTemplate && <Check size={11} className="text-white" strokeWidth={3} />}
-                      </div>
+                      <Icon size={14} strokeWidth={active ? 2.2 : 1.8} />
+                      {label}
                     </button>
-                    {saveAsTemplate && (
-                      <div className="px-4 pb-3">
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* Date & time */}
+            <DateTimeField value={timestamp} onChange={setTimestamp} />
+
+            {/* Additional details */}
+            <div className="rounded-xl border border-[var(--border-card)] bg-[var(--bg-card)]">
+              <button
+                type="button" onClick={() => setShowMore(v => !v)}
+                aria-expanded={showMore}
+                className="w-full flex items-center justify-between gap-3 px-4 py-3 text-left cursor-pointer"
+              >
+                <span className="text-xs font-semibold text-[var(--text-main)]">More details</span>
+                <span className="flex items-center gap-2 text-[11px] text-[var(--text-subtle)]">
+                  {!showMore && (savingsOn ? 'Savings on' : isIncome ? 'Savings, group, notes' : 'Group, notes, template')}
+                  <ChevronDown size={16} className={`transition-transform ${showMore ? 'rotate-180' : ''}`} />
+                </span>
+              </button>
+
+              {showMore && (
+                <div className="px-4 pb-4 pt-3 space-y-4 border-t border-[var(--border-subtle)]">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label htmlFor="entry-group" className={labelCls}><Compass size={11} /> Expense group</label>
+                      <select
+                        id="entry-group"
+                        value={tripId}
+                        onChange={e => setTripId(e.target.value)}
+                        className={fieldCls + ' bg-[var(--bg-page)] cursor-pointer'}
+                      >
+                        <option value="">None</option>
+                        {trips.map(g => (
+                          <option key={g.id} value={g.id}>{g.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label htmlFor="entry-by" className={labelCls}><User size={11} /> Entered by</label>
+                      <input
+                        id="entry-by"
+                        value={enteredBy}
+                        onChange={e => setEnteredBy(e.target.value)}
+                        placeholder="Optional"
+                        className={fieldCls + ' bg-[var(--bg-page)]'}
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label htmlFor="entry-notes" className={labelCls}><FileText size={11} /> Notes</label>
+                    <textarea
+                      id="entry-notes"
+                      value={notes}
+                      onChange={e => setNotes(e.target.value)}
+                      placeholder="Optional"
+                      className={fieldCls + ' bg-[var(--bg-page)] resize-none'}
+                      rows={2}
+                    />
+                  </div>
+
+                  {isIncome && (
+                    <ToggleRow
+                      icon={PiggyBank}
+                      title="Mark as savings"
+                      hint="Excluded from spending analytics"
+                      checked={isSavings}
+                      onChange={() => setIsSavings(v => !v)}
+                      activeClass="bg-violet-600"
+                    />
+                  )}
+
+                  {!initial && onSaveTemplate && (
+                    <div>
+                      <ToggleRow
+                        icon={Repeat}
+                        title="Save as recurring template"
+                        hint="Adds this to Quick add (rent, salary, EMI…)"
+                        checked={saveAsTemplate}
+                        onChange={() => setSaveAsTemplate(v => !v)}
+                        activeClass="bg-[var(--gold-primary)]"
+                      />
+                      {saveAsTemplate && (
                         <input
                           value={templateLabel}
                           onChange={e => setTemplateLabel(e.target.value)}
-                          placeholder={description ? `Label (default: "${description}")` : 'Label for this template'}
-                          className="w-full rounded-xl border border-stone-200 bg-white px-3 py-2 text-xs text-stone-700 placeholder-stone-400 focus:border-sky-400 outline-none"
+                          placeholder={description ? `Label (default: "${description}")` : 'Template label'}
+                          className={fieldCls + ' bg-[var(--bg-page)] mt-3'}
                         />
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                <div>
-                  <label className="flex items-center gap-1.5 text-[10px] font-semibold text-stone-400 uppercase tracking-wider mb-1.5">
-                    <Compass size={10} /> Expense Group
-                  </label>
-                  <select
-                    value={tripId}
-                    onChange={e => setTripId(e.target.value)}
-                    className={`w-full rounded-2xl border bg-stone-50 px-4 py-2.5 text-sm text-stone-800 focus:bg-white outline-none transition-colors border-stone-200 ${accent.ring}`}
-                  >
-                    <option value="">None</option>
-                    {trips.map(g => (
-                      <option key={g.id} value={g.id}>{g.name}</option>
-                    ))}
-                  </select>
+                      )}
+                    </div>
+                  )}
                 </div>
-
-                <div>
-                  <label className="flex items-center gap-1.5 text-[10px] font-semibold text-stone-400 uppercase tracking-wider mb-1.5">
-                    <User size={10} /> Entered By
-                  </label>
-                  <input
-                    value={enteredBy}
-                    onChange={e => setEnteredBy(e.target.value)}
-                    placeholder="Your name (optional)"
-                    className={`w-full rounded-2xl border bg-stone-50 px-4 py-2.5 text-sm text-stone-800 placeholder-stone-400 focus:bg-white outline-none transition-colors border-stone-200 ${accent.ring}`}
-                  />
-                </div>
-                <div>
-                  <label className="flex items-center gap-1.5 text-[10px] font-semibold text-stone-400 uppercase tracking-wider mb-1.5">
-                    <FileText size={10} /> Notes
-                  </label>
-                  <textarea
-                    value={notes}
-                    onChange={e => setNotes(e.target.value)}
-                    placeholder="Any additional notes…"
-                    className={`w-full rounded-2xl border bg-stone-50 px-4 py-2.5 text-sm text-stone-800 placeholder-stone-400 focus:bg-white outline-none transition-colors resize-none border-stone-200 ${accent.ring}`}
-                    rows={2}
-                  />
-                </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
 
           {/* Footer */}
-          <div className="flex-shrink-0 px-5 pb-5 pt-3 bg-white flex gap-2.5">
-            {showCatPanel ? (
-              <div className="w-full flex items-center justify-between rounded-2xl bg-amber-50 border border-amber-200 p-3">
-                <span className="text-xs font-bold text-amber-800 flex items-center gap-1.5">
-                  <Tag size={14} className="text-amber-600" /> Currently managing categories
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setShowCatPanel(false)}
-                  className="rounded-xl bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-700 transition-colors cursor-pointer"
-                >
-                  Done Managing
-                </button>
-              </div>
-            ) : (
-              <>
-                <button type="button" onClick={onClose}
-                  className="flex-1 rounded-2xl border border-stone-200 py-3 text-sm font-semibold text-stone-500 hover:bg-stone-50 transition-colors">
-                  Cancel
-                </button>
-                <button type="submit" disabled={submitting}
-                  className={`flex-[2] rounded-2xl py-3 text-sm font-bold text-white transition-colors shadow-md disabled:opacity-50 ${
-                    isSavings ? 'bg-violet-600 hover:bg-violet-700' : accent.btn
-                  }`}>
-                  {submitting
-                    ? 'Saving…'
-                    : initial
-                      ? 'Update Entry'
-                      : isSavings
-                        ? '🐷 Save to Savings'
-                        : isIncome ? '+ Record Income' : '− Record Expense'}
-                </button>
-              </>
-            )}
+          <div className="flex-shrink-0 px-5 pt-3 pb-5 border-t border-[var(--border-subtle)] bg-[var(--bg-page)]">
+            <button type="submit" disabled={submitting}
+                className={`w-full rounded-2xl py-3.5 text-[13px] font-semibold text-white shadow-lg transition-colors disabled:opacity-60 cursor-pointer ${tone.btn}`}>
+                {submitting
+                  ? 'Saving…'
+                  : initial
+                    ? 'Update Transaction'
+                    : savingsOn ? 'Transfer to Savings' : isIncome ? 'Record Income' : 'Record Expense'}
+              </button>
           </div>
         </form>
+        </div>
+      </motion.div>
+    </div>,
+    document.body,
+  )
+}
+
+function ToggleRow({ icon: Icon, title, hint, checked, onChange, activeClass }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      onClick={onChange}
+      className="w-full flex items-center justify-between gap-3 text-left cursor-pointer"
+    >
+      <span className="flex items-center gap-3 min-w-0">
+        <span className="rounded-lg bg-[var(--border-subtle)] p-1.5 text-[var(--text-muted)]">
+          <Icon size={15} />
+        </span>
+        <span className="min-w-0">
+          <span className="block text-xs font-semibold text-[var(--text-main)]">{title}</span>
+          <span className="block mt-0.5 text-[11px] text-[var(--text-subtle)]">{hint}</span>
+        </span>
+      </span>
+      <span className={`relative h-[22px] w-10 flex-shrink-0 rounded-full transition-colors ${checked ? activeClass : 'bg-[var(--text-subtle)]/35'}`}>
+        <span className={`absolute top-[3px] left-[3px] h-4 w-4 rounded-full bg-white shadow-sm transition-transform ${checked ? 'translate-x-[18px]' : ''}`} />
+      </span>
+    </button>
+  )
+}
+
+const pad2 = n => String(n).padStart(2, '0')
+const WEEKDAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S']
+
+function parseLocal(value) {
+  const [datePart = '', timePart = '00:00'] = String(value || '').split('T')
+  const [y, m, d] = datePart.split('-').map(Number)
+  const [hh, mm] = timePart.split(':').map(Number)
+  if (!y || !m || !d) return new Date()
+  return new Date(y, m - 1, d, hh || 0, mm || 0)
+}
+
+function toLocalValue(date) {
+  return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}T${pad2(date.getHours())}:${pad2(date.getMinutes())}`
+}
+
+function sameDay(a, b) {
+  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate()
+}
+
+// Separate Date and Time fields; each opens its own inline picker panel.
+function DateTimeField({ value, onChange }) {
+  const selected = parseLocal(value)
+  const [panel, setPanel] = useState(null) // 'date' | 'time' | null
+  const today = new Date()
+  const commit = date => onChange(toLocalValue(date))
+
+  const hours12 = selected.getHours() % 12 || 12
+  const isPM = selected.getHours() >= 12
+  const minutes = selected.getMinutes()
+
+  const dateLabel = sameDay(selected, today)
+    ? 'Today'
+    : selected.toLocaleDateString('en-IN', {
+        weekday: 'short', day: 'numeric', month: 'short',
+        ...(selected.getFullYear() !== today.getFullYear() ? { year: 'numeric' } : {}),
+      })
+  const timeLabel = `${hours12}:${pad2(minutes)} ${isPM ? 'PM' : 'AM'}`
+
+  const trigger = (id, Icon, caption, text) => {
+    const active = panel === id
+    return (
+      <button
+        type="button"
+        onClick={() => setPanel(p => (p === id ? null : id))}
+        aria-expanded={active}
+        className={`flex items-center gap-2.5 rounded-xl border bg-[var(--bg-card)] px-3 py-2 text-left transition-colors cursor-pointer ${
+          active ? 'border-[var(--gold-primary)] ring-2 ring-[var(--gold-primary)]/15' : 'border-[var(--border-card)] hover:border-[var(--text-subtle)]'
+        }`}
+      >
+        <span className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg transition-colors ${
+          active ? 'bg-[var(--gold-primary)] text-white' : 'bg-[var(--gold-light)] text-[var(--gold-primary)]'
+        }`}>
+          <Icon size={15} />
+        </span>
+        <span className="min-w-0">
+          <span className="block text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--text-subtle)]">{caption}</span>
+          <span className="block truncate text-[13px] font-semibold tabular-nums text-[var(--text-main)]">{text}</span>
+        </span>
+      </button>
+    )
+  }
+
+  return (
+    <div>
+      <div className="grid grid-cols-2 gap-2">
+        {trigger('date', Calendar, 'Date', dateLabel)}
+        {trigger('time', Clock, 'Time', timeLabel)}
       </div>
+
+      <PickerPopup
+        open={Boolean(panel)}
+        title={panel === 'date' ? 'Select date' : 'Select time'}
+        onClose={() => setPanel(null)}
+      >
+        {panel === 'date'
+          ? <CalendarPanel selected={selected} onPick={commit} onDone={() => setPanel(null)} />
+          : <TimePanel selected={selected} onPick={commit} onDone={() => setPanel(null)} />}
+      </PickerPopup>
     </div>
+  )
+}
+
+// Rendered in a portal: the entry sheet is transformed by framer-motion,
+// which would otherwise trap `position: fixed` inside it.
+function PickerPopup({ open, title, onClose, children }) {
+  return createPortal(
+    <AnimatePresence>
+      {open && (
+        <motion.div
+          key="picker"
+          className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-3 sm:p-4"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.15 }}
+          onKeyDown={e => {
+            if (e.key === 'Escape') {
+              e.preventDefault()
+              e.stopPropagation()
+              onClose()
+            }
+          }}
+        >
+          <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+          <motion.div
+            role="dialog"
+            aria-modal="true"
+            aria-label={title}
+            initial={{ opacity: 0, y: 16, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 16, scale: 0.98 }}
+            transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+            className="relative w-full max-w-[340px] rounded-3xl border border-[var(--border-card)] bg-[var(--bg-page)] p-4 shadow-[0_24px_60px_-12px_rgba(0,0,0,0.45)]"
+          >
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-[var(--text-main)]">{title}</h3>
+              <button
+                type="button"
+                onClick={onClose}
+                aria-label="Close"
+                autoFocus
+                className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--border-subtle)] text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors cursor-pointer"
+              >
+                <X size={15} />
+              </button>
+            </div>
+            {children}
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>,
+    document.body,
+  )
+}
+
+function PanelFooter({ onNow, nowLabel, onDone }) {
+  return (
+    <div className="mt-3 flex items-center justify-between border-t border-[var(--border-subtle)] pt-3">
+      <button type="button" onClick={onNow}
+        className="rounded-lg px-2 py-1.5 -ml-2 text-xs font-semibold text-[var(--gold-primary)] hover:bg-[var(--gold-light)] transition-colors cursor-pointer">
+        {nowLabel}
+      </button>
+      {onDone && (
+        <button type="button" onClick={onDone}
+          className="rounded-xl bg-[var(--text-main)] px-5 py-2 text-xs font-semibold text-[var(--bg-page)] hover:opacity-90 transition-opacity cursor-pointer">
+          Done
+        </button>
+      )}
+    </div>
+  )
+}
+
+function CalendarPanel({ selected, onPick, onDone }) {
+  const [viewMonth, setViewMonth] = useState(() => new Date(selected.getFullYear(), selected.getMonth(), 1))
+  const today = new Date()
+
+  const firstWeekday = viewMonth.getDay()
+  const daysInMonth = new Date(viewMonth.getFullYear(), viewMonth.getMonth() + 1, 0).getDate()
+  const cells = [...Array(firstWeekday).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)]
+
+  const shiftMonth = delta => setViewMonth(v => new Date(v.getFullYear(), v.getMonth() + delta, 1))
+  const pickDay = (day) => {
+    const next = new Date(selected)
+    next.setFullYear(viewMonth.getFullYear(), viewMonth.getMonth(), day)
+    onPick(next)
+    onDone()
+  }
+  const pickToday = () => {
+    const next = new Date(selected)
+    next.setFullYear(today.getFullYear(), today.getMonth(), today.getDate())
+    onPick(next)
+    onDone()
+  }
+
+  const navBtn = 'rounded-lg p-1.5 text-[var(--text-muted)] hover:bg-[var(--border-subtle)] hover:text-[var(--text-main)] transition-colors cursor-pointer'
+
+  return (
+    <>
+      <div className="flex items-center justify-between mb-2">
+        <button type="button" onClick={() => shiftMonth(-1)} aria-label="Previous month" className={navBtn}>
+          <ChevronLeft size={16} />
+        </button>
+        <span className="text-[13px] font-semibold text-[var(--text-main)]">
+          {viewMonth.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })}
+        </span>
+        <button type="button" onClick={() => shiftMonth(1)} aria-label="Next month" className={navBtn}>
+          <ChevronRight size={16} />
+        </button>
+      </div>
+
+      <div className="grid grid-cols-7 text-center">
+        {WEEKDAYS.map((w, i) => (
+          <span key={i} className="py-1 text-[10px] font-semibold text-[var(--text-subtle)]">{w}</span>
+        ))}
+        {cells.map((day, i) => {
+          if (!day) return <span key={`e${i}`} />
+          const cellDate = new Date(viewMonth.getFullYear(), viewMonth.getMonth(), day)
+          const isSelected = sameDay(cellDate, selected)
+          const isToday = sameDay(cellDate, today)
+          return (
+            <button
+              key={day}
+              type="button"
+              onClick={() => pickDay(day)}
+              className={`mx-auto my-0.5 flex h-9 w-9 items-center justify-center rounded-full text-xs tabular-nums transition-colors cursor-pointer ${
+                isSelected
+                  ? 'bg-[var(--gold-primary)] text-white font-semibold shadow-sm'
+                  : isToday
+                    ? 'text-[var(--gold-primary)] font-semibold ring-1 ring-inset ring-[var(--gold-primary)]/50'
+                    : 'text-[var(--text-main)] hover:bg-[var(--border-subtle)]'
+              }`}
+            >
+              {day}
+            </button>
+          )
+        })}
+      </div>
+
+      <PanelFooter onNow={pickToday} nowLabel="Today" />
+    </>
+  )
+}
+
+const HOURS = Array.from({ length: 12 }, (_, i) => i + 1)
+const MINUTES = Array.from({ length: 60 }, (_, i) => i)
+const MERIDIEMS = ['AM', 'PM']
+const WHEEL_ITEM_H = 40
+const WHEEL_VISIBLE = 5
+
+function TimePanel({ selected, onPick, onDone }) {
+  const hours12 = selected.getHours() % 12 || 12
+  const isPM = selected.getHours() >= 12
+  const minutes = selected.getMinutes()
+
+  const setTime = (h12, min, pm) => {
+    const next = new Date(selected)
+    next.setHours((h12 % 12) + (pm ? 12 : 0), min)
+    onPick(next)
+  }
+  const setNow = () => {
+    const now = new Date()
+    const next = new Date(selected)
+    next.setHours(now.getHours(), now.getMinutes())
+    onPick(next)
+  }
+
+  return (
+    <>
+      <p className="text-center text-[28px] font-bold tabular-nums tracking-tight text-[var(--text-main)]">
+        {hours12}:{pad2(minutes)} <span className="text-base font-semibold text-[var(--text-muted)]">{isPM ? 'PM' : 'AM'}</span>
+      </p>
+
+      <div className="relative mt-2 flex justify-center gap-1" style={{ height: WHEEL_ITEM_H * WHEEL_VISIBLE }}>
+        {/* Selection band */}
+        <div
+          className="pointer-events-none absolute inset-x-2 rounded-xl bg-[var(--gold-light)] border border-[var(--gold-primary)]/30"
+          style={{ top: WHEEL_ITEM_H * Math.floor(WHEEL_VISIBLE / 2), height: WHEEL_ITEM_H }}
+        />
+        <WheelColumn
+          items={HOURS}
+          value={hours12}
+          format={h => String(h)}
+          onChange={h => setTime(h, minutes, isPM)}
+          label="Hour"
+        />
+        <span className="relative z-10 self-center text-xl font-bold text-[var(--text-subtle)]">:</span>
+        <WheelColumn
+          items={MINUTES}
+          value={minutes}
+          format={pad2}
+          onChange={m => setTime(hours12, m, isPM)}
+          label="Minute"
+        />
+        <WheelColumn
+          items={MERIDIEMS}
+          value={isPM ? 'PM' : 'AM'}
+          format={v => v}
+          onChange={v => setTime(hours12, minutes, v === 'PM')}
+          label="AM or PM"
+        />
+      </div>
+
+      <PanelFooter onNow={setNow} nowLabel="Now" onDone={onDone} />
+    </>
+  )
+}
+
+// Scroll-snapping wheel column. The item centred in the band is the value.
+function WheelColumn({ items, value, format, onChange, label }) {
+  const ref = useRef(null)
+  const settleTimer = useRef(null)
+  const index = Math.max(0, items.indexOf(value))
+  const pad = WHEEL_ITEM_H * Math.floor(WHEEL_VISIBLE / 2)
+
+  // Keep the scroll position in sync when the value changes from outside (e.g. "Now").
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const target = index * WHEEL_ITEM_H
+    if (Math.abs(el.scrollTop - target) > 2 && !settleTimer.current) el.scrollTop = target
+  }, [index])
+
+  useEffect(() => () => clearTimeout(settleTimer.current), [])
+
+  const handleScroll = () => {
+    clearTimeout(settleTimer.current)
+    settleTimer.current = setTimeout(() => {
+      settleTimer.current = null
+      const el = ref.current
+      if (!el) return
+      const i = Math.min(items.length - 1, Math.max(0, Math.round(el.scrollTop / WHEEL_ITEM_H)))
+      if (items[i] !== value) onChange(items[i])
+    }, 90)
+  }
+
+  const scrollToIndex = (i) => ref.current?.scrollTo({ top: i * WHEEL_ITEM_H, behavior: 'smooth' })
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault()
+      scrollToIndex(Math.min(items.length - 1, Math.max(0, index + (e.key === 'ArrowDown' ? 1 : -1))))
+    }
+  }
+
+  return (
+    <div
+      ref={ref}
+      role="listbox"
+      aria-label={label}
+      tabIndex={0}
+      onScroll={handleScroll}
+      onKeyDown={handleKeyDown}
+      className="wheel-scroll relative z-10 w-16 overflow-y-scroll snap-y snap-mandatory outline-none"
+      style={{
+        paddingTop: pad,
+        paddingBottom: pad,
+        maskImage: 'linear-gradient(to bottom, transparent, #000 35%, #000 65%, transparent)',
+        WebkitMaskImage: 'linear-gradient(to bottom, transparent, #000 35%, #000 65%, transparent)',
+      }}
+    >
+      {items.map((item, i) => {
+        const active = i === index
+        return (
+          <button
+            key={item}
+            type="button"
+            role="option"
+            aria-selected={active}
+            tabIndex={-1}
+            onClick={() => scrollToIndex(i)}
+            className={`flex w-full snap-center items-center justify-center tabular-nums transition-colors cursor-pointer ${
+              active ? 'text-lg font-bold text-[var(--text-main)]' : 'text-[15px] font-medium text-[var(--text-subtle)]'
+            }`}
+            style={{ height: WHEEL_ITEM_H }}
+          >
+            {format(item)}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+function HighlightMatch({ text, query }) {
+  const idx = query ? text.toLowerCase().indexOf(query) : -1
+  if (idx < 0) return text
+  return (
+    <>
+      {text.slice(0, idx)}
+      <span className="font-semibold text-[var(--gold-primary)]">{text.slice(idx, idx + query.length)}</span>
+      {text.slice(idx + query.length)}
+    </>
   )
 }

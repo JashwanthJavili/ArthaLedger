@@ -1,21 +1,41 @@
 import { useMemo, useState, useEffect } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { ArrowLeft, Trash2, Hash, Layers } from 'lucide-react'
+import {
+  ArrowLeft, Trash2, Hash, ArrowDownLeft, ArrowUpRight, ArrowLeftRight, PiggyBank, Link2Off, FolderX,
+} from 'lucide-react'
 import { format } from 'date-fns'
 import LayoutShell from '../components/LayoutShell'
+import PageSkeleton from '../components/common/PageSkeleton'
 import { useAppData } from '../context/AppDataContext'
 import Toast from '../components/common/Toast'
 import ConfirmDialog from '../components/common/ConfirmDialog'
 import SummaryCard from '../components/cards/SummaryCard'
 import { formatAmount, getCurrencySymbol } from '../lib/format'
-import Loader from '../components/common/Loader'
+
+const card = 'rounded-2xl border border-[var(--border-card)] bg-[var(--bg-card)]'
+const sectionTitle = 'text-[11px] font-semibold uppercase tracking-[0.1em] text-[var(--text-subtle)]'
+const iconBtn = 'flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border border-[var(--border-card)] bg-[var(--bg-card)] text-[var(--text-muted)] hover:text-[var(--text-main)] hover:border-[var(--text-subtle)] transition-colors cursor-pointer'
+const chip = (active) => `flex-shrink-0 rounded-full border px-3 py-1.5 text-[12px] transition-colors cursor-pointer ${
+  active
+    ? 'border-[var(--gold-primary)] bg-[var(--gold-light)] font-semibold text-[var(--text-main)]'
+    : 'border-[var(--border-card)] bg-[var(--bg-card)] font-medium text-[var(--text-muted)] hover:text-[var(--text-main)]'
+}`
+
+function entryVisual(entry) {
+  const isTransfer = entry.type === 'transfer_in' || entry.type === 'transfer_out'
+  if (entry.isSavings) return { Icon: PiggyBank, chip: 'bg-violet-500/10 text-violet-600 dark:text-violet-400', amount: 'text-violet-600 dark:text-violet-400' }
+  if (isTransfer) return { Icon: ArrowLeftRight, chip: 'bg-sky-500/10 text-sky-600 dark:text-sky-400', amount: 'text-sky-600 dark:text-sky-400' }
+  if (entry.type === 'income') return { Icon: ArrowDownLeft, chip: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400', amount: 'text-emerald-600 dark:text-emerald-400' }
+  return { Icon: ArrowUpRight, chip: 'bg-rose-500/10 text-rose-600 dark:text-rose-400', amount: 'text-[var(--text-main)]' }
+}
 
 export default function ExpenseGroupDetailPage() {
   const { tripId } = useParams()
   const navigate = useNavigate()
   const { loading, error, trips, projects, booksByProject, entriesByBook, unlinkEntryFromTrip, deleteTrip } = useAppData()
   const [deleteGroupConfirm, setDeleteGroupConfirm] = useState(false)
+  const [unlinkTarget, setUnlinkTarget] = useState(null)
   const [toast, setToast] = useState({ msg: '', type: 'success', visible: false })
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState('all')
   const symbol = getCurrencySymbol()
@@ -23,10 +43,12 @@ export default function ExpenseGroupDetailPage() {
   const [stalled, setStalled] = useState(false)
 
   useEffect(() => {
-    let t = null
-    if (loading) t = setTimeout(() => setStalled(true), 3500)
-    else setStalled(false)
-    return () => clearTimeout(t)
+    if (!loading) return undefined
+    const t = setTimeout(() => setStalled(true), 3500)
+    return () => {
+      clearTimeout(t)
+      setStalled(false)
+    }
   }, [loading])
 
   const showToast = (msg, type = 'success') => {
@@ -150,13 +172,13 @@ export default function ExpenseGroupDetailPage() {
     return (
       <LayoutShell>
         <div className="flex flex-col items-center justify-center py-20 gap-4 text-center px-4">
-          <div className="rounded-2xl bg-red-50 border border-red-100 p-4 max-w-sm">
-            <p className="text-sm font-semibold text-red-800">Unable to Load Data</p>
-            <p className="text-xs text-red-600 mt-1">{error}</p>
+          <div className="rounded-2xl border border-rose-500/20 bg-rose-500/10 p-5 max-w-sm">
+            <p className="text-sm font-semibold text-rose-600 dark:text-rose-400">Unable to Load Data</p>
+            <p className="text-xs text-[var(--text-muted)] mt-1">{error}</p>
           </div>
-          <button 
+          <button
             onClick={() => window.location.reload()}
-            className="rounded-xl bg-amber-600 px-4 py-2 text-xs font-semibold text-white hover:bg-amber-700 cursor-pointer"
+            className="rounded-xl bg-[var(--gold-primary)] px-5 py-2.5 text-xs font-semibold text-white hover:bg-[var(--gold-hover)] transition-colors cursor-pointer"
           >
             Retry Loading
           </button>
@@ -165,63 +187,65 @@ export default function ExpenseGroupDetailPage() {
     )
   }
 
-  if (loading && !stalled) {
-    return <Loader text="Loading group details..." />
-  }
+  if (!group) {
+    if (loading) return <PageSkeleton slow={stalled} label="Loading group" />
 
-  if (!loading && !group) {
     return (
       <LayoutShell>
-        <div className="flex flex-col items-center justify-center py-16 gap-3">
-          <p className="text-sm text-stone-500">Group not found.</p>
-          <Link to="/trips" className="text-xs text-amber-700 hover:underline">
-            Go back to groups
+        <div className="mx-auto flex max-w-2xl flex-col items-center gap-3 py-20 text-center">
+          <span className="flex h-11 w-11 items-center justify-center rounded-full bg-[var(--gold-light)] text-[var(--gold-primary)]">
+            <FolderX size={20} />
+          </span>
+          <div>
+            <p className="text-sm font-semibold text-[var(--text-main)]">Group not found</p>
+            <p className="mt-1 text-xs text-[var(--text-subtle)]">It may have been deleted on another device.</p>
+          </div>
+          <Link to="/trips"
+            className="mt-1 rounded-xl bg-[var(--gold-primary)] px-4 py-2.5 text-xs font-semibold text-white hover:bg-[var(--gold-hover)] transition-colors">
+            Back to groups
           </Link>
         </div>
       </LayoutShell>
     )
   }
 
+  const itemCount = resolvedItems.length
+
   return (
     <LayoutShell>
-      <div className="space-y-4 pb-28">
-        {loading && (
-          <div className="rounded-2xl border border-red-100 bg-red-50 p-3.5 text-xs text-red-700 leading-relaxed font-medium">
-            ⚠️ Connection is taking longer than expected. Please check your internet connection.
+      <div className="mx-auto max-w-2xl space-y-6">
+        {loading && stalled && (
+          <div className="rounded-2xl border border-[var(--border-card)] bg-[var(--bg-card)] px-4 py-3 text-[11px] text-[var(--text-muted)]">
+            Still syncing — your connection seems slow.
           </div>
         )}
-        {/* Header */}
-        <header className="rounded-2xl border border-amber-100/80 bg-white/88 p-3 shadow-sm backdrop-blur-sm">
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2 min-w-0">
-              <Link
-                to="/trips"
-                className="flex-shrink-0 inline-flex items-center gap-1 rounded-xl border border-amber-100 px-2.5 py-1.5 text-xs text-stone-600 hover:bg-amber-50 transition-colors"
-              >
-                <ArrowLeft size={13} />
-              </Link>
-              <div className="min-w-0">
-                <h1 className="text-base font-semibold text-stone-800 truncate leading-tight">
-                  {group.name}
-                </h1>
-                {group.description && (
-                  <p className="text-[10px] text-stone-400 mt-0.5 truncate">{group.description}</p>
-                )}
-              </div>
-            </div>
 
-            <button
-              onClick={() => setDeleteGroupConfirm(true)}
-              className="rounded-xl border border-red-100 p-2 text-stone-400 hover:bg-red-50 hover:text-red-600 transition-colors cursor-pointer"
-              title="Delete Group"
-            >
-              <Trash2 size={15} />
-            </button>
+        {/* ── Header ── */}
+        <header className="flex items-center gap-3 pt-1">
+          <Link to="/trips" aria-label="Back to groups" className={iconBtn + ' !text-[var(--text-main)]'}>
+            <ArrowLeft size={17} />
+          </Link>
+          <div className="min-w-0 flex-1">
+            <h1 className="font-serif-luxury truncate text-[23px] font-semibold leading-[1.15] tracking-[-0.01em] text-[var(--text-main)]">
+              {group.name}
+            </h1>
+            <p className="font-serif-luxury mt-0.5 truncate text-[13.5px] italic text-[var(--text-muted)]">
+              {group.description || `${itemCount} linked ${itemCount === 1 ? 'transaction' : 'transactions'}`}
+            </p>
           </div>
+          <button
+            onClick={() => setDeleteGroupConfirm(true)}
+            className={iconBtn + ' hover:!text-rose-500 hover:!border-rose-500/40'}
+            title="Delete group"
+            aria-label="Delete group"
+          >
+            <Trash2 size={16} />
+          </button>
         </header>
 
-        {/* Statistics summary card */}
+        {/* ── Overview ── */}
         <section>
+          <h2 className={`${sectionTitle} mb-2 px-1`}>Overview</h2>
           <SummaryCard
             net={stats.net}
             totalIn={stats.totalIncome}
@@ -230,173 +254,164 @@ export default function ExpenseGroupDetailPage() {
           />
         </section>
 
-        {/* Category breakdown (Visual progress bars) */}
+        {/* ── Category split ── */}
         {categoryStats.length > 0 && (
-          <section className="rounded-2xl border border-amber-100/80 bg-white/88 p-4 shadow-sm">
-            <div className="flex items-center gap-2 mb-3">
-              <Layers size={14} className="text-amber-600" />
-              <h2 className="text-xs font-bold text-stone-500 uppercase tracking-wide">
-                Category Split
-              </h2>
+          <section>
+            <div className="mb-2 flex items-center justify-between px-1">
+              <h2 className={sectionTitle}>Spending by category</h2>
+              <span className="text-[10.5px] text-[var(--text-subtle)]">Tap to filter</span>
             </div>
-            <div className="space-y-2.5">
+            <div className={`${card} divide-y divide-[var(--border-subtle)]`}>
               {categoryStats.map((cat, idx) => {
                 const isSelected = selectedCategoryFilter === cat.name
                 return (
-                  <div 
-                    key={cat.name} 
+                  <button
+                    type="button"
+                    key={cat.name}
                     onClick={() => setSelectedCategoryFilter(isSelected ? 'all' : cat.name)}
-                    className={`space-y-1 cursor-pointer p-1.5 rounded-xl hover:bg-amber-100/30 transition-all ${
-                      isSelected ? 'bg-amber-100/50 ring-1 ring-amber-200' : ''
+                    aria-pressed={isSelected}
+                    className={`block w-full px-4 py-3 text-left first:rounded-t-2xl last:rounded-b-2xl transition-colors cursor-pointer ${
+                      isSelected ? 'bg-[var(--gold-light)]' : 'hover:bg-[var(--border-subtle)]/60'
                     }`}
-                    title={`Click to filter by ${cat.name}`}
                   >
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="font-bold text-stone-700">{cat.name}</span>
-                      <span className="text-stone-500 font-medium">
-                        {symbol}
-                        {formatAmount(cat.amount)} ({cat.percentage.toFixed(0)}%)
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="min-w-0 truncate text-[13px] font-medium text-[var(--text-main)]">{cat.name}</span>
+                      <span className="flex-shrink-0 text-[13px] tabular-nums">
+                        <span className="font-semibold text-[var(--text-main)]">{symbol}{formatAmount(cat.amount)}</span>
+                        <span className="ml-1.5 inline-block w-9 text-right text-[11px] text-[var(--text-subtle)]">{cat.percentage.toFixed(0)}%</span>
                       </span>
                     </div>
-                    <div className="h-1.5 w-full rounded-full bg-amber-50 overflow-hidden">
+                    <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-[var(--border-subtle)]">
                       <motion.div
                         initial={{ width: 0 }}
                         animate={{ width: `${cat.percentage}%` }}
                         transition={{ delay: idx * 0.05, duration: 0.5 }}
-                        className="h-full bg-amber-500 rounded-full"
+                        className="h-full rounded-full bg-[var(--gold-primary)]"
                       />
                     </div>
-                  </div>
+                  </button>
                 )
               })}
             </div>
           </section>
         )}
 
-        {/* Transactions list */}
+        {/* ── Transactions ── */}
         <section className="space-y-2.5">
-          <div className="flex items-center justify-between">
-            <h2 className="font-serif text-base font-semibold text-stone-700">Linked Transactions</h2>
-            {uniqueCategories.length > 0 && (
-              <select
-                value={selectedCategoryFilter}
-                onChange={(e) => setSelectedCategoryFilter(e.target.value)}
-                className="rounded-xl border border-amber-100 bg-amber-50/40 px-2.5 py-1.5 text-xs text-stone-700 focus:border-amber-300 focus:bg-white outline-none cursor-pointer transition-colors"
-              >
-                <option value="all">All Categories</option>
-                {uniqueCategories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
-              </select>
-            )}
-          </div>
+          <h2 className={`${sectionTitle} px-1`}>
+            Transactions{itemCount > 0 ? ` · ${selectedCategoryFilter === 'all' ? itemCount : `${filteredItems.length} of ${itemCount}`}` : ''}
+          </h2>
 
-          {selectedCategoryFilter !== 'all' && (
-            <div className="inline-flex items-center gap-1.5 text-[10px] text-amber-700 font-bold bg-amber-50 border border-amber-100/50 px-2.5 py-1 rounded-full">
-              <span>Showing category: {selectedCategoryFilter}</span>
-              <button 
-                onClick={() => setSelectedCategoryFilter('all')} 
-                className="text-amber-900 hover:text-amber-700 cursor-pointer underline decoration-dotted"
-              >
-                Clear
+          {uniqueCategories.length > 1 && (
+            <div className="wheel-scroll -mx-1 flex gap-1.5 overflow-x-auto px-1 pb-0.5">
+              <button type="button" onClick={() => setSelectedCategoryFilter('all')} className={chip(selectedCategoryFilter === 'all')}>
+                All
               </button>
+              {uniqueCategories.map((cat) => (
+                <button type="button" key={cat} onClick={() => setSelectedCategoryFilter(cat)} className={chip(selectedCategoryFilter === cat)}>
+                  {cat}
+                </button>
+              ))}
             </div>
           )}
 
           {resolvedItems.length === 0 ? (
-            <div className="flex flex-col items-center justify-center gap-3 py-14 text-center rounded-2xl border border-dashed border-amber-200 bg-amber-50/20">
-              <Hash size={24} className="text-amber-300" />
-              <p className="text-xs font-medium text-stone-500">
-                {loading ? 'Retrieving transactions...' : 'No transactions linked yet'}
-              </p>
+            <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-[var(--border-card)] px-6 py-12 text-center">
+              <span className="flex h-11 w-11 items-center justify-center rounded-full bg-[var(--gold-light)] text-[var(--gold-primary)]">
+                <Hash size={20} />
+              </span>
+              <div>
+                <p className="text-sm font-semibold text-[var(--text-main)]">
+                  {loading ? 'Retrieving transactions…' : 'No transactions linked yet'}
+                </p>
+                {!loading && (
+                  <p className="mx-auto mt-1 max-w-xs text-xs text-[var(--text-subtle)]">
+                    Open any book, select transactions and choose “Add to group”.
+                  </p>
+                )}
+              </div>
             </div>
           ) : filteredItems.length === 0 ? (
-            <div className="flex flex-col items-center justify-center gap-3 py-14 text-center rounded-2xl border border-dashed border-amber-200 bg-amber-50/10">
-              <Hash size={24} className="text-amber-300" />
-              <p className="text-xs font-medium text-stone-500">No items match this category filter</p>
-              <button 
+            <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-[var(--border-card)] px-6 py-12 text-center">
+              <span className="flex h-11 w-11 items-center justify-center rounded-full bg-[var(--gold-light)] text-[var(--gold-primary)]">
+                <Hash size={20} />
+              </span>
+              <p className="text-sm font-semibold text-[var(--text-main)]">No items in this category</p>
+              <button
                 onClick={() => setSelectedCategoryFilter('all')}
-                className="text-xs text-amber-700 font-bold hover:underline cursor-pointer"
+                className="rounded-xl bg-[var(--gold-primary)] px-4 py-2.5 text-xs font-semibold text-white hover:bg-[var(--gold-hover)] transition-colors cursor-pointer"
               >
-                Reset Filter
+                Show all
               </button>
             </div>
           ) : (
-            <div className="space-y-2.5">
+            <div className={`${card} divide-y divide-[var(--border-subtle)]`}>
               {filteredItems.map(({ entry, projectId, bookId, projectName, bookName }) => {
                 const isIncome = entry.type === 'income' || entry.type === 'transfer_in'
-                const amountColor = entry.isSavings
-                  ? 'text-violet-600'
-                  : entry.type === 'transfer_in'
-                  ? 'text-blue-600'
-                  : entry.type === 'transfer_out'
-                  ? 'text-blue-500'
-                  : isIncome
-                  ? 'text-emerald-700'
-                  : 'text-red-600'
+                const visual = entryVisual(entry)
+                const Icon = visual.Icon
+                const meta = [
+                  entry.category || 'General',
+                  entry.subcategory,
+                  entry.mode,
+                ].filter(Boolean).join(' · ')
 
                 return (
                   <div
                     key={`${projectId}_${bookId}_${entry.id}`}
-                    className="relative rounded-2xl border border-amber-100/80 bg-white/90 p-3.5 shadow-sm transition-all"
+                    className="flex items-center first:rounded-t-2xl last:rounded-b-2xl hover:bg-[var(--border-subtle)]/60 transition-colors"
                   >
-                    {/* Origin Breadcrumbs */}
-                    <div className="flex items-center justify-between gap-2 mb-2 text-[10px] text-stone-400">
-                      <span className="truncate max-w-[75%] font-medium">
-                        Project:{' '}
-                        <span className="font-semibold text-stone-600">{projectName}</span> · Book:{' '}
-                        <span className="font-semibold text-stone-600">{bookName}</span>
+                    <Link
+                      to={`/projects/${projectId}/books/${bookId}?focusedEntryId=${entry.id}`}
+                      className="flex min-w-0 flex-1 items-center gap-3 py-3 pl-4 pr-2"
+                      title="View in original book"
+                    >
+                      <span className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full ${visual.chip}`}>
+                        <Icon size={16} strokeWidth={2.2} />
                       </span>
-                      <span className="flex-shrink-0">
-                        {format(new Date(entry.timestamp), 'dd MMM, h:mm a')}
-                      </span>
-                    </div>
-
-                    {/* Main Row */}
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="text-sm font-semibold text-stone-800 leading-tight">
-                          {entry.description}
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-[13.5px] font-semibold text-[var(--text-main)]">
+                          {entry.description || entry.category || 'Transaction'}
                         </p>
-                        <div className="mt-1 flex items-center gap-1.5">
-                          <span className="text-xs text-stone-400">
-                            {entry.category}{entry.subcategory ? ` · ${entry.subcategory}` : ''}
-                          </span>
-                          <span className="inline-block h-1 w-1 rounded-full bg-amber-100" />
-                          <span className="text-[10px] text-stone-400 bg-amber-50/50 border border-amber-100/30 px-1.5 py-0.5 rounded font-medium">
-                            {entry.mode}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <p className={`text-sm sm:text-base font-bold ${amountColor}`}>
-                          {isIncome ? '+' : '−'}
-                          {symbol}
-                          {formatAmount(entry.amount)}
+                        <p className="mt-0.5 truncate text-[11.5px] text-[var(--text-muted)]">{meta}</p>
+                        <p className="mt-0.5 truncate text-[10.5px] text-[var(--text-subtle)]">
+                          {projectName} / {bookName} · {format(new Date(entry.timestamp), 'dd MMM, h:mm a')}
                         </p>
                       </div>
-                    </div>
-
-                    {/* Actions bar inside card */}
-                    <div className="mt-3 flex items-center justify-between border-t border-amber-50 pt-2">
-                      <Link
-                        to={`/projects/${projectId}/books/${bookId}?focusedEntryId=${entry.id}`}
-                        className="text-amber-700 hover:underline text-[10px] font-bold"
-                      >
-                        View in original book →
-                      </Link>
-                      <button
-                        onClick={() => handleUnlink(projectId, bookId, entry.id)}
-                        className="text-red-500 hover:text-red-700 text-[10px] font-bold cursor-pointer"
-                      >
-                        Unlink
-                      </button>
-                    </div>
+                      <p className={`flex-shrink-0 text-[13.5px] font-semibold tabular-nums ${visual.amount}`}>
+                        {isIncome ? '+' : '−'}{symbol}{formatAmount(entry.amount)}
+                      </p>
+                    </Link>
+                    <button
+                      onClick={() => setUnlinkTarget({ projectId, bookId, entryId: entry.id, description: entry.description })}
+                      className="mr-2 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full text-[var(--text-subtle)] hover:bg-rose-500/10 hover:text-rose-600 dark:hover:text-rose-400 transition-colors cursor-pointer"
+                      title="Remove from group"
+                      aria-label="Remove from group"
+                    >
+                      <Link2Off size={15} />
+                    </button>
                   </div>
                 )
               })}
             </div>
           )}
+
+          {resolvedItems.length > 0 && (
+            <p className="px-1 text-[10.5px] text-[var(--text-subtle)]">
+              Tap a transaction to open it in its book. Removing it from this group doesn’t delete it.
+            </p>
+          )}
         </section>
       </div>
+
+      <ConfirmDialog
+        open={Boolean(unlinkTarget)}
+        onClose={() => setUnlinkTarget(null)}
+        onConfirm={() => handleUnlink(unlinkTarget.projectId, unlinkTarget.bookId, unlinkTarget.entryId)}
+        title="Remove from group?"
+        message={`${unlinkTarget?.description ? `"${unlinkTarget.description}"` : 'This transaction'} will be removed from this group. It stays in its original book.`}
+        danger={false}
+      />
 
       <ConfirmDialog
         open={deleteGroupConfirm}

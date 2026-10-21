@@ -1,358 +1,147 @@
-import { useState, useRef, useEffect } from 'react'
-import { Lock, X, Eye, EyeOff, KeyRound, ShieldAlert, Clock } from 'lucide-react'
-import { verifyPin, validatePin, getPinAttemptData, recordPinAttempt, clearPinAttempts } from '../../lib/pin'
+import { useState } from 'react'
+import { Lock, KeyRound, Eye, EyeOff, ShieldCheck } from 'lucide-react'
+import { EmailAuthProvider, GoogleAuthProvider, reauthenticateWithCredential, reauthenticateWithPopup } from 'firebase/auth'
 import { useAuth } from '../../context/AuthContext'
-import { EmailAuthProvider, reauthenticateWithCredential } from 'firebase/auth'
 import { auth } from '../../lib/firebase'
-import PinInput from './PinInput'
-import PinLengthSelector from './PinLengthSelector'
+import { hashPin, needsRehash } from '../../lib/pin'
+import { clearGuard } from '../../lib/pinGuard'
+import PinDialog from './PinDialog'
+import PinEntry from './PinEntry'
 
 /**
- * PIN entry modal with progressive rate limiting.
- *
- * Attempt thresholds:
- *   3 wrong  → 1 minute lockout
- *   6 wrong  → 5 minutes lockout
- *   9+ wrong → 15 minutes lockout
- *
- * After 3 wrong attempts, "Forgot PIN?" link appears.
- *
- * "Forgot PIN" flow: user enters account password → identity verified → PIN removed.
+ * Unlock a PIN-protected book or project.
  *
  * Props:
- *   open, onClose, onUnlock, storedHash, itemName
- *   onRemovePin() — clears PIN from Firebase after identity verified
+ *   open, onClose
+ *   onUnlock()                 called after a correct PIN
+ *   storedHash, pinLength      the item's PIN hash and digit count (length may be unknown for older PINs)
+ *   guardId                    id for wrong-attempt tracking
+ *   itemName
+ *   onRemovePin()              remove the PIN after re-verifying the account ("Forgot PIN")
+ *   onRehash(hash, length)     optional: upgrade older PINs to the stronger format / record their length
  */
-
-// Lockout durations in seconds
-function getLockoutSeconds(totalAttempts) {
-  if (totalAttempts >= 9) return 15 * 60
-  if (totalAttempts >= 6) return 5 * 60
-  if (totalAttempts >= 3) return 1 * 60
-  return 0
+export default function PinModal(props) {
+  if (!props.open) return null
+  return <PinUnlock {...props} />
 }
 
-export default function PinModal({ open, onClose, onUnlock, storedHash, itemName, onRemovePin }) {
+function PinUnlock({ onClose, onUnlock, storedHash, pinLength, guardId, itemName, onRemovePin, onRehash }) {
   const { user } = useAuth()
-  const [mode, setMode] = useState('pin')   // 'pin' | 'forgot'
-  const [pin, setPin] = useState('')
-  const [pinLength, setPinLength] = useState(4)
-  const [accountPw, setAccountPw] = useState('')
+  const [mode, setMode] = useState('pin') // pin | forgot | removed
+  const [password, setPassword] = useState('')
   const [showPw, setShowPw] = useState(false)
   const [error, setError] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [pinRemoved, setPinRemoved] = useState(false)
+  const [busy, setBusy] = useState(false)
 
-  // Rate limiting state — PERSISTED in sessionStorage
-  const [attempts, setAttempts] = useState(0)
-  const [lockedUntil, setLockedUntil] = useState(0)   // timestamp ms
-  const [countdown, setCountdown] = useState(0)        // seconds remaining
+  const providers = user?.providerData?.map((p) => p.providerId) || []
+  const isPasswordUser = providers.includes('password')
+  const isGoogleUser = providers.includes('google.com')
 
-  const timerRef = useRef(null)
-  const itemIdRef = useRef(itemName) // Stable ref for rate limiting key
-
-  // Load lockout state from sessionStorage on mount
-  useEffect(() => {
-    if (open && itemName) {
-      const data = getPinAttemptData(itemName)
-      setAttempts(data.attempts)
-      setLockedUntil(data.lockedUntil)
+  const handleSuccess = async (pin, length) => {
+    // Upgrade older PINs (unsalted hash or unknown length) silently in the background.
+    if (onRehash && (needsRehash(storedHash) || !pinLength)) {
+      hashPin(pin).then((h) => onRehash(h, length)).catch(() => {})
     }
-  }, [open, itemName])
-
-  // Countdown ticker
-  useEffect(() => {
-    if (lockedUntil <= 0) return
-    const tick = () => {
-      const remaining = Math.ceil((lockedUntil - Date.now()) / 1000)
-      if (remaining <= 0) {
-        setCountdown(0)
-        setLockedUntil(0)
-        clearInterval(timerRef.current)
-      } else {
-        setCountdown(remaining)
-      }
-    }
-    tick()
-    timerRef.current = setInterval(tick, 1000)
-    return () => clearInterval(timerRef.current)
-  }, [lockedUntil])
-
-  useEffect(() => {
-    if (open) {
-      setMode('pin')
-      setPin('')
-      setPinLength(4)
-      setAccountPw('')
-      setError('')
-      setPinRemoved(false)
-      setShowPw(false)
-      clearInterval(timerRef.current)
-      // Load current lockout state (already done in separate effect above)
-    } else {
-      clearInterval(timerRef.current)
-    }
-  }, [open])
-
-  if (!open) return null
-
-  const isLocked = countdown > 0
-
-  const formatCountdown = (secs) => {
-    if (secs >= 60) return `${Math.ceil(secs / 60)} min`
-    return `${secs}s`
+    onUnlock()
+    onClose()
   }
 
-  // ── Enter PIN ──────────────────────────────────────────────────────────────
-  const handlePinSubmit = async (pinValue) => {
-    if (isLocked) return
-    const pinToVerify = typeof pinValue === 'string' ? pinValue : pin
-    
-    const validation = validatePin(pinToVerify)
-    if (!validation.valid) {
-      setError('Incorrect PIN.')
-      return
-    }
-
-    setLoading(true)
+  const removeAfterReauth = async (reauth) => {
+    setBusy(true)
     setError('')
     try {
-      const ok = await verifyPin(pinToVerify, storedHash)
-      if (ok) {
-        // ✅ Success: Clear attempts and unlock
-        clearPinAttempts(itemName)
-        setAttempts(0)
-        setLockedUntil(0)
-        setCountdown(0)
-        onUnlock()
-        onClose()
-      } else {
-        // ❌ Wrong PIN: Record attempt and check if locked
-        const result = recordPinAttempt(itemName)
-        setAttempts(result.newAttempts)
-        
-        if (result.lockedUntil > 0) {
-          // Locked now
-          setLockedUntil(result.lockedUntil)
-          setError(`Incorrect PIN. Too many attempts. Try again in ${formatCountdown(result.lockoutSeconds)}.`)
-        } else {
-          // Still has attempts left
-          const attemptsUntilLockout = result.newAttempts < 3
-            ? 3 - result.newAttempts
-            : result.newAttempts < 6
-              ? 6 - result.newAttempts
-              : 9 - result.newAttempts
-          const chanceWord = attemptsUntilLockout === 1 ? 'chance' : 'chances'
-          setError(`Incorrect PIN. ${attemptsUntilLockout} ${chanceWord} left before lockout.`)
-          setPin('')
-        }
-      }
-    } catch {
-      setError('Something went wrong. Please try again.')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  // Auto-submit when all digits are entered
-  const handlePinChange = (newPin) => {
-    setPin(newPin)
-    setError('')
-    if (newPin.length === pinLength && !loading && !isLocked) {
-      handlePinSubmit(newPin)
-    }
-  }
-
-  // ── Forgot PIN — verify account password ───────────────────────────────────
-  const handleForgotSubmit = async (e) => {
-    e.preventDefault()
-    if (!accountPw) { setError('Enter your account password.'); return }
-    setLoading(true)
-    setError('')
-    try {
-      const credential = EmailAuthProvider.credential(user.email, accountPw)
-      await reauthenticateWithCredential(auth.currentUser, credential)
+      await reauth()
       await onRemovePin()
-      // Clear lockout state when PIN is removed
-      clearPinAttempts(itemName)
-      setAttempts(0)
-      setLockedUntil(0)
-      setCountdown(0)
-      setPinRemoved(true)
+      await clearGuard(user?.uid, guardId)
+      setMode('removed')
     } catch (err) {
       const code = err?.code || ''
-      if (code === 'auth/wrong-password' || code === 'auth/invalid-credential') {
-        setError('Incorrect account password. Please try again.')
-      } else if (code === 'auth/too-many-requests') {
-        setError('Too many attempts. Please wait a moment.')
-      } else {
-        setError('Verification failed. Please try again.')
-      }
+      if (code === 'auth/wrong-password' || code === 'auth/invalid-credential') setError('Incorrect account password.')
+      else if (code === 'auth/too-many-requests') setError('Too many attempts. Please wait a moment.')
+      else if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') setError('Sign-in was cancelled.')
+      else setError('Verification failed. Please try again.')
     } finally {
-      setLoading(false)
+      setBusy(false)
     }
   }
 
-  const isPasswordUser = user?.providerData?.some(p => p.providerId === 'password')
-  const showForgotLink = attempts >= 3 && !isLocked
-
-  return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-xs rounded-3xl bg-white p-6 shadow-2xl">
-        <button onClick={onClose}
-          className="absolute right-4 top-4 rounded-xl p-1.5 text-stone-400 hover:bg-stone-100 transition-colors">
-          <X size={15} />
+  if (mode === 'removed') {
+    return (
+      <PinDialog icon={ShieldCheck} iconTone="success" title="PIN removed"
+        subtitle={`${itemName ? `"${itemName}"` : 'This item'} is no longer locked. You can set a new PIN any time.`}
+        onClose={onClose}>
+        <button type="button" onClick={onClose}
+          className="w-full rounded-2xl bg-[var(--gold-primary)] py-3 text-[13px] font-semibold text-white hover:bg-[var(--gold-hover)] transition-colors cursor-pointer">
+          Done
         </button>
+      </PinDialog>
+    )
+  }
 
-        {/* ── PIN removed success ── */}
-        {pinRemoved ? (
-          <div className="flex flex-col items-center text-center gap-3 py-2">
-            <div className="rounded-2xl bg-emerald-100 p-4">
-              <ShieldAlert size={24} className="text-emerald-600" />
+  if (mode === 'forgot') {
+    return (
+      <PinDialog icon={KeyRound} title="Forgot PIN?" subtitle="Verify your account to remove this PIN lock. Your data stays as it is."
+        onClose={onClose} onBack={() => { setMode('pin'); setError('') }}>
+        {isPasswordUser ? (
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              if (!password) { setError('Enter your account password.'); return }
+              removeAfterReauth(() => reauthenticateWithCredential(auth.currentUser, EmailAuthProvider.credential(user.email, password)))
+            }}
+            className="space-y-3"
+          >
+            <div className="flex items-center gap-2 rounded-xl border border-[var(--border-card)] bg-[var(--bg-card)] px-3.5 focus-within:border-[var(--gold-primary)] transition-colors">
+              <input
+                type={showPw ? 'text' : 'password'}
+                value={password}
+                onChange={(e) => { setPassword(e.target.value); setError('') }}
+                placeholder="Account password"
+                autoComplete="current-password"
+                autoFocus
+                className="min-w-0 flex-1 bg-transparent py-3 text-[13px] text-[var(--text-main)] placeholder-[var(--text-subtle)] outline-none"
+              />
+              <button type="button" onClick={() => setShowPw((v) => !v)} aria-label={showPw ? 'Hide password' : 'Show password'}
+                className="text-[var(--text-subtle)] hover:text-[var(--text-main)] cursor-pointer">
+                {showPw ? <EyeOff size={15} /> : <Eye size={15} />}
+              </button>
             </div>
-            <div>
-              <p className="font-serif text-base font-semibold text-stone-800">PIN Removed</p>
-              <p className="mt-1 text-xs text-stone-400 leading-relaxed">
-                PIN lock removed. You can set a new PIN from inside the book.
-              </p>
-            </div>
-            <button onClick={onClose}
-              className="w-full rounded-xl bg-amber-600 py-2.5 text-sm font-semibold text-white hover:bg-amber-700 transition-colors">
-              Done
+            {error && <p className="text-center text-xs text-rose-600 dark:text-rose-400">{error}</p>}
+            <button type="submit" disabled={busy || !password}
+              className="w-full rounded-2xl bg-[var(--gold-primary)] py-3 text-[13px] font-semibold text-white hover:bg-[var(--gold-hover)] disabled:opacity-40 transition-colors cursor-pointer">
+              {busy ? 'Verifying…' : 'Verify & remove PIN'}
+            </button>
+          </form>
+        ) : isGoogleUser ? (
+          <div className="space-y-3">
+            {error && <p className="text-center text-xs text-rose-600 dark:text-rose-400">{error}</p>}
+            <button type="button" disabled={busy}
+              onClick={() => removeAfterReauth(() => reauthenticateWithPopup(auth.currentUser, new GoogleAuthProvider()))}
+              className="w-full rounded-2xl bg-[var(--gold-primary)] py-3 text-[13px] font-semibold text-white hover:bg-[var(--gold-hover)] disabled:opacity-40 transition-colors cursor-pointer">
+              {busy ? 'Verifying…' : 'Continue with Google'}
             </button>
           </div>
-
-        ) : mode === 'pin' ? (
-          <>
-            {/* ── Enter PIN ── */}
-            <div className="flex flex-col items-center text-center gap-3 mb-5">
-              <div className={`rounded-2xl p-4 ${isLocked ? 'bg-red-100' : 'bg-amber-100'}`}>
-                {isLocked
-                  ? <Clock size={24} className="text-red-600" />
-                  : <Lock size={24} className="text-amber-700" />
-                }
-              </div>
-              <div>
-                <h3 className="font-serif text-lg font-semibold text-stone-800">
-                  {isLocked ? 'Too Many Attempts' : 'PIN Protected'}
-                </h3>
-                <p className="mt-1 text-xs text-stone-400">
-                  {isLocked
-                    ? `Locked for ${formatCountdown(countdown)}`
-                    : <><span className="font-medium text-stone-600">"{itemName}"</span> is locked.</>
-                  }
-                </p>
-              </div>
-            </div>
-
-            {isLocked ? (
-              /* Lockout screen */
-              <div className="space-y-3">
-                <div className="rounded-xl bg-red-50 border border-red-100 px-4 py-3 text-center">
-                  <p className="text-sm font-semibold text-red-700">{formatCountdown(countdown)}</p>
-                  <p className="text-xs text-red-500 mt-0.5">remaining</p>
-                </div>
-                {isPasswordUser && (
-                  <button type="button"
-                    onClick={() => { setMode('forgot'); setError('') }}
-                    className="w-full rounded-xl border border-amber-200 bg-amber-50 py-2.5 text-xs font-medium text-amber-700 hover:bg-amber-100 transition-colors">
-                    Forgot PIN? Verify with account password
-                  </button>
-                )}
-              </div>
-            ) : (
-              <form onSubmit={e => { e.preventDefault(); handlePinSubmit(pin) }} className="space-y-4" autoComplete="off">
-                {/* Hidden fields to prevent Chrome from treating this as a login form */}
-                <input type="text" name="username" style={{ display: 'none' }} readOnly tabIndex={-1} />
-                <input type="text" name="fakepassword" style={{ display: 'none' }} readOnly tabIndex={-1} />
-
-                <PinLengthSelector value={pinLength} onChange={(len) => {
-                  setPinLength(len)
-                  setPin('')
-                  setError('')
-                }} />
-
-                <PinInput
-                  length={pinLength}
-                  value={pin}
-                  onChange={handlePinChange}
-                  autoFocus
-                />
-
-                {error && (
-                  <p className="rounded-xl bg-red-50 border border-red-100 px-3 py-2 text-xs text-red-600 text-center">
-                    {error}
-                  </p>
-                )}
-
-                <button type="submit" disabled={loading || pin.length < pinLength}
-                  className="w-full rounded-2xl bg-amber-600 py-3 text-sm font-semibold text-white hover:bg-amber-700 transition-colors disabled:opacity-60">
-                  {loading ? 'Verifying...' : 'Unlock'}
-                </button>
-
-                {showForgotLink && isPasswordUser && (
-                  <button type="button"
-                    onClick={() => { setMode('forgot'); setError('') }}
-                    className="w-full text-xs text-amber-600 hover:text-amber-800 font-medium transition-colors py-1">
-                    Forgot PIN? Verify with account password →
-                  </button>
-                )}
-              </form>
-            )}
-          </>
-
         ) : (
-          <>
-            {/* ── Forgot PIN — verify account password ── */}
-            <div className="flex flex-col items-center text-center gap-3 mb-5">
-              <div className="rounded-2xl bg-blue-100 p-4">
-                <KeyRound size={24} className="text-blue-600" />
-              </div>
-              <div>
-                <h3 className="font-serif text-base font-semibold text-stone-800">Verify Identity</h3>
-                <p className="mt-1 text-xs text-stone-400 leading-relaxed">
-                  Enter your account password to remove the PIN lock.
-                </p>
-              </div>
-            </div>
-
-            <form onSubmit={handleForgotSubmit} className="space-y-3">
-              <div className="relative">
-                <input
-                  type={showPw ? 'text' : 'password'}
-                  value={accountPw}
-                  onChange={e => { setAccountPw(e.target.value); setError('') }}
-                  placeholder="Account password"
-                  autoFocus
-                  className="w-full rounded-xl border border-stone-200 bg-stone-50 px-3 py-2.5 pr-10 text-sm text-stone-800 placeholder-stone-400 focus:border-amber-300 focus:bg-white transition-colors"
-                />
-                <button type="button" onClick={() => setShowPw(v => !v)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400">
-                  {showPw ? <EyeOff size={13} /> : <Eye size={13} />}
-                </button>
-              </div>
-
-              {error && (
-                <p className="rounded-xl bg-red-50 border border-red-100 px-3 py-2 text-xs text-red-600 text-center">
-                  {error}
-                </p>
-              )}
-
-              <button type="submit" disabled={loading || !accountPw}
-                className="w-full rounded-xl bg-blue-600 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 transition-colors disabled:opacity-60">
-                {loading ? 'Verifying...' : 'Remove PIN Lock'}
-              </button>
-
-              <button type="button" onClick={() => { setMode('pin'); setError('') }}
-                className="w-full text-xs text-stone-400 hover:text-stone-600 transition-colors py-1">
-                ← Back to PIN entry
-              </button>
-            </form>
-          </>
+          <p className="text-center text-xs text-[var(--text-subtle)]">Sign out and sign back in, then try again.</p>
         )}
-      </div>
-    </div>
+      </PinDialog>
+    )
+  }
+
+  return (
+    <PinDialog
+      icon={Lock}
+      title="Enter PIN"
+      subtitle={<>{itemName ? <span className="font-semibold text-[var(--text-main)]">{itemName}</span> : 'This item'} is locked</>}
+      onClose={onClose}
+      footer={
+        <button type="button" onClick={() => { setMode('forgot'); setError('') }}
+          className="w-full text-center text-xs font-semibold text-[var(--gold-primary)] hover:underline cursor-pointer">
+          Forgot PIN?
+        </button>
+      }
+    >
+      <PinEntry guardId={guardId} storedHash={storedHash} length={pinLength} onSuccess={handleSuccess} />
+    </PinDialog>
   )
 }
-

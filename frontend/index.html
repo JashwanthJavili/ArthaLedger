@@ -2,15 +2,15 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/png" href="/L.png" />
-    <link rel="apple-touch-icon" href="/L.png" />
+    <link rel="icon" type="image/png" sizes="64x64" href="/icons/favicon-64.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png" />
     <link rel="manifest" href="/manifest.json" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="theme-color" content="#d6a75e" />
+    <meta name="theme-color" content="#FAF8F5" />
     <meta name="description" content="ArthaLedger - Where every rupee has meaning." />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-    <meta name="apple-mobile-web-app-title" content="Santham" />
+    <meta name="apple-mobile-web-app-title" content="ArthaLedger" />
     <meta name="mobile-web-app-capable" content="yes" />
 
     <!-- Google Fonts -->
@@ -24,7 +24,13 @@
     <title>ArthaLedger - Where every rupee has meaning.</title>
     <script>
       try {
-        if (localStorage.getItem('sl_dark') === 'true') {
+        var saved = localStorage.getItem('sl_dark');
+        var dark = saved === null
+          ? window.matchMedia('(prefers-color-scheme: dark)').matches
+          : saved === 'true';
+        var meta = document.querySelector('meta[name="theme-color"]');
+        if (meta) meta.setAttribute('content', dark ? '#1B1C20' : '#FAF8F5');
+        if (dark) {
           document.documentElement.classList.add('dark');
         } else {
           document.documentElement.classList.remove('dark');

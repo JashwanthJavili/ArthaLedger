@@ -3,7 +3,7 @@ from app.api.deps import get_current_user
 from app.services.firebase_service import get_db_ref
 from app.core.rate_limit import check_rate_limit, record_success
 import time
-import hashlib
+from app.core.pin_hash import verify_pin
 
 router = APIRouter(prefix='/projects/{project_id}/books', tags=['books'])
 
@@ -27,14 +27,9 @@ def _validate_str(value, field: str, min_len: int = 0, max_len: int = 500) -> st
     return s
 
 
-def _hash_pin(pin: str) -> str:
-    """Hash a PIN using SHA-256 (matching frontend pin.js)"""
-    return hashlib.sha256(str(pin).encode()).hexdigest()
-
-
 def _verify_pin(pin: str, stored_hash: str) -> bool:
-    """Verify PIN against stored hash"""
-    return _hash_pin(pin) == stored_hash
+    """Verify a PIN against its stored hash (PBKDF2 or legacy SHA-256)."""
+    return verify_pin(pin, stored_hash)
 
 
 @router.get('/')

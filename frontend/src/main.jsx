@@ -8,8 +8,9 @@ import App from './App.jsx'
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', async () => {
     try {
-      await navigator.serviceWorker.register('/sw.js')
-      await navigator.serviceWorker.register('/firebase-messaging-sw.js')
+      // One worker handles offline caching and push (see public/sw.js).
+      // Registering a second worker on the same scope used to replace it.
+      await navigator.serviceWorker.register('/sw.js', { scope: '/' })
     } catch (err) {
       console.warn('Service Worker Registration:', err)
     }

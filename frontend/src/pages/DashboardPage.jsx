@@ -2,8 +2,7 @@ import { useMemo, useState, useEffect, useRef } from 'react'
 import { format } from 'date-fns'
 import { Link } from 'react-router-dom'
 import {
-  Plus, Search, TrendingUp,
-  Calendar, FolderOpen, MoreVertical, Pencil, Trash2, Lock,
+  Plus, Search, FolderOpen, MoreVertical, Pencil, Trash2, Lock, ChevronRight, X, Moon, Sun,
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import LayoutShell from '../components/LayoutShell'
@@ -16,8 +15,9 @@ import Toast from '../components/common/Toast'
 import { useAppData } from '../context/AppDataContext'
 import { getQuoteOfTheDay } from '../lib/quotes'
 import { useAuth } from '../context/AuthContext'
+import { isDarkMode, setDarkMode } from '../lib/theme'
 
-function ProjectMenu({ project, onEdit, onDelete }) {
+function ProjectMenu({ onEdit, onDelete }) {
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
 
@@ -31,31 +31,31 @@ function ProjectMenu({ project, onEdit, onDelete }) {
     <div ref={ref} className="relative" onClick={(e) => e.preventDefault()}>
       <button
         onClick={(e) => { e.preventDefault(); e.stopPropagation(); setOpen((v) => !v) }}
-        className="rounded-xl p-1.5 text-stone-400 hover:bg-amber-100 hover:text-amber-700 transition-colors"
+        className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--text-subtle)] hover:text-[var(--text-main)] hover:bg-[var(--border-subtle)] transition-colors cursor-pointer"
         aria-label="Project options"
       >
-        <MoreVertical size={15} />
+        <MoreVertical size={16} />
       </button>
       <AnimatePresence>
         {open && (
           <motion.div
-            initial={{ opacity: 0, scale: 0.92, y: -4 }}
+            initial={{ opacity: 0, scale: 0.95, y: -4 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.92, y: -4 }}
+            exit={{ opacity: 0, scale: 0.95, y: -4 }}
             transition={{ duration: 0.12 }}
-            className="absolute right-0 top-8 z-50 w-40 overflow-hidden rounded-2xl border border-amber-100 bg-white shadow-xl"
+            className="absolute right-0 top-9 z-50 w-40 overflow-hidden rounded-2xl border border-[var(--border-card)] bg-[var(--bg-page)] py-1 shadow-[0_16px_40px_-12px_rgba(0,0,0,0.3)]"
           >
             <button
               onClick={(e) => { e.preventDefault(); e.stopPropagation(); onEdit(); setOpen(false) }}
-              className="flex w-full items-center gap-2 px-3 py-2.5 text-xs text-stone-700 hover:bg-amber-50 transition-colors border-b border-amber-50"
+              className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-xs font-medium text-[var(--text-main)] hover:bg-[var(--border-subtle)] transition-colors cursor-pointer"
             >
-              <Pencil size={12} className="text-amber-600" /> Edit Project
+              <Pencil size={13} className="text-[var(--text-muted)]" /> Edit project
             </button>
             <button
               onClick={(e) => { e.preventDefault(); e.stopPropagation(); onDelete(); setOpen(false) }}
-              className="flex w-full items-center gap-2 px-3 py-2.5 text-xs text-red-600 hover:bg-red-50 transition-colors"
+              className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-xs font-medium text-rose-600 dark:text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer"
             >
-              <Trash2 size={12} /> Delete Project
+              <Trash2 size={13} /> Delete project
             </button>
           </motion.div>
         )}
@@ -69,7 +69,6 @@ export default function DashboardPage() {
   const [modalOpen, setModalOpen] = useState(false)
   const [editingProject, setEditingProject] = useState(null)
   const [deleteTarget, setDeleteTarget] = useState(null)
-  const [verifyPinForDelete, setVerifyPinForDelete] = useState(false)
   const [search, setSearch] = useState('')
   const { user } = useAuth()
   const [stalled, setStalled] = useState(false)
@@ -85,6 +84,14 @@ export default function DashboardPage() {
   const quote = useMemo(() => getQuoteOfTheDay(), [])
   const filtered = projects.filter((p) => p.name.toLowerCase().includes(search.toLowerCase()))
 
+  const totalBooksCount = useMemo(
+    () => Object.values(booksByProject).reduce((acc, books) => acc + (books?.length || 0), 0),
+    [booksByProject],
+  )
+
+  const [dark, setDark] = useState(isDarkMode)
+  const toggleTheme = () => setDark((d) => { setDarkMode(!d); return !d })
+
   const showToast = (msg, type = 'success') => {
     setToast({ msg, type, visible: true })
     setTimeout(() => setToast((t) => ({ ...t, visible: false })), 2200)
@@ -94,20 +101,21 @@ export default function DashboardPage() {
     const h = new Date().getHours()
     if (h < 12) return 'Good morning'
     if (h < 17) return 'Good afternoon'
-    return 'Good evening'
+    if (h < 20) return 'Good evening'
+    return 'Good night'
   }
 
   if (error) {
     return (
       <LayoutShell>
         <div className="flex flex-col items-center justify-center py-20 gap-4 text-center px-4">
-          <div className="rounded-2xl bg-red-50 border border-red-100 p-4 max-w-sm">
-            <p className="text-sm font-semibold text-red-800">Unable to Load Data</p>
-            <p className="text-xs text-red-600 mt-1">{error}</p>
+          <div className="rounded-2xl border border-rose-500/20 bg-rose-500/10 p-5 max-w-sm">
+            <p className="text-sm font-semibold text-rose-500">Unable to Load Data</p>
+            <p className="text-xs text-[var(--text-muted)] mt-1">{error}</p>
           </div>
           <button 
             onClick={() => window.location.reload()}
-            className="rounded-xl bg-amber-600 px-4 py-2 text-xs font-semibold text-white hover:bg-amber-700 cursor-pointer"
+            className="rounded-xl bg-[var(--gold-primary)] px-5 py-2.5 text-xs font-semibold text-white hover:bg-[var(--gold-hover)] transition-colors"
           >
             Retry Loading
           </button>
@@ -116,112 +124,123 @@ export default function DashboardPage() {
     )
   }
 
-  if (loading && !stalled) return <Loader text="Arranging your projects..." />
+  if (loading && !stalled) return <Loader text="Preparing your dashboard..." />
+
+  const firstName = user?.displayName?.split(' ')[0] || 'there'
+  const initials = user?.displayName
+    ? user.displayName.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()
+    : 'AL'
+  const iconBtn = 'flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border border-[var(--border-card)] bg-[var(--bg-card)] text-[var(--text-muted)] hover:text-[var(--text-main)] hover:border-[var(--text-subtle)] transition-colors cursor-pointer'
 
   return (
     <LayoutShell>
-      <div className="space-y-4 sm:space-y-5">
-        {loading && (
-          <div className="rounded-2xl border border-red-100 bg-red-50 p-3.5 text-xs text-red-700 leading-relaxed font-medium">
-            ⚠️ Connection is taking longer than expected. Please check your internet connection.
+      <div className="mx-auto max-w-2xl space-y-6">
+        {loading && stalled && (
+          <div className="rounded-2xl border border-[var(--border-card)] bg-[var(--bg-card)] px-4 py-3 text-[11px] text-[var(--text-muted)]">
+            Still syncing — your connection seems slow.
           </div>
         )}
 
         {/* ── Greeting ── */}
-        <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="px-1">
-          <p className="text-xs text-stone-400 font-medium">{greeting()},</p>
-          <h1 className="font-serif text-2xl sm:text-3xl font-semibold text-stone-800 leading-tight">
-            {user?.displayName?.split(' ')[0] || 'Friend'} 🙏
-          </h1>
-        </motion.div>
-
-        {/* ── Daily Quote ── */}
-        <QuoteCard quote={quote} />
-
-        {/* ── Section heading + search ── */}
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <h2 className="font-serif text-lg sm:text-xl font-semibold text-stone-800">Your Projects</h2>
-            <p className="text-xs text-stone-400 mt-0.5">
-              {projects.length === 0 ? 'No projects yet' : `${projects.length} project${projects.length !== 1 ? 's' : ''}`}
+        <motion.header initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} className="flex items-start gap-3 pt-1">
+          <div className="min-w-0 flex-1">
+            <p className="font-serif-luxury text-[16px] italic text-[var(--text-muted)]">{greeting()},</p>
+            <h1 className="font-serif-luxury truncate text-[30px] font-semibold leading-[1.1] tracking-[-0.015em] text-[var(--text-main)]">
+              {firstName}
+            </h1>
+            <p className="mt-2 text-[12px] text-[var(--text-subtle)]">
+              <span className="font-semibold text-[var(--text-muted)]">{projects.length}</span> {projects.length === 1 ? 'project' : 'projects'}
+              <span className="mx-1.5 text-[var(--border-card)]">•</span>
+              <span className="font-semibold text-[var(--text-muted)]">{totalBooksCount}</span> {totalBooksCount === 1 ? 'book' : 'books'}
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <button onClick={toggleTheme} className={iconBtn} aria-label={dark ? 'Switch to light mode' : 'Switch to dark mode'}>
+            {dark ? <Sun size={17} className="text-[var(--gold-primary)]" /> : <Moon size={17} />}
+          </button>
+          <Link to="/settings" aria-label="Profile and settings"
+            className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-[var(--gold-primary)] text-[12px] font-bold text-white">
+            {initials}
+          </Link>
+        </motion.header>
+
+        {/* ── Quote of the day ── */}
+        <QuoteCard quote={quote} />
+
+        {/* ── Projects ── */}
+        <section className="space-y-2.5">
+          <div className="flex items-center justify-between px-1">
+            <h2 className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[var(--text-subtle)]">
+              Projects{projects.length > 0 ? ` · ${projects.length}` : ''}
+            </h2>
           </div>
-        </div>
 
-        {/* ── Search bar ── */}
-        <div className="flex items-center gap-2 rounded-2xl border border-amber-100/80 bg-white/80 px-3 py-2.5 shadow-sm backdrop-blur-sm">
-          <Search size={15} className="flex-shrink-0 text-stone-400" />
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search projects..."
-            className="flex-1 bg-transparent text-sm text-stone-700 placeholder-stone-400 outline-none"
-          />
-        </div>
-
-        {/* ── Projects grid ── */}
-        {filtered.length === 0 ? (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="flex flex-col items-center justify-center gap-4 py-16 text-center"
-          >
-            <div className="rounded-2xl bg-gradient-to-br from-amber-50 to-orange-50 p-6 shadow-sm">
-              <FolderOpen size={36} className="text-amber-400" />
+          {projects.length > 4 && (
+            <div className="flex h-10 items-center gap-2 rounded-xl border border-[var(--border-card)] bg-[var(--bg-card)] px-3.5 focus-within:border-[var(--gold-primary)] transition-colors">
+              <Search size={15} className="flex-shrink-0 text-[var(--text-subtle)]" />
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search projects"
+                className="w-full bg-transparent text-[13px] text-[var(--text-main)] placeholder-[var(--text-subtle)] outline-none"
+              />
+              {search && (
+                <button onClick={() => setSearch('')} aria-label="Clear search" className="text-[var(--text-subtle)] hover:text-[var(--text-main)] cursor-pointer">
+                  <X size={14} />
+                </button>
+              )}
             </div>
-            <div>
-              <p className="font-serif text-base font-medium text-stone-600">
-                {loading ? 'Retrieving project records...' : (search ? 'No projects match your search' : 'No projects yet')}
-              </p>
-              <p className="mt-1 text-xs text-stone-400">
-                {loading ? 'Connecting to database...' : 'Create your first project to begin tracking'}
-              </p>
-            </div>
-            {!loading && (
-              <button
-                onClick={() => { setEditingProject(null); setModalOpen(true) }}
-                className="rounded-xl bg-amber-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-amber-700 transition-colors shadow-sm"
-              >
-                Create First Project
-              </button>
-            )}
-          </motion.div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-            {filtered.map((project, idx) => {
-              const books = booksByProject[project.id] || []
-              const isProjectPinLocked = Boolean(project.pinHash)
-              const lockedBook = books.find(b => b.pinHash)
+          )}
 
-              return (
-                <motion.div
-                  key={project.id}
-                  initial={{ opacity: 0, y: 14 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: idx * 0.06 }}
-                  className="relative"
-                >
-                  <Link
-                    to={`/projects/${project.id}`}
-                    className="block rounded-2xl border border-amber-100/80 bg-white/88 p-3 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
+          {projects.length === 0 ? (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+              className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-[var(--border-card)] py-12 text-center">
+              <span className="flex h-11 w-11 items-center justify-center rounded-full bg-[var(--gold-light)] text-[var(--gold-primary)]">
+                <FolderOpen size={20} />
+              </span>
+              <div>
+                <p className="text-sm font-semibold text-[var(--text-main)]">No projects yet</p>
+                <p className="mt-1 text-xs text-[var(--text-subtle)]">A project groups related books — Home, Business, Travel.</p>
+              </div>
+              {!loading && (
+                <button onClick={() => { setEditingProject(null); setModalOpen(true) }}
+                  className="mt-1 rounded-xl bg-[var(--gold-primary)] px-4 py-2.5 text-xs font-semibold text-white hover:bg-[var(--gold-hover)] transition-colors cursor-pointer">
+                  Create project
+                </button>
+              )}
+            </motion.div>
+          ) : (
+            <div className="divide-y divide-[var(--border-subtle)] rounded-2xl border border-[var(--border-card)] bg-[var(--bg-card)]">
+              {filtered.length === 0 && (
+                <p className="px-4 py-6 text-center text-xs text-[var(--text-subtle)]">No projects match “{search}”.</p>
+              )}
+              {filtered.map((project, idx) => {
+                const books = booksByProject[project.id] || []
+                const isProjectPinLocked = Boolean(project.pinHash)
+                const lockedBook = books.find((b) => b.pinHash)
+                const subline = project.description
+                  || `${books.length} ${books.length === 1 ? 'book' : 'books'}${project.updatedAt ? ` · Updated ${format(new Date(project.updatedAt), 'd MMM')}` : ''}`
+                return (
+                  <motion.div
+                    key={project.id}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: Math.min(idx * 0.03, 0.2) }}
+                    className="first:rounded-t-2xl last:rounded-b-2xl"
                   >
-                    {/* Card header */}
-                    <div className="flex items-center justify-between gap-2 mb-2">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <div className={`flex-shrink-0 rounded-lg p-1.5 ${isProjectPinLocked ? 'bg-amber-200' : 'bg-amber-100'}`}>
-                          {isProjectPinLocked
-                            ? <Lock size={13} className="text-amber-700" />
-                            : <FolderOpen size={13} className="text-amber-700" />
-                          }
-                        </div>
-                        <div className="flex items-center gap-1.5 min-w-0">
-                          <h3 className="text-sm font-semibold text-stone-800 truncate leading-tight">
-                            {project.name}
-                          </h3>
-                        </div>
-                      </div>
+                    <Link
+                      to={`/projects/${project.id}`}
+                      className="group flex items-center gap-3 py-3 pl-4 pr-2 transition-colors hover:bg-[var(--border-subtle)]/60"
+                    >
+                      <span className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl text-sm font-bold uppercase ${
+                        isProjectPinLocked ? 'bg-[var(--border-subtle)] text-[var(--text-subtle)]' : 'bg-[var(--gold-light)] text-[var(--gold-primary)]'
+                      }`}>
+                        {isProjectPinLocked ? <Lock size={15} /> : project.name.charAt(0)}
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-[14px] font-semibold text-[var(--text-main)]">{project.name}</span>
+                        <span className="block truncate text-[11px] text-[var(--text-subtle)]">{subline}</span>
+                      </span>
+                      <ChevronRight size={16} className="flex-shrink-0 text-[var(--text-subtle)] transition-transform group-hover:translate-x-0.5" />
                       <ProjectMenu
                         project={project}
                         onEdit={() => { setEditingProject(project); setModalOpen(true) }}
@@ -230,44 +249,30 @@ export default function DashboardPage() {
                             ...project,
                             hasLockedBooks: Boolean(lockedBook) || isProjectPinLocked,
                             lockedBookPin: project.pinHash || lockedBook?.pinHash || '',
+                            lockedPinLength: project.pinHash ? project.pinLength : lockedBook?.pinLength,
+                            lockedGuardId: project.pinHash ? project.id : lockedBook?.id,
                           })
                         }}
                       />
-                    </div>
-
-                    {project.description && (
-                      <p className="text-[11px] text-stone-400 line-clamp-1 mb-2">{project.description}</p>
-                    )}
-
-                    {/* Stats — inline row */}
-                    <div className="flex items-center gap-2 text-[11px]">
-                      <span className="text-stone-500">
-                        {books.length} books
-                      </span>
-                      <span className="text-stone-300">·</span>
-                      <span className="text-stone-400 ml-auto">
-                        {project.updatedAt ? format(new Date(project.updatedAt), 'dd MMM') : '-'}
-                      </span>
-                    </div>
-                  </Link>
-                </motion.div>
-              )
-            })}
-          </div>
-        )}
+                    </Link>
+                  </motion.div>
+                )
+              })}
+              <button
+                onClick={() => { setEditingProject(null); setModalOpen(true) }}
+                className="flex w-full items-center gap-3 py-3 pl-4 pr-4 text-left transition-colors hover:bg-[var(--border-subtle)]/60 cursor-pointer rounded-b-2xl"
+              >
+                <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl border border-dashed border-[var(--gold-primary)]/50 text-[var(--gold-primary)]">
+                  <Plus size={16} />
+                </span>
+                <span className="text-[13px] font-semibold text-[var(--gold-primary)]">New project</span>
+              </button>
+            </div>
+          )}
+        </section>
       </div>
 
-      {/* ── FAB ── */}
-      <motion.button
-        whileTap={{ scale: 0.95 }}
-        onClick={() => { setEditingProject(null); setModalOpen(true) }}
-        className="fixed bottom-20 right-4 sm:right-6 inline-flex items-center gap-2 rounded-2xl bg-amber-700 px-4 py-3 text-sm font-medium text-white shadow-lg hover:bg-amber-800 transition-colors"
-      >
-        <Plus size={18} />
-        <span className="hidden sm:inline">New Project</span>
-      </motion.button>
-
-      {/* ── Project modal (create / edit) ── */}
+      {/* ── Project Modal (Create / Edit) ── */}
       <ProjectModal
         open={modalOpen}
         initial={editingProject}
@@ -278,12 +283,12 @@ export default function DashboardPage() {
             showToast('Project updated')
           } else {
             await createProject(payload)
-            showToast('Project created 🙏')
+            showToast('Project created')
           }
         }}
       />
 
-      {/* ── Double-confirm delete dialog (only if no locked books) ── */}
+      {/* ── Confirm Delete Dialog ── */}
       <ConfirmDialog
         open={Boolean(deleteTarget) && !deleteTarget?.hasLockedBooks}
         onClose={() => setDeleteTarget(null)}
@@ -296,15 +301,17 @@ export default function DashboardPage() {
           }
         }}
         title="Delete Project?"
-        message={`"${deleteTarget?.name}" and all its books and entries will be permanently deleted. This cannot be undone.`}
+        message={`"${deleteTarget?.name}" and all its books and entries will be permanently deleted.`}
         danger
       />
 
-      {/* ── PIN verification for project deletion ── */}
+      {/* ── PIN Verification Modal ── */}
       <PinVerificationModal
         open={Boolean(deleteTarget?.hasLockedBooks)}
         onClose={() => setDeleteTarget(null)}
         storedHash={deleteTarget?.lockedBookPin || ''}
+        pinLength={deleteTarget?.lockedPinLength}
+        guardId={deleteTarget?.lockedGuardId}
         itemType="project"
         itemName={deleteTarget?.name}
         onVerified={async (pin) => {
@@ -322,3 +329,4 @@ export default function DashboardPage() {
     </LayoutShell>
   )
 }
+

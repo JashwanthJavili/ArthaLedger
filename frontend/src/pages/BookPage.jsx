@@ -2,17 +2,20 @@ import { useEffect, useMemo, useState, useRef } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { format, isToday, isYesterday } from 'date-fns'
 import {
-  Filter, Search, Download, ArrowLeft, MoreVertical,
-  Pencil, Trash2, X, TrendingUp, TrendingDown,
-  Hash, Lock, Unlock,
+  Search, Download, ArrowLeft, MoreVertical, SlidersHorizontal,
+  Pencil, Trash2, X, ArrowDownLeft, ArrowUpRight, Check, Tags,
+  Hash, Lock, Unlock, Link2, ArrowLeftRight,
 } from 'lucide-react'
 import { Link, useParams, useNavigate } from 'react-router-dom'
 import LayoutShell from '../components/LayoutShell'
+import PageSkeleton from '../components/common/PageSkeleton'
 import EntryCard from '../components/cards/EntryCard'
 import SummaryStrip from '../components/cards/SummaryCard'
 import EntryModal from '../components/forms/EntryModal'
 import BookModal from '../components/forms/BookModal'
 import CategoryManager from '../components/forms/CategoryManager'
+import FilterSheet from '../components/forms/FilterSheet'
+import { describeDateRange } from '../lib/dateRanges'
 import ConfirmDialog from '../components/common/ConfirmDialog'
 import PinVerificationModal from '../components/common/PinVerificationModal'
 import SetPinModal from '../components/common/SetPinModal'
@@ -20,54 +23,96 @@ import Toast from '../components/common/Toast'
 import { useAppData } from '../context/AppDataContext'
 import { useBudgets } from '../hooks/useBudgets'
 import { exportBookPdf } from '../lib/pdf'
-import { lockItem } from '../lib/pin'
+import { formatAmount, getCurrencySymbol } from '../lib/format'
+import { isUnlocked, lockItem, setUnlocked } from '../lib/pin'
+import PinModal from '../components/common/PinModal'
 import SendToTripModal from '../components/forms/SendToTripModal'
-import Loader from '../components/common/Loader'
+import TransferModal from '../components/forms/TransferModal'
 
 const defaultCategories = []
 
-/* ── Per-entry 3-dot menu ── */
-function EntryMenu({ onEdit, onDelete }) {
-  const [open, setOpen] = useState(false)
+/* ── Shared dropdown (closes on outside click) ── */
+function useDismiss(setOpen) {
   const ref = useRef(null)
-
   useEffect(() => {
     const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
     document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
-  }, [])
+    document.addEventListener('touchstart', handler)
+    return () => {
+      document.removeEventListener('mousedown', handler)
+      document.removeEventListener('touchstart', handler)
+    }
+  }, [setOpen])
+  return ref
+}
+
+const menuPanel = 'absolute right-0 z-50 overflow-hidden rounded-2xl border border-[var(--border-card)] bg-[var(--bg-page)] py-1 shadow-[0_16px_40px_-12px_rgba(0,0,0,0.3)]'
+const menuItem = 'flex w-full items-center gap-2.5 px-3.5 py-2.5 text-xs font-medium text-[var(--text-main)] hover:bg-[var(--border-subtle)] transition-colors cursor-pointer'
+
+function DropdownMotion({ children, className }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.96, y: -4 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      exit={{ opacity: 0, scale: 0.96, y: -4 }}
+      transition={{ duration: 0.12 }}
+      className={className}
+    >
+      {children}
+    </motion.div>
+  )
+}
+
+/* ── Per-entry 3-dot menu ──
+ * variant: 'normal' | 'transfer_out' (owned here) | 'transfer_in' (owned by sender) | 'orphan_in'
+ */
+function EntryMenu({ variant = 'normal', sourceName, onEdit, onDelete, onOpenSource }) {
+  const [open, setOpen] = useState(false)
+  const ref = useDismiss(setOpen)
+  const isLinkedIn = variant === 'transfer_in'
 
   return (
     <div ref={ref} className="relative flex-shrink-0">
       <button
         onClick={() => setOpen((v) => !v)}
-        className="rounded-xl p-1.5 text-stone-400 hover:bg-amber-100 hover:text-amber-700 transition-colors"
+        className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--text-subtle)] hover:bg-[var(--border-subtle)] hover:text-[var(--text-main)] transition-colors cursor-pointer"
         aria-label="Entry options"
       >
-        <MoreVertical size={14} />
+        {isLinkedIn ? <Link2 size={14} /> : <MoreVertical size={15} />}
       </button>
       <AnimatePresence>
         {open && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.92, y: -4 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.92, y: -4 }}
-            transition={{ duration: 0.12 }}
-            className="absolute right-0 top-8 z-50 w-36 overflow-hidden rounded-2xl border border-amber-100 bg-white shadow-xl"
-          >
-            <button
-              onClick={() => { onEdit(); setOpen(false) }}
-              className="flex w-full items-center gap-2 px-3 py-2.5 text-xs text-stone-700 hover:bg-amber-50 transition-colors border-b border-amber-50"
-            >
-              <Pencil size={11} className="text-amber-600" /> Edit Entry
-            </button>
-            <button
-              onClick={() => { onDelete(); setOpen(false) }}
-              className="flex w-full items-center gap-2 px-3 py-2.5 text-xs text-red-600 hover:bg-red-50 transition-colors"
-            >
-              <Trash2 size={11} /> Delete
-            </button>
-          </motion.div>
+          <DropdownMotion className={`${menuPanel} top-9 ${isLinkedIn ? 'w-60' : 'w-44'}`}>
+            {isLinkedIn ? (
+              <>
+                <div className="flex items-start gap-2.5 px-3.5 py-2.5">
+                  <Lock size={13} className="mt-0.5 flex-shrink-0 text-[var(--text-subtle)]" />
+                  <p className="text-[11px] leading-relaxed text-[var(--text-muted)]">
+                    Received from <span className="font-semibold text-[var(--text-main)]">{sourceName || 'another book'}</span>. Only the sending book can edit or delete it.
+                  </p>
+                </div>
+                {onOpenSource && (
+                  <>
+                    <div className="my-1 h-px bg-[var(--border-subtle)]" />
+                    <button onClick={() => { onOpenSource(); setOpen(false) }} className={menuItem}>
+                      <ArrowUpRight size={13} className="text-[var(--text-muted)]" /> Open {sourceName || 'sending book'}
+                    </button>
+                  </>
+                )}
+              </>
+            ) : (
+              <>
+                {variant !== 'orphan_in' && (
+                  <button onClick={() => { onEdit(); setOpen(false) }} className={menuItem}>
+                    <Pencil size={13} className="text-[var(--text-muted)]" /> {variant === 'transfer_out' ? 'Edit transfer' : 'Edit'}
+                  </button>
+                )}
+                <button onClick={() => { onDelete(); setOpen(false) }} className={`${menuItem} !text-rose-600 dark:!text-rose-400`}>
+                  <Trash2 size={13} /> {variant === 'transfer_out' ? 'Delete transfer' : 'Delete'}
+                </button>
+              </>
+            )}
+          </DropdownMotion>
         )}
       </AnimatePresence>
     </div>
@@ -75,61 +120,53 @@ function EntryMenu({ onEdit, onDelete }) {
 }
 
 /* ── Book header 3-dot menu ── */
-function BookHeaderMenu({ onEdit, onDelete, onSetPin, hasPin }) {
+function BookHeaderMenu({ onEdit, onDelete, onSetPin, onManageCategories, onTransfer, hasPin }) {
   const [open, setOpen] = useState(false)
-  const ref = useRef(null)
-
-  useEffect(() => {
-    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
-  }, [])
+  const ref = useDismiss(setOpen)
 
   return (
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen((v) => !v)}
-        className="inline-flex items-center rounded-xl border border-amber-100 p-2 text-stone-600 hover:bg-amber-50 transition-colors"
+        className="flex h-10 w-10 items-center justify-center rounded-full border border-[var(--border-card)] bg-[var(--bg-card)] text-[var(--text-muted)] hover:text-[var(--text-main)] hover:border-[var(--text-subtle)] transition-colors cursor-pointer"
         aria-label="Book options"
       >
-        <MoreVertical size={15} />
+        <MoreVertical size={16} />
       </button>
       <AnimatePresence>
         {open && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.92, y: -4 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.92, y: -4 }}
-            transition={{ duration: 0.12 }}
-            className="absolute right-0 mt-1 w-44 overflow-hidden rounded-2xl border border-amber-100 bg-white shadow-xl z-40"
-          >
-            <button
-              onClick={() => { onSetPin(); setOpen(false) }}
-              className="flex w-full items-center gap-2 px-3 py-2.5 text-xs text-stone-700 hover:bg-amber-50 transition-colors border-b border-amber-50"
-            >
+          <DropdownMotion className={`${menuPanel} mt-2 w-52`}>
+            {onTransfer && (
+              <button onClick={() => { onTransfer(); setOpen(false) }} className={menuItem}>
+                <ArrowLeftRight size={14} className="text-[var(--text-muted)]" /> Transfer money
+              </button>
+            )}
+            <button onClick={() => { onManageCategories(); setOpen(false) }} className={menuItem}>
+              <Tags size={14} className="text-[var(--text-muted)]" /> Manage categories
+            </button>
+            <button onClick={() => { onSetPin(); setOpen(false) }} className={menuItem}>
               {hasPin
-                ? <><Unlock size={12} className="text-amber-600" /> Change PIN</>
-                : <><Lock size={12} className="text-amber-600" /> Set PIN Lock</>
-              }
+                ? <><Unlock size={14} className="text-[var(--text-muted)]" /> Change PIN</>
+                : <><Lock size={14} className="text-[var(--text-muted)]" /> Set PIN lock</>}
             </button>
-            <button
-              onClick={() => { onEdit(); setOpen(false) }}
-              className="flex w-full items-center gap-2 px-3 py-2.5 text-xs text-stone-700 hover:bg-amber-50 transition-colors border-b border-amber-50"
-            >
-              <Pencil size={12} className="text-amber-600" /> Edit Book
+            <button onClick={() => { onEdit(); setOpen(false) }} className={menuItem}>
+              <Pencil size={14} className="text-[var(--text-muted)]" /> Edit book
             </button>
-            <button
-              onClick={() => { onDelete(); setOpen(false) }}
-              className="flex w-full items-center gap-2 px-3 py-2.5 text-xs text-red-600 hover:bg-red-50 transition-colors"
-            >
-              <Trash2 size={12} /> Delete Book
+            <div className="my-1 h-px bg-[var(--border-subtle)]" />
+            <button onClick={() => { onDelete(); setOpen(false) }} className={`${menuItem} !text-rose-600 dark:!text-rose-400`}>
+              <Trash2 size={14} /> Delete book
             </button>
-          </motion.div>
+          </DropdownMotion>
         )}
       </AnimatePresence>
     </div>
   )
 }
+
+// Money into the book (income, transfer in) vs. out of it (expense, transfer out).
+const isCreditEntry = (e) => e.type === 'income' || e.type === 'transfer_in'
+const isDebitEntry = (e) => e.type === 'expense' || e.type === 'transfer_out'
+const roundMoney = (n) => Math.round(n * 100) / 100
 
 export default function BookPage() {
   const { projectId, bookId } = useParams()
@@ -139,8 +176,9 @@ export default function BookPage() {
     error,
     projects, booksByProject, entriesByBook, templatesByBook, trips,
     addEntry, deleteEntry, updateCategories, getCategories,
-    updateBook, updateEntry, deleteBook, deleteBookWithPin, setPinForBook,
+    updateBook, updateEntry, deleteBook, deleteBookWithPin, setPinForBook, setPinForProject,
     linkEntriesToTrip, unlinkEntryFromTrip, saveTemplate, deleteTemplate,
+    transferBetweenBooks, updateTransfer,
     categories: liveCategories = [],
   } = useAppData()
 
@@ -171,10 +209,13 @@ export default function BookPage() {
   const [editingBook, setEditingBook] = useState(false)
   const [editingEntry, setEditingEntry] = useState(null)
   const [deleteEntryTarget, setDeleteEntryTarget] = useState(null)
+  const [transferOpen, setTransferOpen] = useState(false)
+  const [editingTransfer, setEditingTransfer] = useState(null)
   const [deleteBookConfirm, setDeleteBookConfirm] = useState(false)
   const [verifyPinForDelete, setVerifyPinForDelete] = useState(false)
   const [deletingBook, setDeletingBook] = useState(false)
   const [setPinOpen, setSetPinOpen] = useState(false)
+  const [, refreshLock] = useState(0)
   const [toast, setToast] = useState({ msg: '', type: 'success', visible: false })
   const [filters, setFilters] = useState({
     type: 'all', mode: 'all', category: 'all', enteredBy: 'all', from: '', to: '',
@@ -271,7 +312,7 @@ export default function BookPage() {
   const entries = entriesByBook[bookId] || []
   const descriptionSuggestions = useMemo(() => {
     const counts = new Map()
-    const latestSeen = new Map()
+    const latestEntry = new Map()
 
     entries.forEach((entry) => {
       const description = String(entry.description || '').trim()
@@ -281,15 +322,26 @@ export default function BookPage() {
         description,
         count: (counts.get(key)?.count || 0) + 1,
       })
-      latestSeen.set(key, Math.max(Number(latestSeen.get(key) || 0), Number(entry.timestamp || 0)))
+      const prev = latestEntry.get(key)
+      if (!prev || Number(entry.timestamp || 0) >= Number(prev.timestamp || 0)) latestEntry.set(key, entry)
     })
 
+    // Each suggestion carries the details of its most recent use so the
+    // entry form can pre-fill category, mode and amount.
     return Array.from(counts.entries())
-      .map(([key, value]) => ({
-        description: value.description,
-        count: value.count,
-        lastUsedAt: latestSeen.get(key) || 0,
-      }))
+      .map(([key, value]) => {
+        const last = latestEntry.get(key) || {}
+        return {
+          description: value.description,
+          count: value.count,
+          lastUsedAt: Number(last.timestamp || 0),
+          type: last.type,
+          category: last.category,
+          subcategory: last.subcategory,
+          mode: last.mode,
+          amount: last.amount,
+        }
+      })
       .sort((a, b) => b.count - a.count || b.lastUsedAt - a.lastUsedAt)
   }, [entries])
 
@@ -367,13 +419,32 @@ export default function BookPage() {
   }
 
   const summary = useMemo(() => {
-    const totalIn = entries
-      .filter((e) => e.type === 'income' || e.type === 'transfer_in')
-      .reduce((acc, e) => acc + Number(e.amount), 0)
-    const totalOut = entries
-      .filter((e) => e.type === 'expense' || e.type === 'transfer_out')
-      .reduce((acc, e) => acc + Number(e.amount), 0)
-    return { totalIn, totalOut, net: totalIn - totalOut }
+    const totalIn = roundMoney(entries.filter(isCreditEntry).reduce((acc, e) => acc + Number(e.amount || 0), 0))
+    const totalOut = roundMoney(entries.filter(isDebitEntry).reduce((acc, e) => acc + Number(e.amount || 0), 0))
+    return { totalIn, totalOut, net: roundMoney(totalIn - totalOut) }
+  }, [entries])
+
+  const bookBalanceOf = (id) => roundMoney((entriesByBook[id] || []).reduce((acc, e) => {
+    const amt = Number(e.amount || 0)
+    if (isCreditEntry(e)) return acc + amt
+    if (isDebitEntry(e)) return acc - amt
+    return acc
+  }, 0))
+
+  // Running balance per entry, oldest → newest, so each row's "Bal" always
+  // agrees with the Net balance card (stored balanceAfter can be stale).
+  const balanceById = useMemo(() => {
+    const map = new Map()
+    let running = 0
+    ;[...entries]
+      .sort((a, b) => Number(a.timestamp || 0) - Number(b.timestamp || 0))
+      .forEach((e) => {
+        const amt = Number(e.amount || 0)
+        if (isCreditEntry(e)) running = roundMoney(running + amt)
+        else if (isDebitEntry(e)) running = roundMoney(running - amt)
+        map.set(e.id, running)
+      })
+    return map
   }, [entries])
 
   const hasActiveFilters = filters.type !== 'all' || filters.mode !== 'all' || filters.category !== 'all' || filters.enteredBy !== 'all' || filters.from || filters.to
@@ -405,11 +476,9 @@ export default function BookPage() {
     )
   }
 
-  if (loading && !stalled) {
-    return <Loader text="Opening book..." />
-  }
+  if (!(project && book)) {
+    if (loading) return <PageSkeleton slow={stalled} hideHeader label="Opening book" />
 
-  if (!loading && (!project || !book)) {
     return (
       <LayoutShell>
         <div className="flex flex-col items-center justify-center py-16 gap-3">
@@ -420,293 +489,288 @@ export default function BookPage() {
     )
   }
 
+  // ── PIN gate: a locked project or book never renders its contents ──
+  const projectLocked = Boolean(project.pinHash) && !isUnlocked(projectId, project.pinHash)
+  const bookLocked = Boolean(book.pinHash) && !isUnlocked(bookId, book.pinHash)
+  if (projectLocked || bookLocked) {
+    const target = projectLocked
+      ? { id: projectId, name: project.name, hash: project.pinHash, length: project.pinLength, kind: 'project' }
+      : { id: bookId, name: book.name, hash: book.pinHash, length: book.pinLength, kind: 'book' }
+    return (
+      <LayoutShell hideHeader>
+        <div className="flex flex-col items-center justify-center gap-3 py-24 text-center">
+          <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--gold-light)] text-[var(--gold-primary)]">
+            <Lock size={24} />
+          </span>
+          <p className="text-sm font-semibold text-[var(--text-main)]">{target.name} is locked</p>
+          <Link to={projectLocked ? '/dashboard' : `/projects/${projectId}`} className="text-xs text-[var(--text-subtle)] hover:text-[var(--text-main)]">
+            Go back
+          </Link>
+        </div>
+        <PinModal
+          open
+          onClose={() => {
+            if (!isUnlocked(target.id, target.hash)) navigate(projectLocked ? '/dashboard' : `/projects/${projectId}`, { replace: true })
+          }}
+          storedHash={target.hash}
+          pinLength={target.length}
+          guardId={target.id}
+          itemName={target.name}
+          onUnlock={() => { setUnlocked(target.id, target.hash); refreshLock((n) => n + 1) }}
+          onRehash={(hash, length) => (target.kind === 'project'
+            ? setPinForProject(projectId, hash, length)
+            : setPinForBook(projectId, bookId, hash, length))}
+          onRemovePin={() => (target.kind === 'project'
+            ? setPinForProject(projectId, null)
+            : setPinForBook(projectId, bookId, null))}
+        />
+      </LayoutShell>
+    )
+  }
+
+  const symbol = getCurrencySymbol()
+  const allBooks = Object.values(booksByProject).flat()
+  const bookNameById = (id) => allBooks.find((b) => b.id === id)?.name
+  const hasTransferTarget = allBooks.length > 1
+  const sourceBookName = (entry) => (entry.type === 'transfer_in' ? bookNameById(entry.fromBookId) : undefined)
+  // A received transfer stays locked while the sender's side still exists.
+  const entryMenuVariant = (entry) => {
+    if (!entry.transferId) return 'normal'
+    if (entry.type === 'transfer_out') return 'transfer_out'
+    const senderBookExists = (booksByProject[entry.fromProjectId] || []).some((b) => b.id === entry.fromBookId)
+    const senderEntries = entriesByBook[entry.fromBookId]
+    if (!senderBookExists) return 'orphan_in'
+    if (senderEntries && !senderEntries.some((e) => e.transferId === entry.transferId)) return 'orphan_in'
+    return 'transfer_in'
+  }
+  const categoryNames = categories.map((c) => (typeof c === 'string' ? c : c?.name)).filter(Boolean)
+  const TYPE_LABELS = { income: 'Cash in', expense: 'Cash out', transfer_in: 'Transfer in', transfer_out: 'Transfer out' }
+  const dateLabel = describeDateRange(filters.from, filters.to)
+  const activeFilterChips = [
+    filters.type !== 'all' && { key: 'type', label: TYPE_LABELS[filters.type] || filters.type, clear: () => setFilters((p) => ({ ...p, type: 'all' })) },
+    filters.mode !== 'all' && { key: 'mode', label: filters.mode, clear: () => setFilters((p) => ({ ...p, mode: 'all' })) },
+    filters.category !== 'all' && { key: 'category', label: filters.category, clear: () => setFilters((p) => ({ ...p, category: 'all' })) },
+    filters.enteredBy !== 'all' && { key: 'enteredBy', label: filters.enteredBy, clear: () => setFilters((p) => ({ ...p, enteredBy: 'all' })) },
+    dateLabel && { key: 'date', label: dateLabel, clear: () => setFilters((p) => ({ ...p, from: '', to: '' })) },
+  ].filter(Boolean)
+
   return (
-    <LayoutShell>
-      <div className="space-y-3 pb-28">
-        {loading && (
-          <div className="rounded-2xl border border-red-100 bg-red-50 p-3.5 text-xs text-red-700 leading-relaxed font-medium">
-            ⚠️ Connection is taking longer than expected. Please check your internet connection.
+    <LayoutShell hideHeader>
+      <div className="mx-auto max-w-2xl space-y-4 pb-36">
+        {loading && stalled && (
+          <div className="rounded-2xl border border-amber-500/30 bg-amber-500/[0.08] p-3.5 text-xs font-medium leading-relaxed text-amber-700 dark:text-amber-400">
+            Connection is taking longer than expected. Please check your internet connection.
           </div>
         )}
 
-        {/* ── Book header card ── */}
-        <header className="rounded-2xl border border-amber-100/80 bg-white/88 p-3 shadow-sm backdrop-blur-sm">
-          {/* Top row: back + title + actions */}
-          <div className="flex items-center justify-between gap-2 mb-3">
-            <div className="flex items-center gap-2 min-w-0">
-              <Link
-                to={`/projects/${projectId}`}
-                className="flex-shrink-0 inline-flex items-center gap-1 rounded-xl border border-amber-100 px-2.5 py-1.5 text-xs text-stone-600 hover:bg-amber-50 transition-colors"
-              >
-                <ArrowLeft size={13} />
-              </Link>
-              <div className="min-w-0">
-                <div className="flex items-center">
-                  <h1 className="text-base sm:text-lg font-semibold text-stone-800 truncate leading-tight">
-                    {book.name}
-                  </h1>
-                </div>
-                <p className="text-[10px] text-stone-400 mt-0.5 truncate">{project.name}</p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-1.5 flex-shrink-0">
-              <button
-                onClick={() => exportBookPdf({ projectName: project.name, bookName: book.name, summary, entries })}
-                className="inline-flex items-center gap-1.5 rounded-xl bg-amber-600 px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs font-medium text-white hover:bg-amber-700 transition-colors"
-              >
-                <Download size={13} />
-                <span className="hidden sm:inline">PDF</span>
-              </button>
-              <BookHeaderMenu
-                onEdit={() => setEditingBook(true)}
-                onDelete={() => setDeleteBookConfirm(true)}
-                onSetPin={() => setSetPinOpen(true)}
-                hasPin={Boolean(book.pinHash)}
-              />
-            </div>
+        {/* ── Header ── */}
+        <header className="flex items-center gap-3">
+          <Link
+            to={`/projects/${projectId}`}
+            aria-label="Back to project"
+            className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border border-[var(--border-card)] bg-[var(--bg-card)] text-[var(--text-main)] hover:border-[var(--text-subtle)] transition-colors"
+          >
+            <ArrowLeft size={17} />
+          </Link>
+          <div className="min-w-0 flex-1">
+            <h1 className="font-serif-luxury truncate text-[23px] font-semibold leading-[1.15] tracking-[-0.01em] text-[var(--text-main)]">{book.name}</h1>
+            <p className="font-serif-luxury mt-0.5 truncate text-[13.5px] italic text-[var(--text-muted)]">
+              {book.description || project.name}
+            </p>
           </div>
-
-          {/* Search + filter row */}
-          <div className="flex gap-2">
-            <div className="flex flex-1 items-center gap-2 rounded-xl border border-amber-100 bg-amber-50/40 px-3 py-2.5">
-              <Search size={13} className="flex-shrink-0 text-stone-400" />
-              <input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search entries..."
-                className="w-full bg-transparent text-sm text-stone-700 placeholder-stone-400 outline-none"
-              />
-              {search && (
-                <button onClick={() => setSearch('')} className="text-stone-400 hover:text-stone-600">
-                  <X size={12} />
-                </button>
-              )}
-            </div>
-            <button
-              onClick={() => setShowFilters((v) => !v)}
-              className={`inline-flex items-center gap-1.5 rounded-xl border px-3 py-2 text-xs transition-colors ${
-                showFilters || hasActiveFilters
-                  ? 'border-amber-400 bg-amber-100 text-amber-800'
-                  : 'border-amber-100 text-stone-600 hover:bg-amber-50'
-              }`}
-            >
-              <Filter size={13} />
-              <span className="hidden sm:inline">Filter</span>
-              {hasActiveFilters && <span className="h-1.5 w-1.5 rounded-full bg-amber-600" />}
-            </button>
-            {hasActiveFilters && (
-              <button
-                onClick={clearFilters}
-                className="inline-flex items-center gap-1 rounded-xl border border-red-100 px-2.5 py-2 text-xs text-red-500 hover:bg-red-50 transition-colors"
-              >
-                <X size={12} />
-              </button>
-            )}
-          </div>
+          <button
+            onClick={() => exportBookPdf({
+              projectName: project.name,
+              bookName: book.name,
+              summary,
+              entries: entries.map((e) => ({ ...e, balanceAfter: balanceById.get(e.id) ?? e.balanceAfter })),
+            })}
+            title="Export PDF"
+            aria-label="Export PDF"
+            className="flex h-10 flex-shrink-0 items-center gap-2 rounded-full border border-[var(--border-card)] bg-[var(--bg-card)] px-3 sm:px-4 text-xs font-semibold text-[var(--text-main)] hover:border-[var(--text-subtle)] transition-colors cursor-pointer"
+          >
+            <Download size={15} />
+            <span className="hidden sm:inline">Export</span>
+          </button>
+          <BookHeaderMenu
+            onEdit={() => setEditingBook(true)}
+            onDelete={() => setDeleteBookConfirm(true)}
+            onSetPin={() => setSetPinOpen(true)}
+            onManageCategories={() => setShowCatManager(true)}
+            onTransfer={hasTransferTarget ? () => setTransferOpen(true) : undefined}
+            hasPin={Boolean(book.pinHash)}
+          />
         </header>
 
-        {/* ── Filters panel ── */}
-        <AnimatePresence>
-          {showFilters && (
-            <motion.section
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              className="overflow-hidden"
-            >
-              <div className="rounded-2xl border border-amber-100/80 bg-white/88 p-4 shadow-sm">
-                <h3 className="text-xs font-semibold text-stone-500 uppercase tracking-wider mb-3">Filters</h3>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                  {[
-                    { label: 'Type', key: 'type', options: [['all','All types'],['income','Income'],['expense','Expense']] },
-                    { label: 'Mode', key: 'mode', options: [['all','All modes'],['Cash','Cash'],['UPI','UPI']] },
-                    { label: 'Category', key: 'category', options: [['all','All categories'], ...categories.map(c => [c,c])] },
-                    { label: 'Person', key: 'enteredBy', options: [['all','All people'], ...enteredByList.map(n => [n,n])] },
-                  ].map(({ label, key, options }) => (
-                    <div key={key}>
-                      <label className="block text-[10px] font-medium text-stone-400 mb-1">{label}</label>
-                      <select
-                        value={filters[key]}
-                        onChange={(e) => setFilters((p) => ({ ...p, [key]: e.target.value }))}
-                        className="w-full rounded-xl border border-amber-100 bg-amber-50/40 px-2.5 py-2 text-xs text-stone-700 focus:border-amber-300 focus:bg-white transition-colors"
-                      >
-                        {options.map(([val, lbl]) => <option key={val} value={val}>{lbl}</option>)}
-                      </select>
-                    </div>
-                  ))}
-                  <div>
-                    <label className="block text-[10px] font-medium text-stone-400 mb-1">From date</label>
-                    <input
-                      type="date"
-                      value={filters.from}
-                      onChange={(e) => setFilters((p) => ({ ...p, from: e.target.value }))}
-                      className="w-full rounded-xl border border-amber-100 bg-amber-50/40 px-2.5 py-2 text-xs text-stone-700 focus:border-amber-300 focus:bg-white transition-colors"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-medium text-stone-400 mb-1">To date</label>
-                    <input
-                      type="date"
-                      value={filters.to}
-                      onChange={(e) => setFilters((p) => ({ ...p, to: e.target.value }))}
-                      className="w-full rounded-xl border border-amber-100 bg-amber-50/40 px-2.5 py-2 text-xs text-stone-700 focus:border-amber-300 focus:bg-white transition-colors"
-                    />
-                  </div>
-                </div>
-                <button
-                  onClick={clearFilters}
-                  className="mt-3 text-xs text-red-500 hover:text-red-700 transition-colors"
-                >
-                  Clear all filters
-                </button>
-              </div>
-            </motion.section>
-          )}
-        </AnimatePresence>
+        {/* ── Summary ── */}
+        <SummaryStrip
+          net={summary.net}
+          totalIn={summary.totalIn}
+          totalOut={summary.totalOut}
+          delay={0}
+        />
 
-        {/* ── Category manager ── */}
-        <AnimatePresence>
-          {showCatManager && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              className="overflow-hidden"
-            >
-              <CategoryManager
-                categories={categories}
-                onSave={async (cats) => {
-                  setCategories(cats)
-                  await updateCategories(projectId, bookId, cats)
-                  showToast('Categories saved')
-                  setShowCatManager(false)
-                }}
-              />
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* ── Summary strip (single compact card) ── */}
-        <section>
-          <h2 className="font-serif text-base font-semibold text-stone-700 mb-2">Summary</h2>
-          <SummaryStrip
-            net={summary.net}
-            totalIn={summary.totalIn}
-            totalOut={summary.totalOut}
-            delay={0}
-          />
-        </section>
-
-        {/* ── Entries section ── */}
-        <section>
-          <div className="flex items-center justify-between mb-2">
+        {/* ── Transactions ── */}
+        <section className="space-y-3">
+          <div className="flex items-end justify-between gap-3">
             <div>
-              <h2 className="font-serif text-base font-semibold text-stone-700">Transactions</h2>
-              <p className="text-[11px] text-stone-400 mt-0.5">
+              <h2 className="text-[15px] font-semibold text-[var(--text-main)]">Transactions</h2>
+              <p className="mt-0.5 text-[11px] text-[var(--text-subtle)]">
                 {filteredEntries.length === entries.length
                   ? `${entries.length} entr${entries.length !== 1 ? 'ies' : 'y'}`
                   : `${filteredEntries.length} of ${entries.length} entries`}
               </p>
             </div>
-            <div className="flex items-center gap-2">
-              {entries.length > 0 && (
-                <button
-                  onClick={() => {
-                    setIsMultiSelectMode(!isMultiSelectMode)
-                    setSelectedEntryIds([])
-                  }}
-                  className={`inline-flex items-center gap-1 rounded-xl border px-2.5 py-1.5 text-xs transition-colors cursor-pointer ${
-                    isMultiSelectMode
-                      ? 'border-amber-400 bg-amber-100 text-amber-800 font-semibold'
-                      : 'border-amber-100 text-stone-600 hover:bg-amber-50'
-                  }`}
-                >
-                  {isMultiSelectMode ? 'Cancel' : 'Select'}
-                </button>
-              )}
-              {hasActiveFilters && (
-                <button onClick={clearFilters} className="text-xs text-amber-600 hover:text-amber-800 transition-colors">
-                  Clear filters
-                </button>
-              )}
-            </div>
+            {entries.length > 0 && (
+              <button
+                onClick={() => {
+                  setIsMultiSelectMode(!isMultiSelectMode)
+                  setSelectedEntryIds([])
+                }}
+                className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-colors cursor-pointer ${
+                  isMultiSelectMode
+                    ? 'bg-[var(--text-main)] text-[var(--bg-page)]'
+                    : 'text-[var(--gold-primary)] hover:bg-[var(--gold-light)]'
+                }`}
+              >
+                {isMultiSelectMode ? 'Cancel' : 'Select'}
+              </button>
+            )}
           </div>
 
+          {/* Search + filter */}
+          <div className="flex gap-2">
+            <div className="flex h-10 flex-1 items-center gap-2 rounded-xl border border-[var(--border-card)] bg-[var(--bg-card)] px-3.5 focus-within:border-[var(--gold-primary)] transition-colors">
+              <Search size={15} className="flex-shrink-0 text-[var(--text-subtle)]" />
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search description, category, person"
+                className="w-full bg-transparent text-[13px] text-[var(--text-main)] placeholder-[var(--text-subtle)] outline-none"
+              />
+              {search && (
+                <button onClick={() => setSearch('')} aria-label="Clear search" className="text-[var(--text-subtle)] hover:text-[var(--text-main)] cursor-pointer">
+                  <X size={14} />
+                </button>
+              )}
+            </div>
+            <button
+              onClick={() => setShowFilters((v) => !v)}
+              aria-label="Filters"
+              aria-expanded={showFilters}
+              className={`relative flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl border transition-colors cursor-pointer ${
+                showFilters || hasActiveFilters
+                  ? 'border-[var(--gold-primary)] bg-[var(--gold-light)] text-[var(--gold-primary)]'
+                  : 'border-[var(--border-card)] bg-[var(--bg-card)] text-[var(--text-muted)] hover:text-[var(--text-main)]'
+              }`}
+            >
+              <SlidersHorizontal size={16} />
+              {hasActiveFilters && <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-[var(--gold-primary)]" />}
+            </button>
+          </div>
+
+          {/* Active filters */}
+          {activeFilterChips.length > 0 && (
+            <div className="flex flex-wrap items-center gap-1.5">
+              {activeFilterChips.map(({ key, label, clear }) => (
+                <span key={key}
+                  className="inline-flex items-center gap-1 rounded-full border border-[var(--gold-primary)]/40 bg-[var(--gold-light)] py-1 pl-3 pr-1 text-[11px] font-medium text-[var(--text-main)]">
+                  {label}
+                  <button onClick={clear} aria-label={`Remove ${label} filter`}
+                    className="flex h-5 w-5 items-center justify-center rounded-full text-[var(--text-subtle)] hover:bg-[var(--border-subtle)] hover:text-[var(--text-main)] cursor-pointer">
+                    <X size={11} />
+                  </button>
+                </span>
+              ))}
+              <button onClick={clearFilters}
+                className="px-1.5 text-[11px] font-semibold text-[var(--gold-primary)] hover:underline cursor-pointer">
+                Clear all
+              </button>
+            </div>
+          )}
+
+          {/* List */}
           {filteredEntries.length === 0 ? (
-            <div className="flex flex-col items-center justify-center gap-3 py-14 text-center rounded-2xl border border-dashed border-amber-200 bg-amber-50/30">
-              <Hash size={28} className="text-amber-300" />
+            <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-[var(--border-card)] py-14 text-center">
+              <span className="flex h-11 w-11 items-center justify-center rounded-full bg-[var(--gold-light)] text-[var(--gold-primary)]">
+                <Hash size={20} />
+              </span>
               <div>
-                <p className="text-sm font-medium text-stone-500">
-                  {loading ? 'Retrieving transactions...' : (search || hasActiveFilters ? 'No entries match your filters' : 'No entries yet')}
+                <p className="text-sm font-medium text-[var(--text-main)]">
+                  {loading ? 'Retrieving transactions…' : (search || hasActiveFilters ? 'No matching transactions' : 'No transactions yet')}
                 </p>
-                <p className="mt-1 text-xs text-stone-400">
-                  {loading ? 'Connecting to database...' : (!search && !hasActiveFilters && 'Use the buttons below to record your first transaction')}
+                <p className="mt-1 text-xs text-[var(--text-subtle)]">
+                  {loading
+                    ? 'Connecting to database…'
+                    : (search || hasActiveFilters ? 'Try a different search or reset the filters.' : 'Use Cash In or Cash Out below to record your first entry.')}
                 </p>
               </div>
+              {(search || hasActiveFilters) && !loading && (
+                <button onClick={() => { setSearch(''); clearFilters() }}
+                  className="text-xs font-semibold text-[var(--gold-primary)] hover:underline cursor-pointer">
+                  Clear search & filters
+                </button>
+              )}
             </div>
           ) : (
-            <div className="space-y-5">
+            <div className="space-y-4">
               {groupedEntries.map(({ date, entries: dayEntries }) => {
-                const dayIn  = dayEntries.filter(e => e.type === 'income').reduce((s, e) => s + Number(e.amount), 0)
-                const dayOut = dayEntries.filter(e => e.type === 'expense').reduce((s, e) => s + Number(e.amount), 0)
+                const dayIn  = dayEntries.filter(isCreditEntry).reduce((s, e) => s + Number(e.amount || 0), 0)
+                const dayOut = dayEntries.filter(isDebitEntry).reduce((s, e) => s + Number(e.amount || 0), 0)
                 return (
                   <div key={format(date, 'yyyy-MM-dd')}>
-                    {/* Date group header */}
-                    <div className="flex items-center justify-between mb-2 px-1">
-                      <span className="text-xs font-bold text-stone-500 uppercase tracking-wide">
+                    <div className="mb-1.5 flex items-center justify-between px-1">
+                      <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[var(--text-subtle)]">
                         {formatGroupDate(date)}
                       </span>
-                      <div className="flex items-center gap-2 text-[10px]">
-                        {dayIn  > 0 && <span className="text-emerald-600 font-semibold">+₹{dayIn.toFixed(0)}</span>}
-                        {dayOut > 0 && <span className="text-red-500 font-semibold">−₹{dayOut.toFixed(0)}</span>}
+                      <div className="flex items-center gap-2.5 text-[11px] font-semibold tabular-nums">
+                        {dayIn  > 0 && <span className="text-emerald-600 dark:text-emerald-400">+{symbol}{formatAmount(dayIn, 0)}</span>}
+                        {dayOut > 0 && <span className="text-[var(--text-muted)]">−{symbol}{formatAmount(dayOut, 0)}</span>}
                       </div>
                     </div>
-                    <div className="space-y-2">
+                    <div className="rounded-2xl border border-[var(--border-card)] bg-[var(--bg-card)] divide-y divide-[var(--border-subtle)]">
                       {dayEntries.map((entry, idx) => {
-                        const isSelected = selectedEntryIds.includes(entry.id);
+                        const isSelected = selectedEntryIds.includes(entry.id)
                         return (
                           <motion.div
                             key={entry.id}
                             id={`entry-${entry.id}`}
-                            initial={{ opacity: 0, y: 6 }}
-                            animate={{ opacity: 1, y: 0 }}
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
                             transition={{ delay: Math.min(idx * 0.03, 0.2) }}
-                            className="flex items-start gap-2 transition-all duration-300 select-none"
+                            onClick={isMultiSelectMode ? () => toggleSelectEntry(entry.id) : undefined}
+                            className={`flex items-center gap-2 pl-4 pr-2 transition-colors select-none first:rounded-t-2xl last:rounded-b-2xl ${
+                              isMultiSelectMode ? 'cursor-pointer' : ''
+                            } ${isSelected ? 'bg-[var(--gold-light)]' : ''}`}
                             {...getLongPressHandlers(entry.id)}
                           >
                             {isMultiSelectMode && (
-                              <div
-                                onClick={() => toggleSelectEntry(entry.id)}
-                                className={`flex-shrink-0 mt-4 flex h-5 w-5 cursor-pointer items-center justify-center rounded-lg border transition-all ${
+                              <span
+                                className={`flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-md border transition-colors ${
                                   isSelected
-                                    ? 'border-amber-600 bg-amber-600 text-white'
-                                    : 'border-amber-200 bg-white hover:border-amber-400'
+                                    ? 'border-[var(--gold-primary)] bg-[var(--gold-primary)] text-white'
+                                    : 'border-[var(--border-card)] bg-[var(--bg-page)]'
                                 }`}
                               >
-                                {isSelected && (
-                                  <svg className="h-3.5 w-3.5 stroke-[3]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                                  </svg>
-                                )}
-                              </div>
+                                {isSelected && <Check size={13} strokeWidth={3} />}
+                              </span>
                             )}
-                            <div 
-                              className="flex-1 min-w-0" 
-                              onClick={isMultiSelectMode ? () => toggleSelectEntry(entry.id) : undefined}
-                            >
-                              <EntryCard entry={entry} />
+                            <div className="min-w-0 flex-1">
+                              <EntryCard entry={entry} balance={balanceById.get(entry.id)} />
                             </div>
                             {!isMultiSelectMode && (
-                              <div className="flex-shrink-0 pt-3">
-                                <EntryMenu
-                                  onEdit={() => setEditingEntry(entry)}
-                                  onDelete={() => setDeleteEntryTarget(entry)}
-                                />
-                              </div>
+                              <EntryMenu
+                                variant={entryMenuVariant(entry)}
+                                sourceName={sourceBookName(entry)}
+                                onOpenSource={entry.fromProjectId && entry.fromBookId
+                                  ? () => navigate(`/projects/${entry.fromProjectId}/books/${entry.fromBookId}`)
+                                  : undefined}
+                                onEdit={() => (entry.transferId ? setEditingTransfer(entry) : setEditingEntry(entry))}
+                                onDelete={() => setDeleteEntryTarget(entry)}
+                              />
                             )}
                           </motion.div>
-                        );
+                        )
                       })}
                     </div>
                   </div>
@@ -717,49 +781,106 @@ export default function BookPage() {
         </section>
       </div>
 
+      {/* ── Transfer: new from this book, or edit one sent from here ── */}
+      <TransferModal
+        open={transferOpen || Boolean(editingTransfer)}
+        onClose={() => { setTransferOpen(false); setEditingTransfer(null) }}
+        currentProject={project}
+        currentBook={book}
+        projects={projects}
+        booksByProject={booksByProject}
+        currentBalance={summary.net}
+        getBookBalance={bookBalanceOf}
+        editing={editingTransfer ? {
+          amount: editingTransfer.amount,
+          note: editingTransfer.notes,
+          toProjectId: editingTransfer.toProjectId,
+          toBookId: editingTransfer.toBookId,
+        } : null}
+        onTransfer={async ({ destinationProjectId, destinationBookId, amount, note }) => {
+          if (editingTransfer) {
+            await updateTransfer(projectId, bookId, editingTransfer.id, { amount, note })
+            showToast('Transfer updated in both books')
+          } else {
+            await transferBetweenBooks({
+              sourceProjectId: projectId,
+              sourceBookId: bookId,
+              destinationProjectId,
+              destinationBookId,
+              amount,
+              note,
+            })
+            showToast(`${symbol}${formatAmount(amount)} sent to ${bookNameById(destinationBookId) || 'book'}`)
+          }
+        }}
+      />
+
+      {/* ── Filters ── */}
+      <FilterSheet
+        open={showFilters}
+        onClose={() => setShowFilters(false)}
+        filters={filters}
+        setFilters={setFilters}
+        categoryNames={categoryNames}
+        enteredByList={enteredByList}
+        resultCount={filteredEntries.length}
+        onReset={clearFilters}
+      />
+
+      {/* ── Category manager ── */}
+      <CategoryManager
+        open={showCatManager}
+        categories={categories}
+        onClose={() => setShowCatManager(false)}
+        onSave={async (cats) => {
+          setCategories(cats)
+          await updateCategories(projectId, bookId, cats)
+          showToast('Categories saved')
+          setShowCatManager(false)
+        }}
+      />
+
       {/* ── Fixed bottom action bar ── */}
-      <div className="fixed bottom-[4.5rem] left-1/2 z-30 w-[min(96vw,520px)] -translate-x-1/2">
+      <div className="fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom))] left-1/2 z-30 w-[min(calc(100vw-2rem),520px)] -translate-x-1/2">
         {isMultiSelectMode ? (
-          <div className="flex items-center justify-between gap-3 rounded-2xl border border-amber-100/80 bg-white/95 p-2.5 shadow-xl backdrop-blur-md">
-            <div className="pl-2">
-              <p className="text-xs font-semibold text-stone-700">
-                {selectedEntryIds.length === 0 ? 'No entries selected' : `${selectedEntryIds.length} selected`}
-              </p>
-            </div>
+          <div className="flex items-center justify-between gap-3 rounded-2xl border border-[var(--border-card)] bg-[var(--bg-page)]/95 p-2 pl-4 shadow-[0_16px_40px_-12px_rgba(0,0,0,0.35)] backdrop-blur-xl">
+            <p className="text-xs font-semibold text-[var(--text-main)]">
+              {selectedEntryIds.length === 0 ? 'Select entries' : `${selectedEntryIds.length} selected`}
+            </p>
             <div className="flex gap-2">
               <button
                 onClick={() => {
                   setIsMultiSelectMode(false)
                   setSelectedEntryIds([])
                 }}
-                className="rounded-xl border border-amber-200 px-3 py-2 text-xs font-semibold text-stone-600 hover:bg-amber-50 cursor-pointer"
+                className="rounded-xl border border-[var(--border-card)] px-3.5 py-2.5 text-xs font-semibold text-[var(--text-muted)] hover:bg-[var(--border-subtle)] cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 disabled={selectedEntryIds.length === 0}
                 onClick={() => setOpenSendToTripModal(true)}
-                className="inline-flex items-center gap-1.5 rounded-xl bg-amber-600 px-4 py-2 text-xs font-bold text-white hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer"
+                className="rounded-xl bg-[var(--gold-primary)] px-4 py-2.5 text-xs font-semibold text-white hover:bg-[var(--gold-hover)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
               >
-                Send to Group
+                Add to group
               </button>
             </div>
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-2.5 rounded-2xl border border-amber-100/80 bg-white/95 p-2 shadow-xl backdrop-blur-md">
+          <div className="grid grid-cols-2 gap-2 rounded-2xl border border-[var(--border-card)] bg-[var(--bg-page)]/95 p-1.5 shadow-[0_16px_40px_-12px_rgba(0,0,0,0.35)] backdrop-blur-xl">
             <motion.button
               whileTap={{ scale: 0.97 }}
               onClick={() => setModalType('income')}
-              className="flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-4 py-3 text-sm font-bold text-white hover:from-emerald-700 hover:to-teal-700 transition-all shadow-sm cursor-pointer"
+              className="flex items-center justify-center gap-2 rounded-xl bg-emerald-600 py-3 text-[13px] font-semibold text-white hover:bg-emerald-700 transition-colors cursor-pointer"
             >
-              <TrendingUp size={15} /> Cash In
+              <ArrowDownLeft size={16} strokeWidth={2.4} /> Cash In
             </motion.button>
             <motion.button
               whileTap={{ scale: 0.97 }}
               onClick={() => setModalType('expense')}
-              className="flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-rose-500 to-red-600 px-4 py-3 text-sm font-bold text-white hover:from-rose-600 hover:to-red-700 transition-all shadow-sm cursor-pointer"
+              className="flex items-center justify-center gap-2 rounded-xl bg-rose-600 py-3 text-[13px] font-semibold text-white hover:bg-rose-700 transition-colors cursor-pointer"
             >
-              <TrendingDown size={15} /> Cash Out
+              <ArrowUpRight size={16} strokeWidth={2.4} /> Cash Out
             </motion.button>
           </div>
         )}
@@ -848,11 +969,18 @@ export default function BookPage() {
         open={Boolean(deleteEntryTarget)}
         onClose={() => setDeleteEntryTarget(null)}
         onConfirm={async () => {
-          await deleteEntry(projectId, bookId, deleteEntryTarget.id)
-          showToast('Entry deleted', 'info')
+          try {
+            await deleteEntry(projectId, bookId, deleteEntryTarget.id)
+            showToast(deleteEntryTarget?.transferId ? 'Transfer deleted from both books' : 'Entry deleted', 'info')
+          } catch (err) {
+            showToast(err?.message || 'Failed to delete', 'error')
+            throw err
+          }
         }}
-        title="Delete Entry?"
-        message={`"${deleteEntryTarget?.description}" (₹${deleteEntryTarget?.amount}) will be permanently deleted.`}
+        title={deleteEntryTarget?.transferId ? 'Delete transfer?' : 'Delete entry?'}
+        message={deleteEntryTarget?.transferId && deleteEntryTarget?.type === 'transfer_out'
+          ? `${symbol}${formatAmount(deleteEntryTarget?.amount)} sent to ${bookNameById(deleteEntryTarget?.toBookId) || 'the other book'} will be removed from both books.`
+          : `"${deleteEntryTarget?.description}" (${symbol}${formatAmount(deleteEntryTarget?.amount || 0)}) will be permanently deleted.`}
         danger
       />
 
@@ -875,6 +1003,8 @@ export default function BookPage() {
         open={deleteBookConfirm && Boolean(book?.pinHash)}
         onClose={() => setDeleteBookConfirm(false)}
         storedHash={book?.pinHash}
+        pinLength={book?.pinLength}
+        guardId={bookId}
         itemType="book"
         itemName={book?.name}
         onVerified={async (pin) => {
@@ -899,9 +1029,14 @@ export default function BookPage() {
         onClose={() => setSetPinOpen(false)}
         hasPin={Boolean(book.pinHash)}
         storedHash={book.pinHash}
-        onSet={async (hash) => {
-          await setPinForBook(projectId, bookId, hash)
-          showToast('PIN set 🔒')
+        pinLength={book.pinLength}
+        guardId={bookId}
+        itemName={book.name}
+        onSet={async (hash, length) => {
+          // Keep this session unlocked under the new PIN so the gate doesn't pop up immediately
+          setUnlocked(bookId, hash)
+          await setPinForBook(projectId, bookId, hash, length)
+          showToast(`${length}-digit PIN set`)
         }}
         onRemove={async () => {
           await setPinForBook(projectId, bookId, null)

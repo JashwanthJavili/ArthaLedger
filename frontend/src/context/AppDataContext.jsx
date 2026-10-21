@@ -192,14 +192,14 @@ export function AppDataProvider({ children }) {
     const entriesRef = ref(db, `users/${user.uid}/projects/${projectId}/books/${bookId}/entries`)
     const entryTimestamp = payload.timestamp || Date.now()
 
-    const signedAmount = payload.type === 'income' ? Number(payload.amount) : -Number(payload.amount)
+    const signedAmount = signedAmountOf(payload)
     const currentSnap = await get(query(entriesRef, orderByChild('timestamp'), limitToLast(1)))
     const latestEntries = toArray(currentSnap.val()).sort((a, b) => a.timestamp - b.timestamp)
     const latestEntry = latestEntries.at(-1)
     const lastBalance = latestEntry ? Number(latestEntry.balanceAfter || 0) : 0
     const lastTimestamp = latestEntry ? Number(latestEntry.timestamp || 0) : 0
 
-    const balanceAfter = lastBalance + signedAmount
+    const balanceAfter = roundMoney(lastBalance + signedAmount)
     const isAppendOnly = !latestEntry || entryTimestamp >= lastTimestamp
 
     const newRef = push(entriesRef)
@@ -229,14 +229,38 @@ export function AppDataProvider({ children }) {
   }, [user?.uid])
 
   const deleteEntry = useCallback(async (projectId, bookId, entryId) => {
-    const entryRef = ref(db, `users/${user.uid}/projects/${projectId}/books/${bookId}/entries/${entryId}`)
-    const entrySnap = await get(entryRef)
+    const entryPath = `users/${user.uid}/projects/${projectId}/books/${bookId}/entries/${entryId}`
+    const entrySnap = await get(ref(db, entryPath))
     const entry = entrySnap.val()
     if (!entry) {
       throw new Error('Entry not found')
     }
 
-    await remove(entryRef).catch((err) => { throw new Error(friendlyDbError(err)) })
+    // Linked transfer: the sending book owns it. Deleting there removes both
+    // sides; the receiving book can only remove it if the sender's side is gone.
+    if (entry.transferId) {
+      const counterpart = await _findTransferCounterpart(user.uid, entry)
+      if (entry.type === 'transfer_in' && counterpart) {
+        throw new Error('This transfer is managed by the sending book. Delete it there.')
+      }
+
+      const updates = { [entryPath]: null }
+      if (counterpart) {
+        updates[`users/${user.uid}/projects/${counterpart.projectId}/books/${counterpart.bookId}/entries/${counterpart.entryId}`] = null
+      }
+      await update(ref(db), updates).catch((err) => { throw new Error(friendlyDbError(err)) })
+
+      const touched = [{ projectId, bookId }]
+      if (counterpart) touched.push({ projectId: counterpart.projectId, bookId: counterpart.bookId })
+      const now = Date.now()
+      for (const t of touched) {
+        await _recalcBalances(user.uid, t.projectId, t.bookId)
+        await update(ref(db, `users/${user.uid}/projects/${t.projectId}/books/${t.bookId}`), { updatedAt: now })
+      }
+      return
+    }
+
+    await remove(ref(db, entryPath)).catch((err) => { throw new Error(friendlyDbError(err)) })
 
     const latestSnap = await get(query(ref(db, `users/${user.uid}/projects/${projectId}/books/${bookId}/entries`), orderByChild('timestamp'), limitToLast(1)))
     const latestEntries = toArray(latestSnap.val()).sort((a, b) => a.timestamp - b.timestamp)
@@ -256,6 +280,11 @@ export function AppDataProvider({ children }) {
     const snap = await get(entriesRef)
     const arr = toArray(snap.val() || {}).sort((a, b) => a.timestamp - b.timestamp)
 
+    const existing = arr.find((e) => e.id === entryId)
+    if (existing?.transferId) {
+      throw new Error('Transfers can only be changed from the sending book.')
+    }
+
     // Strip internal-only keys before writing to Firebase
     const { _localCategories, id: _id, ...cleanPayload } = payload
 
@@ -268,8 +297,8 @@ export function AppDataProvider({ children }) {
     let running = 0
     const updates = {}
     for (const e of next) {
-      const signed = e.type === 'income' ? Number(e.amount) : -Number(e.amount)
-      running += signed
+      const signed = signedAmountOf(e)
+      running = roundMoney(running + signed)
       updates[`users/${user.uid}/projects/${projectId}/books/${bookId}/entries/${e.id}`] = {
         ...sanitiseEntry(e),
         balanceAfter: running,
@@ -397,28 +426,12 @@ export function AppDataProvider({ children }) {
     const sourceEntries = toArray(sourceEntriesSnap.val())
     const destinationEntries = toArray(destinationEntriesSnap.val())
 
-    console.log('[Transfer] Source Entries:', sourceEntries)
-    console.log('[Transfer] Destination Entries:', destinationEntries)
 
-    const calculateBookBalance = (entriesList) => {
-      const balance = entriesList.reduce((acc, e) => {
-        const amt = Number(e.amount || 0)
-        if (e.type === 'income' || e.type === 'transfer_in') {
-          return acc + amt
-        } else if (e.type === 'expense' || e.type === 'transfer_out') {
-          return acc - amt
-        }
-        return acc
-      }, 0)
-      return Number(balance.toFixed(2))
-    }
+    const calculateBookBalance = (entriesList) => roundMoney(entriesList.reduce((acc, e) => acc + signedAmountOf(e), 0))
 
     const sourceBalance = calculateBookBalance(sourceEntries)
-    console.log('[Transfer] Calculated Source Balance:', sourceBalance)
-    console.log('[Transfer] Numeric Transfer Amount:', numericAmount)
 
     if (numericAmount > sourceBalance) {
-      console.warn('[Transfer] Validation Failed: Insufficient balance. Available:', sourceBalance, 'Requested:', numericAmount)
       throw new Error(`Insufficient balance. Available: ${sourceBalance.toFixed(2)}`)
     }
 
@@ -481,36 +494,83 @@ export function AppDataProvider({ children }) {
       [`users/${user.uid}/projects/${destinationProjectId}/books/${destinationBookId}/updatedAt`]: timestamp,
     }
 
-    await update(ref(db), updates)
+    await update(ref(db), updates).catch((err) => { throw new Error(friendlyDbError(err)) })
+
+    // Either book may hold entries dated after "now"; keep running balances exact.
+    await _recalcBalancesFrom(user.uid, sourceProjectId, sourceBookId, timestamp)
+    await _recalcBalancesFrom(user.uid, destinationProjectId, destinationBookId, timestamp)
   }, [user?.uid])
 
-  const setPinForBook = useCallback(async (projectId, bookId, pinHash) => {
+  /**
+   * Edit a transfer from the sending book. Amount and note are kept in sync on
+   * both sides; the destination stays fixed (delete and re-send to change it).
+   */
+  const updateTransfer = useCallback(async (projectId, bookId, entryId, { amount, note = '' }) => {
+    const numericAmount = Number(amount)
+    if (!Number.isFinite(numericAmount) || numericAmount <= 0) {
+      throw new Error('Enter a valid transfer amount.')
+    }
+
+    const entryPath = `users/${user.uid}/projects/${projectId}/books/${bookId}/entries/${entryId}`
+    const entry = (await get(ref(db, entryPath))).val()
+    if (!entry?.transferId) throw new Error('Transfer not found.')
+    if (entry.type !== 'transfer_out') throw new Error('Transfers can only be changed from the sending book.')
+
+    const sourceEntries = toArray((await get(ref(db, `users/${user.uid}/projects/${projectId}/books/${bookId}/entries`))).val())
+    const balanceWithoutThis = roundMoney(
+      sourceEntries.filter((e) => e.id !== entryId).reduce((acc, e) => acc + signedAmountOf(e), 0)
+    )
+    if (numericAmount > balanceWithoutThis) {
+      throw new Error(`Insufficient balance. Available: ${balanceWithoutThis.toFixed(2)}`)
+    }
+
+    const counterpart = await _findTransferCounterpart(user.uid, entry)
+    const cleanNote = String(note || '').trim()
+    const withNote = (description) => {
+      const base = String(description || '').split(' · ')[0]
+      return cleanNote ? `${base} · ${cleanNote}` : base
+    }
+
+    const updates = {
+      [`${entryPath}/amount`]: numericAmount,
+      [`${entryPath}/notes`]: cleanNote,
+      [`${entryPath}/description`]: withNote(entry.description),
+    }
+    if (counterpart) {
+      const cPath = `users/${user.uid}/projects/${counterpart.projectId}/books/${counterpart.bookId}/entries/${counterpart.entryId}`
+      updates[`${cPath}/amount`] = numericAmount
+      updates[`${cPath}/notes`] = cleanNote
+      updates[`${cPath}/description`] = withNote(counterpart.entry.description)
+    }
+    await update(ref(db), updates).catch((err) => { throw new Error(friendlyDbError(err)) })
+
+    const now = Date.now()
+    await _recalcBalances(user.uid, projectId, bookId)
+    await update(ref(db, `users/${user.uid}/projects/${projectId}/books/${bookId}`), { updatedAt: now })
+    if (counterpart) {
+      await _recalcBalances(user.uid, counterpart.projectId, counterpart.bookId)
+      await update(ref(db, `users/${user.uid}/projects/${counterpart.projectId}/books/${counterpart.bookId}`), { updatedAt: now })
+    }
+  }, [user?.uid])
+
+  // Save (or clear, when pinHash is falsy) a PIN. pinLength lets the unlock
+  // screen show the right number of digits straight away.
+  const setPinForBook = useCallback(async (projectId, bookId, pinHash, pinLength) => {
     const path = `users/${user.uid}/projects/${projectId}/books/${bookId}`
-    if (pinHash) {
-      await update(ref(db, path), { pinHash, updatedAt: Date.now() })
-        .catch((err) => { throw new Error(friendlyDbError(err)) })
-    } else {
-      // Remove pin
-      const snap = await get(ref(db, path))
-      const data = snap.val() || {}
-      delete data.pinHash
-      await set(ref(db, path), { ...data, updatedAt: Date.now() })
-        .catch((err) => { throw new Error(friendlyDbError(err)) })
-    }
+    await update(ref(db, path), {
+      pinHash: pinHash || null,
+      pinLength: pinHash && (pinLength === 4 || pinLength === 6) ? pinLength : null,
+      updatedAt: Date.now(),
+    }).catch((err) => { throw new Error(friendlyDbError(err)) })
   }, [user?.uid])
 
-  const setPinForProject = useCallback(async (projectId, pinHash) => {
+  const setPinForProject = useCallback(async (projectId, pinHash, pinLength) => {
     const path = `users/${user.uid}/projects/${projectId}`
-    if (pinHash) {
-      await update(ref(db, path), { pinHash, updatedAt: Date.now() })
-        .catch((err) => { throw new Error(friendlyDbError(err)) })
-    } else {
-      const snap = await get(ref(db, path))
-      const data = snap.val() || {}
-      delete data.pinHash
-      await set(ref(db, path), { ...data, updatedAt: Date.now() })
-        .catch((err) => { throw new Error(friendlyDbError(err)) })
-    }
+    await update(ref(db, path), {
+      pinHash: pinHash || null,
+      pinLength: pinHash && (pinLength === 4 || pinLength === 6) ? pinLength : null,
+      updatedAt: Date.now(),
+    }).catch((err) => { throw new Error(friendlyDbError(err)) })
   }, [user?.uid])
 
   // ── PIN-verified deletion ─────────────────────────────────────────────────
@@ -626,6 +686,7 @@ export function AppDataProvider({ children }) {
     setPinForBook,
     setPinForProject,
     transferBetweenBooks,
+    updateTransfer,
     createTrip,
     deleteTrip,
     linkEntriesToTrip,
@@ -638,7 +699,7 @@ export function AppDataProvider({ children }) {
     addEntry, deleteEntry, updateEntry,
     getBookCurrentBalance, updateCategories, getCategories,
     saveTemplate, deleteTemplate,
-    setPinForBook, setPinForProject, transferBetweenBooks,
+    setPinForBook, setPinForProject, transferBetweenBooks, updateTransfer,
     createTrip, deleteTrip, linkEntriesToTrip, unlinkEntryFromTrip,
   ])
 
@@ -652,6 +713,29 @@ export function useAppData() {
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+
+// Money coming into a book (income or a transfer in) adds to the balance;
+// everything else (expense, transfer out) subtracts from it.
+function signedAmountOf(entry) {
+  const amt = Number(entry?.amount || 0)
+  return entry?.type === 'income' || entry?.type === 'transfer_in' ? amt : -amt
+}
+
+/** Locate the other side of a linked transfer, or null if it no longer exists. */
+async function _findTransferCounterpart(uid, entry) {
+  const isOut = entry.type === 'transfer_out'
+  const projectId = isOut ? entry.toProjectId : entry.fromProjectId
+  const bookId = isOut ? entry.toBookId : entry.fromBookId
+  if (!entry.transferId || !projectId || !bookId) return null
+  const snap = await get(ref(db, `users/${uid}/projects/${projectId}/books/${bookId}/entries`))
+  const match = toArray(snap.val()).find((e) => e.transferId === entry.transferId && e.type === (isOut ? 'transfer_in' : 'transfer_out'))
+  return match ? { projectId, bookId, entryId: match.id, entry: match } : null
+}
+
+// Avoid floating-point drift (e.g. 0.1 + 0.2) in stored balances.
+function roundMoney(n) {
+  return Math.round(n * 100) / 100
+}
 
 function friendlyDbError(err) {
   const msg = err?.message || String(err)
@@ -667,8 +751,8 @@ async function _recalcBalances(uid, projectId, bookId) {
   const updates = {}
   let running = 0
   for (const e of arr) {
-    const signed = e.type === 'income' ? Number(e.amount) : -Number(e.amount)
-    running += signed
+    const signed = signedAmountOf(e)
+    running = roundMoney(running + signed)
     updates[`users/${uid}/projects/${projectId}/books/${bookId}/entries/${e.id}/balanceAfter`] = running
   }
 
@@ -717,13 +801,13 @@ async function _recalcBalancesFrom(uid, projectId, bookId, fromTimestamp) {
   let running = 0
 
   for (const entry of arr) {
-    const signed = entry.type === 'income' ? Number(entry.amount) : -Number(entry.amount)
+    const signed = signedAmountOf(entry)
     if (entry.timestamp < fromTimestamp) {
-      running += signed
+      running = roundMoney(running + signed)
       continue
     }
 
-    running += signed
+    running = roundMoney(running + signed)
     updates[`users/${uid}/projects/${projectId}/books/${bookId}/entries/${entry.id}/balanceAfter`] = running
   }
 

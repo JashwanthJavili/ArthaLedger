@@ -1,49 +1,55 @@
 import { motion } from 'framer-motion'
-import { TrendingUp, TrendingDown, Scale } from 'lucide-react'
+import { ArrowDownLeft, ArrowUpRight } from 'lucide-react'
 import { formatAmount, getCurrencySymbol } from '../../lib/format'
 
 export default function SummaryStrip({ net, totalIn, totalOut, delay = 0 }) {
   const symbol = getCurrencySymbol()
-  const netPositive = net >= 0
+  // Round to paise so tiny float drift never flips the sign or shows "-0.00".
+  const netRounded = Math.round((Number(net) || 0) * 100) / 100
+  const netPositive = netRounded >= 0
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 10 }}
+      initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay, duration: 0.35, ease: 'easeOut' }}
-      className="rounded-2xl border border-amber-100/80 bg-white/88 shadow-sm overflow-hidden"
+      transition={{ delay, duration: 0.25 }}
+      className="rounded-2xl border border-[var(--border-card)] bg-[var(--bg-card)]"
     >
-      {/* Net balance — full-width top row */}
-      <div className={`px-4 py-3 flex items-center justify-between ${netPositive ? 'bg-gradient-to-r from-amber-50 to-orange-50' : 'bg-gradient-to-r from-red-50 to-rose-50'}`}>
-        <div className="flex items-center">
-          <span className="text-xs font-bold text-stone-500 uppercase tracking-wider">Net Balance</span>
+      <div className="flex items-center justify-between gap-3 px-4 pt-3.5 pb-3">
+        <div className="min-w-0">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--text-subtle)]">Net balance</p>
+          <p className={`mt-0.5 truncate text-[22px] leading-tight font-bold tracking-tight tabular-nums ${
+            netPositive ? 'text-[var(--text-main)]' : 'text-rose-600 dark:text-rose-400'
+          }`}>
+            {netPositive ? '' : '−'}{symbol}{formatAmount(Math.abs(netRounded))}
+          </p>
         </div>
-        <span className={`text-lg font-bold font-serif ${netPositive ? 'text-stone-800' : 'text-red-600'}`}>
-          {netPositive ? '' : '-'}{symbol}{formatAmount(Math.abs(net))}
+        <span className={`flex-shrink-0 rounded-full px-2.5 py-1 text-[10px] font-semibold ${
+          netPositive
+            ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
+            : 'bg-rose-500/10 text-rose-700 dark:text-rose-400'
+        }`}>
+          {netPositive ? 'Surplus' : 'Deficit'}
         </span>
       </div>
 
-      {/* Divider */}
-      <div className="h-px bg-amber-100/60" />
-
-      {/* Cash In + Cash Out — two columns stacked */}
-      <div className="grid grid-cols-2 divide-x divide-amber-100/60 text-center py-2.5 bg-stone-50/20 dark:bg-stone-950/10">
-        <div className="flex flex-col items-center justify-center px-4 py-1">
-          <span className="text-[10px] text-stone-400 font-semibold uppercase tracking-wider mb-0.5">Cash In</span>
-          <div className="flex items-center justify-center gap-1">
-            <TrendingUp size={12} className="text-emerald-600 flex-shrink-0" />
-            <span className="text-sm font-bold text-emerald-600 font-serif">
+      <div className="grid grid-cols-2 divide-x divide-[var(--border-subtle)] border-t border-[var(--border-subtle)]">
+        <div className="flex items-center gap-2 px-4 py-2.5 min-w-0">
+          <ArrowDownLeft size={14} strokeWidth={2.4} className="flex-shrink-0 text-emerald-600 dark:text-emerald-400" />
+          <div className="min-w-0">
+            <p className="text-[10px] text-[var(--text-subtle)]">Cash in</p>
+            <p className="truncate text-[13px] font-semibold tabular-nums text-emerald-700 dark:text-emerald-400">
               {symbol}{formatAmount(totalIn)}
-            </span>
+            </p>
           </div>
         </div>
-        <div className="flex flex-col items-center justify-center px-4 py-1">
-          <span className="text-[10px] text-stone-400 font-semibold uppercase tracking-wider mb-0.5">Cash Out</span>
-          <div className="flex items-center justify-center gap-1">
-            <TrendingDown size={12} className="text-rose-500 flex-shrink-0" />
-            <span className="text-sm font-bold text-rose-500 font-serif">
+        <div className="flex items-center gap-2 px-4 py-2.5 min-w-0">
+          <ArrowUpRight size={14} strokeWidth={2.4} className="flex-shrink-0 text-rose-600 dark:text-rose-400" />
+          <div className="min-w-0">
+            <p className="text-[10px] text-[var(--text-subtle)]">Cash out</p>
+            <p className="truncate text-[13px] font-semibold tabular-nums text-rose-700 dark:text-rose-400">
               {symbol}{formatAmount(totalOut)}
-            </span>
+            </p>
           </div>
         </div>
       </div>

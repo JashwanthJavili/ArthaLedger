@@ -1,43 +1,30 @@
 {
-  "name": "ArthaLedger — Where every rupee has meaning",
-  "short_name": "ArthaLedger",
   "id": "/",
-  "gcm_sender_id": "103953800507",
-  "description": "ArthaLedger — a peaceful, mindful financial ledger for personal, family and business tracking.",
-  "start_url": "/",
+  "name": "ArthaLedger",
+  "short_name": "ArthaLedger",
+  "description": "A calm, private ledger for personal, family and business money.",
+  "start_url": "/dashboard?source=pwa",
   "scope": "/",
   "display": "standalone",
   "display_override": ["standalone", "minimal-ui"],
-  "background_color": "#fdf6e7",
-  "theme_color": "#d6a75e",
   "orientation": "portrait",
-  "launch_handler": {
-    "client_mode": "navigate-existing"
-  },
+  "background_color": "#FDF7EE",
+  "theme_color": "#FAF8F5",
+  "categories": ["finance", "productivity"],
+  "lang": "en-IN",
+  "dir": "ltr",
+  "prefer_related_applications": false,
+  "launch_handler": { "client_mode": ["navigate-existing", "auto"] },
   "icons": [
-    {
-      "src": "/L.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "/L.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "/L.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "maskable"
-    },
-    {
-      "src": "/L.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "maskable"
-    }
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "/icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "/icons/badge-96.png", "sizes": "96x96", "type": "image/png", "purpose": "monochrome" }
+  ],
+  "shortcuts": [
+    { "name": "Home", "url": "/dashboard?source=shortcut", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Analytics", "url": "/analytics?source=shortcut", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Groups", "url": "/trips?source=shortcut", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] }
   ]
 }

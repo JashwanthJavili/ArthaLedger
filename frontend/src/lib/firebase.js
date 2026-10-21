@@ -52,24 +52,35 @@ export async function requestFCMToken(vapidKey = import.meta.env.VITE_FIREBASE_V
     const messaging = await messagingPromise
     if (!messaging) return null
 
-    let reg = await navigator.serviceWorker.getRegistration('/firebase-messaging-sw.js')
-    if (!reg) {
-      reg = await navigator.serviceWorker.register('/firebase-messaging-sw.js')
+    if (!('serviceWorker' in navigator) || Notification.permission !== 'granted') return null
+
+    // The single app worker (/sw.js) handles push; make sure it is registered and active.
+    let reg = await navigator.serviceWorker.getRegistration('/')
+    if (!reg || !reg.active?.scriptURL.endsWith('/sw.js')) {
+      reg = await navigator.serviceWorker.register('/sw.js', { scope: '/' })
     }
+    reg = await navigator.serviceWorker.ready
 
     const token = await getToken(messaging, {
       serviceWorkerRegistration: reg,
       vapidKey: vapidKey || 'BHOMcvcUDNC3w_QJT7KC3LyERkOzAeybfxKtb8wrjhnhuzI-nZWkYLQnGw6mr8Eg1dPflGnZIuiDqFFB0sTpkjQ',
     })
     if (token) {
+      const keyOf = (t) => t.replace(/[.#$[\]/]/g, '_').slice(0, 700)
+      const previous = localStorage.getItem('al_fcm_token')
       localStorage.setItem('al_fcm_token', token)
       if (auth.currentUser?.uid) {
-        const safeTokenKey = token.replace(/[.#$[\]]/g, '_')
-        await set(ref(db, `users/${auth.currentUser.uid}/pushTokens/${safeTokenKey}`), {
+        const base = `users/${auth.currentUser.uid}/pushTokens`
+        await set(ref(db, `${base}/${keyOf(token)}`), {
           token,
           updatedAt: Date.now(),
           platform: navigator.userAgent,
+          standalone: window.matchMedia('(display-mode: standalone)').matches || Boolean(window.navigator.standalone),
         }).catch(e => console.warn('Push token DB save error:', e))
+        // Tokens rotate; drop the old one so the server stops sending to it
+        if (previous && previous !== token) {
+          await set(ref(db, `${base}/${keyOf(previous)}`), null).catch(() => {})
+        }
       }
     }
     return token

@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Compass, Plus, Trash2, ChevronRight, Hash, FolderHeart, X } from 'lucide-react'
+import { Plus, Trash2, ChevronRight, FolderHeart, X, Loader2 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import LayoutShell from '../components/LayoutShell'
 import { useAppData } from '../context/AppDataContext'
@@ -9,11 +10,17 @@ import ConfirmDialog from '../components/common/ConfirmDialog'
 import { formatAmount, getCurrencySymbol } from '../lib/format'
 import Loader from '../components/common/Loader'
 
+const card = 'rounded-2xl border border-[var(--border-card)] bg-[var(--bg-card)]'
+const sectionTitle = 'text-[11px] font-semibold uppercase tracking-[0.1em] text-[var(--text-subtle)]'
+const field = 'w-full rounded-xl border border-[var(--border-card)] bg-[var(--bg-card)] px-3.5 py-2.5 text-[14px] text-[var(--text-main)] placeholder-[var(--text-subtle)] outline-none focus:border-[var(--gold-primary)] transition-colors'
+const label = 'mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--text-subtle)]'
+
 export default function ExpenseGroupsPage() {
   const { loading, error, trips, entriesByBook, createTrip, deleteTrip } = useAppData()
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
+  const [creating, setCreating] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [toast, setToast] = useState({ msg: '', type: 'success', visible: false })
   const symbol = getCurrencySymbol()
@@ -21,10 +28,12 @@ export default function ExpenseGroupsPage() {
   const [stalled, setStalled] = useState(false)
 
   useEffect(() => {
-    let t = null
-    if (loading) t = setTimeout(() => setStalled(true), 3500)
-    else setStalled(false)
-    return () => clearTimeout(t)
+    if (!loading) return undefined
+    const t = setTimeout(() => setStalled(true), 3500)
+    return () => {
+      clearTimeout(t)
+      setStalled(false)
+    }
   }, [loading])
 
   const showToast = (msg, type = 'success') => {
@@ -68,13 +77,13 @@ export default function ExpenseGroupsPage() {
     return (
       <LayoutShell>
         <div className="flex flex-col items-center justify-center py-20 gap-4 text-center px-4">
-          <div className="rounded-2xl bg-red-50 border border-red-100 p-4 max-w-sm">
-            <p className="text-sm font-semibold text-red-800">Unable to Load Data</p>
-            <p className="text-xs text-red-600 mt-1">{error}</p>
+          <div className="rounded-2xl border border-rose-500/20 bg-rose-500/10 p-5 max-w-sm">
+            <p className="text-sm font-semibold text-rose-600 dark:text-rose-400">Unable to Load Data</p>
+            <p className="text-xs text-[var(--text-muted)] mt-1">{error}</p>
           </div>
-          <button 
+          <button
             onClick={() => window.location.reload()}
-            className="rounded-xl bg-amber-600 px-4 py-2 text-xs font-semibold text-white hover:bg-amber-700 cursor-pointer"
+            className="rounded-xl bg-[var(--gold-primary)] px-5 py-2.5 text-xs font-semibold text-white hover:bg-[var(--gold-hover)] transition-colors cursor-pointer"
           >
             Retry Loading
           </button>
@@ -87,10 +96,16 @@ export default function ExpenseGroupsPage() {
     return <Loader text="Loading expense groups..." />
   }
 
+  const closeCreate = () => {
+    if (creating) return
+    setShowCreateModal(false)
+  }
+
   const handleCreate = async (e) => {
     e.preventDefault()
-    if (!name.trim()) return
+    if (!name.trim() || creating) return
 
+    setCreating(true)
     try {
       await createTrip({ name: name.trim(), description: description.trim() })
       showToast('Expense Group created ✓')
@@ -99,6 +114,8 @@ export default function ExpenseGroupsPage() {
       setShowCreateModal(false)
     } catch (err) {
       showToast(err?.message || 'Failed to create group', 'error')
+    } finally {
+      setCreating(false)
     }
   }
 
@@ -113,189 +130,209 @@ export default function ExpenseGroupsPage() {
     }
   }
 
+  const totals = groupsWithStats.reduce(
+    (acc, g) => ({ spent: acc.spent + g.totalSpent, income: acc.income + g.totalIncome, items: acc.items + g.entryCount }),
+    { spent: 0, income: 0, items: 0 },
+  )
+
   return (
     <LayoutShell>
-      <div className="space-y-4 pb-24">
+      <div className="mx-auto max-w-2xl space-y-6">
         {loading && (
-          <div className="rounded-2xl border border-red-100 bg-red-50 p-3.5 text-xs text-red-700 leading-relaxed font-medium">
-            ⚠️ Connection is taking longer than expected. Please check your internet connection.
+          <div className="rounded-2xl border border-[var(--border-card)] bg-[var(--bg-card)] px-4 py-3 text-[11px] text-[var(--text-muted)]">
+            Still syncing — your connection seems slow.
           </div>
         )}
-        {/* Header */}
-        <header className="flex items-center justify-between rounded-2xl border border-amber-100/80 bg-white/88 p-3 shadow-sm backdrop-blur-sm">
-          <div className="flex items-center gap-2">
-            <div className="rounded-xl border border-amber-100 p-2 text-stone-600 bg-amber-50/20">
-              <Compass size={18} className="text-amber-700" />
-            </div>
-            <div>
-              <h1 className="text-base font-semibold text-stone-800">Expense Groups</h1>
-              <p className="text-[10px] text-stone-400 mt-0.5">Cross-book ledger aggregates</p>
-            </div>
+
+        {/* ── Header ── */}
+        <motion.header initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} className="flex items-start justify-between gap-3 pt-1">
+          <div className="min-w-0">
+            <h1 className="font-serif-luxury text-[28px] font-semibold leading-tight tracking-[-0.01em] text-[var(--text-main)]">Groups</h1>
+            <p className="font-serif-luxury mt-0.5 text-[14px] italic text-[var(--text-muted)]">Expenses gathered across books</p>
           </div>
+          {groupsWithStats.length > 0 && (
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="mt-1 inline-flex h-10 flex-shrink-0 items-center gap-1.5 rounded-xl bg-[var(--gold-primary)] px-3.5 text-[13px] font-semibold text-white hover:bg-[var(--gold-hover)] transition-colors cursor-pointer"
+            >
+              <Plus size={15} /> New group
+            </button>
+          )}
+        </motion.header>
 
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="inline-flex items-center gap-1.5 rounded-xl bg-amber-600 px-3 py-2 text-xs font-semibold text-white hover:bg-amber-700 transition-colors shadow-sm cursor-pointer"
-          >
-            <Plus size={14} /> New Group
-          </button>
-        </header>
-
-        {/* Groups List */}
         {groupsWithStats.length === 0 ? (
-          <div className="flex flex-col items-center justify-center gap-3 py-16 text-center rounded-2xl border border-dashed border-amber-200 bg-amber-50/20">
-            <FolderHeart size={32} className="text-amber-300" />
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+            className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-[var(--border-card)] px-6 py-14 text-center">
+            <span className="flex h-11 w-11 items-center justify-center rounded-full bg-[var(--gold-light)] text-[var(--gold-primary)]">
+              <FolderHeart size={20} />
+            </span>
             <div>
-              <p className="text-sm font-medium text-stone-600">
-                {loading ? 'Retrieving expense groups...' : 'No Expense Groups yet'}
+              <p className="text-sm font-semibold text-[var(--text-main)]">
+                {loading ? 'Retrieving expense groups…' : 'No groups yet'}
               </p>
-              <p className="mt-1 text-xs text-stone-400 max-w-xs mx-auto px-4">
-                {loading ? 'Connecting to database...' : 'Create a group here, then go to any project book, select transactions, and send them here.'}
+              <p className="mx-auto mt-1 max-w-xs text-xs text-[var(--text-subtle)]">
+                {loading
+                  ? 'Connecting to database…'
+                  : 'Create a group, then select transactions in any book and add them here.'}
               </p>
             </div>
-          </div>
+            {!loading && (
+              <button onClick={() => setShowCreateModal(true)}
+                className="mt-1 inline-flex items-center gap-1.5 rounded-xl bg-[var(--gold-primary)] px-4 py-2.5 text-xs font-semibold text-white hover:bg-[var(--gold-hover)] transition-colors cursor-pointer">
+                <Plus size={14} /> Create group
+              </button>
+            )}
+          </motion.div>
         ) : (
-          <div className="grid gap-2.5">
-            {groupsWithStats.map((group) => (
-              <motion.div
-                key={group.id}
-                whileHover={{ y: -1, boxShadow: '0 4px 20px rgba(185,147,78,0.08)' }}
-                className="group relative flex items-center justify-between rounded-2xl border border-amber-100/80 bg-white/90 p-4 shadow-sm transition-all"
-              >
-                <Link to={`/trips/${group.id}`} className="flex-1 min-w-0 pr-8">
-                  <div className="min-w-0">
-                    <h2 className="text-sm font-bold text-stone-800 group-hover:text-amber-800 transition-colors">
-                      {group.name}
-                    </h2>
-                    {group.description && (
-                      <p className="text-xs text-stone-400 mt-0.5 truncate">{group.description}</p>
-                    )}
-                  </div>
-
-                  <div className="mt-3 flex items-center gap-4 text-xs">
-                    <div>
-                      <span className="text-stone-400">Total Spent:</span>{' '}
-                      <span className="font-semibold text-red-600">
-                        {symbol}{formatAmount(group.totalSpent)}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-stone-400">Total In:</span>{' '}
-                      <span className="font-semibold text-emerald-600">
-                        {symbol}{formatAmount(group.totalIncome)}
-                      </span>
-                    </div>
-                    <div className="text-[10px] bg-amber-50 text-amber-800 px-2 py-0.5 rounded-full font-medium">
-                      {group.entryCount} item{group.entryCount !== 1 ? 's' : ''}
-                    </div>
-                  </div>
-                </Link>
-
-                <div className="flex items-center gap-1.5">
-                  <button
-                    onClick={() => setDeleteTarget(group)}
-                    className="opacity-0 group-hover:opacity-100 rounded-xl p-2 text-stone-400 hover:bg-red-50 hover:text-red-600 transition-all cursor-pointer"
-                    title="Delete Group"
-                  >
-                    <Trash2 size={14} />
-                  </button>
-                  <Link
-                    to={`/trips/${group.id}`}
-                    className="rounded-xl border border-amber-100/50 p-2 text-stone-400 hover:bg-amber-50 hover:text-amber-700 transition-colors"
-                  >
-                    <ChevronRight size={14} />
-                  </Link>
+          <>
+            {/* ── Overview ── */}
+            <section>
+              <h2 className={`${sectionTitle} mb-2 px-1`}>Overview</h2>
+              <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }}
+                className={`${card} grid grid-cols-3 divide-x divide-[var(--border-subtle)]`}>
+                <div className="min-w-0 px-4 py-3">
+                  <p className="text-[10px] text-[var(--text-subtle)]">Groups</p>
+                  <p className="mt-0.5 truncate text-[15px] font-semibold tabular-nums text-[var(--text-main)]">{groupsWithStats.length}</p>
+                </div>
+                <div className="min-w-0 px-4 py-3">
+                  <p className="text-[10px] text-[var(--text-subtle)]">Spent</p>
+                  <p className="mt-0.5 truncate text-[15px] font-semibold tabular-nums text-[var(--text-main)]">{symbol}{formatAmount(totals.spent)}</p>
+                </div>
+                <div className="min-w-0 px-4 py-3">
+                  <p className="text-[10px] text-[var(--text-subtle)]">Received</p>
+                  <p className="mt-0.5 truncate text-[15px] font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">{symbol}{formatAmount(totals.income)}</p>
                 </div>
               </motion.div>
-            ))}
-          </div>
+            </section>
+
+            {/* ── Groups list ── */}
+            <section>
+              <h2 className={`${sectionTitle} mb-2 px-1`}>All groups · {groupsWithStats.length}</h2>
+              <div className={`${card} divide-y divide-[var(--border-subtle)]`}>
+                {groupsWithStats.map((group) => (
+                  <div key={group.id} className="group flex items-center first:rounded-t-2xl last:rounded-b-2xl hover:bg-[var(--border-subtle)]/60 transition-colors">
+                    <Link to={`/trips/${group.id}`} className="flex min-w-0 flex-1 items-center gap-3 py-3 pl-4 pr-2">
+                      <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-[var(--gold-light)] font-serif-luxury text-[15px] font-semibold text-[var(--gold-primary)]">
+                        {(group.name || '?').trim().charAt(0).toUpperCase()}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-[14px] font-semibold text-[var(--text-main)]">{group.name}</p>
+                        <p className="mt-0.5 truncate text-[11.5px] text-[var(--text-subtle)]">
+                          {group.entryCount} item{group.entryCount !== 1 ? 's' : ''}
+                          {group.description ? ` · ${group.description}` : ''}
+                        </p>
+                      </div>
+                      <div className="flex-shrink-0 text-right">
+                        <p className="text-[13px] font-semibold tabular-nums text-[var(--text-main)]">
+                          {symbol}{formatAmount(group.totalSpent)}
+                        </p>
+                        {group.totalIncome > 0 ? (
+                          <p className="mt-0.5 text-[11px] font-medium tabular-nums text-emerald-600 dark:text-emerald-400">
+                            +{symbol}{formatAmount(group.totalIncome)}
+                          </p>
+                        ) : (
+                          <p className="mt-0.5 text-[11px] text-[var(--text-subtle)]">spent</p>
+                        )}
+                      </div>
+                      <ChevronRight size={15} className="flex-shrink-0 text-[var(--text-subtle)]" />
+                    </Link>
+                    <button
+                      onClick={() => setDeleteTarget(group)}
+                      className="mr-2 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full text-[var(--text-subtle)] hover:bg-rose-500/10 hover:text-rose-600 dark:hover:text-rose-400 transition-colors cursor-pointer"
+                      title="Delete group"
+                      aria-label={`Delete ${group.name}`}
+                    >
+                      <Trash2 size={15} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <p className="mt-2 px-1 text-[10.5px] text-[var(--text-subtle)]">
+                Groups only reference transactions — deleting a group never changes your books.
+              </p>
+            </section>
+          </>
         )}
       </div>
 
-      {/* Creation Modal */}
-      <AnimatePresence>
-        {showCreateModal && (
-          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-3 sm:p-4">
+      {/* ── Create sheet ── */}
+      {createPortal(
+        <AnimatePresence>
+          {showCreateModal && (
             <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="absolute inset-0 bg-black/30 backdrop-blur-sm"
-              onClick={() => setShowCreateModal(false)}
-            />
-            <motion.form
-              initial={{ y: 40, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              exit={{ y: 40, opacity: 0 }}
-              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-              onSubmit={handleCreate}
-              className="relative w-full max-w-md space-y-4 rounded-3xl bg-white p-5 sm:p-6 shadow-2xl z-10"
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center sm:p-4"
+              onKeyDown={(e) => { if (e.key === 'Escape') closeCreate() }}
             >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2.5">
-                  <div className="rounded-xl bg-amber-100 p-2">
-                    <Compass size={16} className="text-amber-700" />
+              <div className="absolute inset-0 bg-black/50" onClick={closeCreate} />
+              <motion.form
+                role="dialog" aria-modal="true" aria-label="New group"
+                initial={{ y: 28, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 28, opacity: 0 }}
+                transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}
+                onSubmit={handleCreate}
+                className="relative flex w-full sm:max-w-[440px] flex-col overflow-hidden rounded-t-3xl sm:rounded-3xl border border-[var(--border-card)] bg-[var(--bg-page)] shadow-[0_30px_80px_-20px_rgba(0,0,0,0.45)]"
+                style={{ maxHeight: '88vh', paddingBottom: 'env(safe-area-inset-bottom)' }}
+              >
+                <div className="flex items-start justify-between gap-3 border-b border-[var(--border-subtle)] px-5 pt-5 pb-4">
+                  <div className="min-w-0">
+                    <h3 className="truncate text-[15px] font-semibold text-[var(--text-main)]">New group</h3>
+                    <p className="mt-0.5 text-[11px] text-[var(--text-subtle)]">Collect related spending from any book</p>
                   </div>
-                  <h2 className="text-base sm:text-lg font-semibold text-stone-800">
-                    New Expense Group
-                  </h2>
+                  <button type="button" onClick={closeCreate} aria-label="Close"
+                    className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-[var(--border-subtle)] text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors cursor-pointer">
+                    <X size={15} />
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setShowCreateModal(false)}
-                  className="rounded-xl border border-stone-100 p-1.5 text-stone-400 hover:bg-stone-50 transition-colors"
-                >
-                  <X size={16} />
-                </button>
-              </div>
 
-              <div className="space-y-3">
-                <div>
-                  <label className="block text-xs font-medium text-stone-600 mb-1">
-                    Group Name *
-                  </label>
-                  <input
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="e.g. Europe Trip 2026, Office Refurbish"
-                    className="w-full rounded-xl border border-amber-100 bg-amber-50/40 px-3 py-2.5 text-sm text-stone-800 placeholder-stone-400 focus:border-amber-300 focus:bg-white outline-none transition-colors"
-                    required
-                    autoFocus
-                  />
+                <div className="space-y-4 overflow-y-auto px-5 py-5">
+                  <div>
+                    <label htmlFor="group-name" className={label}>Name</label>
+                    <input
+                      id="group-name"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      placeholder="e.g. Europe Trip 2026, Office Refurbish"
+                      className={field}
+                      required
+                      autoFocus
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="group-desc" className={label}>Description <span className="normal-case tracking-normal font-normal">(optional)</span></label>
+                    <textarea
+                      id="group-desc"
+                      value={description}
+                      onChange={(e) => setDescription(e.target.value)}
+                      placeholder="Context or dates…"
+                      className={`${field} resize-none`}
+                      rows={3}
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-xs font-medium text-stone-600 mb-1">
-                    Description
-                  </label>
-                  <textarea
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    placeholder="Provide context or dates..."
-                    className="w-full rounded-xl border border-amber-100 bg-amber-50/40 px-3 py-2.5 text-sm text-stone-800 placeholder-stone-400 focus:border-amber-300 focus:bg-white outline-none resize-none transition-colors"
-                    rows={3}
-                  />
-                </div>
-              </div>
 
-              <div className="flex gap-2 pt-1">
-                <button
-                  type="button"
-                  onClick={() => setShowCreateModal(false)}
-                  className="flex-1 rounded-xl border border-stone-200 px-4 py-2.5 text-sm text-stone-600 hover:bg-stone-50 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 rounded-xl bg-amber-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-amber-700 transition-colors shadow-sm"
-                >
-                  Create Group
-                </button>
-              </div>
-            </motion.form>
-          </div>
-        )}
-      </AnimatePresence>
+                <div className="flex gap-2 border-t border-[var(--border-subtle)] px-5 py-4">
+                  <button
+                    type="button"
+                    onClick={closeCreate}
+                    className="flex-1 rounded-xl border border-[var(--border-card)] px-4 py-2.5 text-[13px] font-medium text-[var(--text-main)] hover:bg-[var(--border-subtle)] transition-colors cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={creating || !name.trim()}
+                    className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-[var(--gold-primary)] px-4 py-2.5 text-[13px] font-semibold text-white hover:bg-[var(--gold-hover)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                  >
+                    {creating && <Loader2 size={14} className="animate-spin" />}
+                    Create group
+                  </button>
+                </div>
+              </motion.form>
+            </motion.div>
+          )}
+        </AnimatePresence>,
+        document.body,
+      )}
 
       {/* Delete Confirmation */}
       <ConfirmDialog

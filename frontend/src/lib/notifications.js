@@ -1,5 +1,5 @@
 import { ref, set, get } from 'firebase/database'
-import { auth, db } from './firebase'
+import { auth, db, requestFCMToken } from './firebase'
 
 // LocalStorage Keys for persistent multi-time reminder config
 const REMINDER_KEY_ENABLED = 'al_reminder_enabled'
@@ -48,8 +48,8 @@ export async function sendNativeNotification(title, options = {}) {
   if (Notification.permission !== 'granted') return false
 
   const defaultOptions = {
-    icon: '/L.png',
-    badge: '/L.png',
+    icon: '/icons/icon-192.png',
+    badge: '/icons/badge-96.png',
     vibrate: [100, 50, 100],
     ...options,
   }
@@ -93,7 +93,7 @@ export function triggerBudgetAlertNotification({ categoryName, spent, limit, per
 
 export function getDailyReminderSettings() {
   const enabled = localStorage.getItem(REMINDER_KEY_ENABLED) === 'true'
-  let times = []
+  let times
   try {
     times = JSON.parse(localStorage.getItem(REMINDER_KEY_TIMES) || '[]')
   } catch {
@@ -106,31 +106,43 @@ export function getDailyReminderSettings() {
   return { enabled, times, time: times[0] }
 }
 
-export function syncReminderWithServiceWorker() {
-  const { enabled, times } = getDailyReminderSettings()
-  if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-    navigator.serviceWorker.controller.postMessage({
-      type: 'SET_DAILY_REMINDER',
-      enabled,
-      times,
-      time: times[0],
-    })
-  }
+const API_BASE = import.meta.env.VITE_API_URL || 'https://arthaledger-api.onrender.com'
+
+function userTimeZone() {
+  try { return Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Kolkata' } catch { return 'Asia/Kolkata' }
 }
+
+/**
+ * Registers this device with the push server (FCM token saved under the user).
+ * Safe to call often: it only does work when notifications are allowed.
+ * Without a saved token the server has nowhere to send reminders, so this is
+ * what makes notifications arrive while the app is closed.
+ */
+export async function ensurePushRegistration() {
+  if (!auth.currentUser?.uid) return null
+  if (!('Notification' in window) || Notification.permission !== 'granted') return null
+  return requestFCMToken()
+}
+
+// Kept for older callers; the service worker no longer runs its own timers.
+export function syncReminderWithServiceWorker() {}
 
 export async function syncReminderFromFirebase() {
   if (!auth.currentUser?.uid) return null
   try {
-    const snap = await get(ref(db, `users/${auth.currentUser.uid}/reminderSettings`))
+    const path = `users/${auth.currentUser.uid}/reminderSettings`
+    const snap = await get(ref(db, path))
     if (snap.exists()) {
       const data = snap.val()
       if (typeof data.enabled === 'boolean') {
         localStorage.setItem(REMINDER_KEY_ENABLED, String(data.enabled))
       }
-      let times = data.times || (data.time ? [data.time] : ['19:00'])
+      const times = Array.isArray(data.times) && data.times.length ? data.times : (data.time ? [data.time] : ['19:00'])
       localStorage.setItem(REMINDER_KEY_TIMES, JSON.stringify(times))
       localStorage.setItem(REMINDER_KEY_TIME, times[0])
-      syncReminderWithServiceWorker()
+      // Keep the server's idea of "7 PM" in this device's time zone
+      const tz = userTimeZone()
+      if (data.timezone !== tz) set(ref(db, `${path}/timezone`), tz).catch(() => {})
       return { enabled: Boolean(data.enabled), times, time: times[0] }
     }
   } catch (e) {
@@ -145,45 +157,50 @@ export function saveDailyReminderSettings({ enabled, times = ['19:00'] }) {
   localStorage.setItem(REMINDER_KEY_TIMES, JSON.stringify(finalTimes))
   localStorage.setItem(REMINDER_KEY_TIME, finalTimes[0])
 
-  syncReminderWithServiceWorker()
-
   if (auth.currentUser?.uid) {
-    set(ref(db, `users/${auth.currentUser.uid}/reminderSettings`), {
-      enabled: Boolean(enabled),
-      times: finalTimes,
-      time: finalTimes[0],
-      updatedAt: Date.now(),
-    }).catch((e) => console.warn('Firebase reminder save error:', e))
+    const path = `users/${auth.currentUser.uid}/reminderSettings`
+    Promise.all([
+      set(ref(db, `${path}/enabled`), Boolean(enabled)),
+      set(ref(db, `${path}/times`), finalTimes),
+      set(ref(db, `${path}/time`), finalTimes[0]),
+      set(ref(db, `${path}/timezone`), userTimeZone()),
+      set(ref(db, `${path}/updatedAt`), Date.now()),
+    ]).catch((e) => console.warn('Firebase reminder save error:', e))
   }
+  if (enabled) ensurePushRegistration()
 }
 
+/**
+ * Sends a real push through the server to every registered device of this
+ * user — the same path daily reminders use, so it proves closed-app delivery.
+ * Returns { ok, sent, message }.
+ */
 export async function testMobileNotification() {
-  const token = localStorage.getItem('al_fcm_token')
-  const apiBase = import.meta.env.VITE_API_URL || 'https://arthaledger-api.onrender.com'
-
-  if (token) {
-    fetch(`${apiBase}/api/v1/notifications/send-push`, {
+  try {
+    const token = await ensurePushRegistration()
+    const idToken = await auth.currentUser?.getIdToken()
+    if (!token || !idToken) throw new Error('This device is not registered for push yet.')
+    const res = await fetch(`${API_BASE}/api/v1/notifications/test`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        token,
-        title: '✍️ ArthaLedger Test Notification',
-        body: "Mobile PWA notifications are connected! It's time to enter your today's expenses in ArthaLedger.",
-        url: '/dashboard',
-      }),
-    }).catch((e) => console.warn('Backend push trigger error:', e))
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
+    })
+    const body = await res.json().catch(() => ({}))
+    if (!res.ok) throw new Error(body.detail || `Server error ${res.status}`)
+    const sent = Number(body.result?.success_count || 0)
+    if (sent === 0) throw new Error('The server could not reach this device.')
+    return { ok: true, sent, message: `Sent to ${sent} device${sent === 1 ? '' : 's'}. Close the app to see it arrive in the background.` }
+  } catch (err) {
+    // Fall back to a local notification so the user still sees something
+    if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+      navigator.serviceWorker.controller.postMessage({ type: 'TEST_NOTIFICATION' })
+    } else {
+      sendNativeNotification('ArthaLedger', { body: 'Notifications are working on this device.' })
+    }
+    return { ok: false, sent: 0, message: err?.message || 'Push server unreachable' }
   }
-
-  if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-    navigator.serviceWorker.controller.postMessage({ type: 'TEST_NOTIFICATION' })
-    return
-  }
-  sendNativeNotification('✍️ ArthaLedger Test Notification', {
-    body: "Mobile notifications are working! It's time to enter your today's expenses in ArthaLedger.",
-  })
 }
 
-// Client app-open daily reminder trigger is disabled to strictly rely on scheduled cloud push
+// App-open hook: refreshes this device's push registration
 export function checkAndTriggerDailyReminder() {
-  syncReminderWithServiceWorker()
+  ensurePushRegistration()
 }

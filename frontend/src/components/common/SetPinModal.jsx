@@ -1,274 +1,170 @@
-import { useState, useEffect } from 'react'
-import { ShieldCheck, X, Trash2 } from 'lucide-react'
-import { hashPin, verifyPin, validatePin } from '../../lib/pin'
-import PinInput from './PinInput'
-import PinLengthSelector from './PinLengthSelector'
+import { useState } from 'react'
+import { ShieldCheck, KeyRound, Check, Trash2 } from 'lucide-react'
+import { hashPin, weakPinReason } from '../../lib/pin'
+import PinDialog from './PinDialog'
+import PinPad from './PinPad'
+import PinEntry from './PinEntry'
 
 /**
- * Set / change / remove PIN modal.
+ * Set / change / remove a PIN.
  *
- * Flow when hasPin === true (changing):
- *   Step 1: Verify current PIN
- *   Step 2: Enter new PIN + confirm
- *
- * Flow when hasPin === false (setting):
- *   Enter new PIN + confirm directly
- *
- * PIN rules: exactly 4 or 6 numeric digits.
+ *   New PIN:     choose length → enter → confirm → saved
+ *   Change PIN:  verify current → choose length (or remove) → enter → confirm → saved
  *
  * Props:
- *   open, onClose, hasPin, storedHash
- *   onSet(hash) — save new hash to Firebase
- *   onRemove()  — remove PIN from Firebase
+ *   open, onClose
+ *   hasPin, storedHash, pinLength   current PIN info (length may be unknown for older PINs)
+ *   guardId                         id for wrong-attempt tracking
+ *   itemName                        shown in copy
+ *   onSet(hash, length)             persist the new PIN
+ *   onRemove()                      remove the PIN
  */
-export default function SetPinModal({ open, onClose, hasPin, storedHash, onSet, onRemove }) {
-  const [step, setStep] = useState('verify')  // 'verify' | 'set'
-  const [currentPin, setCurrentPin] = useState('')
-  const [currentPinLength, setCurrentPinLength] = useState(4)
-  const [newPin, setNewPin] = useState('')
-  const [confirmPin, setConfirmPin] = useState('')
-  const [pinLength, setPinLength] = useState(4)
+export default function SetPinModal(props) {
+  if (!props.open) return null
+  return <SetPinFlow {...props} />
+}
+
+function SetPinFlow({ onClose, hasPin, storedHash, pinLength, guardId, itemName, onSet, onRemove }) {
+  const [step, setStep] = useState(hasPin ? 'verify' : 'choose') // verify | choose | create | confirm | done
+  const [length, setLength] = useState(6)
+  const [first, setFirst] = useState('')
+  const [pin, setPin] = useState('')
+  const [shake, setShake] = useState(0)
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
+  const [currentPin, setCurrentPin] = useState('')
 
-  useEffect(() => {
-    if (open) {
-      setStep(hasPin ? 'verify' : 'set')
-      setCurrentPin('')
-      setCurrentPinLength(4)
-      setNewPin('')
-      setConfirmPin('')
-      setPinLength(4)
-      setError('')
-    }
-  }, [open, hasPin])
+  const fail = (msg) => { setError(msg); setShake((n) => n + 1); setPin('') }
 
-  if (!open) return null
+  const handleCreate = (value) => {
+    const weak = weakPinReason(value)
+    if (weak) { fail(weak); return }
+    if (hasPin && value === currentPin) { fail('Choose a PIN different from your current one.'); return }
+    setFirst(value)
+    setPin('')
+    setError('')
+    setStep('confirm')
+  }
 
-  // ── Step 1: Verify current PIN ─────────────────────────────────────────────
-  const handleVerify = async (pinValue) => {
-    const pinToVerify = typeof pinValue === 'string' ? pinValue : currentPin
-    const validation = validatePin(pinToVerify)
-    if (!validation.valid) {
-      setError('Incorrect PIN.')
+  const handleConfirm = async (value) => {
+    if (value !== first) {
+      setFirst('')
+      setStep('create')
+      fail("PINs didn't match. Enter a new PIN again.")
       return
     }
     setSaving(true)
-    setError('')
     try {
-      const ok = await verifyPin(pinToVerify, storedHash)
-      if (ok) {
-        setStep('set')
-        setCurrentPin('')
-        setError('')
-      } else {
-        setError('Incorrect PIN. Please try again.')
-        setCurrentPin('')
-      }
+      const hash = await hashPin(value)
+      await onSet(hash, length)
+      setStep('done')
+      setTimeout(onClose, 900)
     } catch {
-      setError('Verification failed. Please try again.')
+      fail('Could not save the PIN. Please try again.')
     } finally {
       setSaving(false)
     }
   }
 
-  // Auto-submit verify when all digits entered
-  const handleCurrentPinChange = (val) => {
-    setCurrentPin(val)
-    setError('')
-    if (val.length === currentPinLength && !saving) {
-      handleVerify(val)
-    }
-  }
-
-  // ── Step 2: Set new PIN ────────────────────────────────────────────────────
-  const handleSet = async (e) => {
-    e.preventDefault()
-    setError('')
-
-    const validation = validatePin(newPin)
-    if (!validation.valid) {
-      setError(validation.error)
-      return
-    }
-
-    if (newPin !== confirmPin) { setError('PINs do not match.'); return }
-    if (hasPin && newPin === currentPin) { setError('New PIN must be different from the current one.'); return }
-    setSaving(true)
-    try {
-      const hash = await hashPin(newPin)
-      await onSet(hash)
-      onClose()
-    } catch {
-      setError('Failed to save PIN. Please try again.')
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  // ── Remove PIN ─────────────────────────────────────────────────────────────
   const handleRemove = async () => {
     setSaving(true)
     try {
       await onRemove()
       onClose()
+    } catch {
+      setError('Could not remove the PIN. Please try again.')
     } finally {
       setSaving(false)
     }
   }
 
-  // Strength indicator for numeric PINs
-  const pinStrength = pinLength === 6 ? 'strong' : 'weak'
+  const name = itemName ? `"${itemName}"` : 'this item'
 
-  return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-xs rounded-3xl bg-white p-6 shadow-2xl">
-        <button onClick={onClose}
-          className="absolute right-4 top-4 rounded-xl p-1.5 text-stone-400 hover:bg-stone-100 transition-colors">
-          <X size={15} />
-        </button>
+  if (step === 'verify') {
+    return (
+      <PinDialog icon={KeyRound} title="Enter current PIN" subtitle={`Confirm it's you before changing the PIN for ${name}.`} onClose={onClose}>
+        <PinEntry
+          guardId={guardId}
+          storedHash={storedHash}
+          length={pinLength}
+          onSuccess={(value) => { setCurrentPin(value); setStep('choose') }}
+        />
+      </PinDialog>
+    )
+  }
 
-        <div className="flex flex-col items-center text-center gap-3 mb-5">
-          <div className="rounded-2xl bg-amber-100 p-4">
-            <ShieldCheck size={24} className="text-amber-700" />
-          </div>
-          <div>
-            <h3 className="font-serif text-lg font-semibold text-stone-800">
-              {!hasPin ? 'Set PIN Lock' : step === 'verify' ? 'Verify Current PIN' : 'Set New PIN'}
-            </h3>
-            <p className="mt-1 text-xs text-stone-400">
-              {!hasPin
-                ? 'Protect this book with a 4 or 6 digit PIN'
-                : step === 'verify'
-                  ? 'Enter your current PIN to continue'
-                  : 'Choose a new PIN for this book'
-              }
-            </p>
-          </div>
-        </div>
-
-        {/* ── Verify current PIN (only when changing) ── */}
-        {hasPin && step === 'verify' ? (
-          <form onSubmit={e => { e.preventDefault(); handleVerify(currentPin) }} className="space-y-4" autoComplete="off">
-            <input type="text" name="username" style={{ display: 'none' }} readOnly tabIndex={-1} />
-            <input type="text" name="fakepassword" style={{ display: 'none' }} readOnly tabIndex={-1} />
-
-            <div className="space-y-2">
-              <label className="block text-[11px] font-medium text-stone-500 text-center">
-                Current PIN length
-              </label>
-              <PinLengthSelector value={currentPinLength} onChange={(len) => {
-                setCurrentPinLength(len)
-                setCurrentPin('')
-                setError('')
-              }} />
-            </div>
-
-            <div className="space-y-2">
-              <label className="block text-[11px] font-medium text-stone-500 text-center">
-                Current PIN
-              </label>
-              <PinInput
-                length={currentPinLength}
-                value={currentPin}
-                onChange={handleCurrentPinChange}
-                autoFocus
-              />
-            </div>
-
-            {error && (
-              <p className="rounded-xl bg-red-50 border border-red-100 px-3 py-2 text-xs text-red-600 text-center">{error}</p>
-            )}
-
-            <button type="submit" disabled={saving || currentPin.length < currentPinLength}
-              className="w-full rounded-xl bg-amber-600 py-2.5 text-sm font-semibold text-white hover:bg-amber-700 transition-colors disabled:opacity-60">
-              {saving ? 'Verifying...' : 'Continue'}
-            </button>
-          </form>
-        ) : (
-          <form onSubmit={handleSet} className="space-y-4" autoComplete="off">
-            <input type="text" name="username" style={{ display: 'none' }} readOnly tabIndex={-1} />
-            <input type="text" name="fakepassword" style={{ display: 'none' }} readOnly tabIndex={-1} />
-
-            {/* PIN length selector */}
-            <div className="space-y-2">
-              <label className="block text-[11px] font-medium text-stone-500 text-center">
-                PIN length
-              </label>
-              <PinLengthSelector value={pinLength} onChange={(len) => {
-                setPinLength(len)
-                setNewPin('')
-                setConfirmPin('')
-                setError('')
-              }} />
-            </div>
-
-            <div className="space-y-2">
-              <label className="block text-[11px] font-medium text-stone-500 text-center">
-                New PIN
-              </label>
-              <PinInput
-                length={pinLength}
-                value={newPin}
-                onChange={val => { setNewPin(val); setError('') }}
-                autoFocus
-              />
-            </div>
-
-            <div className="space-y-2">
-              <label className="block text-[11px] font-medium text-stone-500 text-center">
-                Confirm PIN
-              </label>
-              <PinInput
-                length={pinLength}
-                value={confirmPin}
-                onChange={val => { setConfirmPin(val); setError('') }}
-              />
-            </div>
-
-            {/* Strength indicator */}
-            {newPin.length > 0 && (
-              <div className="space-y-1">
-                <div className="h-1 w-full rounded-full bg-stone-100 overflow-hidden">
-                  <div
-                    className={`h-full rounded-full transition-all ${
-                      pinStrength === 'strong' ? 'bg-emerald-500 w-full' : 'bg-yellow-400 w-1/2'
-                    }`}
-                  />
-                </div>
-                <p className={`text-[10px] text-center ${pinStrength === 'strong' ? 'text-emerald-600' : 'text-yellow-600'}`}>
-                  {pinStrength === 'strong' ? '6-digit PIN — stronger' : '4-digit PIN — consider 6 digits for more security'}
-                </p>
-              </div>
-            )}
-
-            {error && (
-              <p className="rounded-xl bg-red-50 border border-red-100 px-3 py-2 text-xs text-red-600 text-center">{error}</p>
-            )}
-
-            <button type="submit" disabled={saving || newPin.length < pinLength || confirmPin.length < pinLength}
-              className="w-full rounded-xl bg-amber-600 py-2.5 text-sm font-semibold text-white hover:bg-amber-700 transition-colors disabled:opacity-60">
-              {saving ? 'Saving...' : hasPin ? 'Update PIN' : 'Set PIN'}
-            </button>
-
-            {hasPin && (
-              <>
-                <button type="button" onClick={() => { setStep('verify'); setNewPin(''); setConfirmPin(''); setError('') }}
-                  className="w-full text-xs text-stone-400 hover:text-stone-600 transition-colors py-1">
-                  ← Back
-                </button>
-
-                <button type="button" onClick={handleRemove} disabled={saving}
-                  className="w-full flex items-center justify-center gap-2 rounded-xl border border-red-100 bg-red-50 px-4 py-2 text-xs text-red-600 hover:bg-red-100 transition-colors disabled:opacity-60 mt-2">
-                  <Trash2 size={12} />
-                  Remove PIN
-                </button>
-              </>
-            )}
-          </form>
+  if (step === 'choose') {
+    const options = [
+      { n: 4, title: '4-digit PIN', hint: 'Quicker to enter' },
+      { n: 6, title: '6-digit PIN', hint: 'Recommended · 100× harder to guess', recommended: true },
+    ]
+    return (
+      <PinDialog
+        icon={ShieldCheck}
+        title={hasPin ? 'Choose a new PIN' : 'Set a PIN lock'}
+        subtitle={`Pick how many digits you want for ${name}.`}
+        onClose={onClose}
+        footer={hasPin && (
+          <button type="button" onClick={handleRemove} disabled={saving}
+            className="flex w-full items-center justify-center gap-1.5 rounded-xl py-2.5 text-xs font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-500/10 disabled:opacity-50 transition-colors cursor-pointer">
+            <Trash2 size={13} /> {saving ? 'Removing…' : 'Remove PIN lock'}
+          </button>
         )}
+      >
+        <div className="space-y-2.5">
+          {options.map((o) => (
+            <button key={o.n} type="button"
+              onClick={() => { setLength(o.n); setPin(''); setFirst(''); setError(''); setStep('create') }}
+              className="flex w-full items-center gap-4 rounded-2xl border border-[var(--border-card)] bg-[var(--bg-card)] px-4 py-3.5 text-left hover:border-[var(--gold-primary)] transition-colors cursor-pointer">
+              <span className="flex gap-1">
+                {Array.from({ length: o.n }).map((_, i) => (
+                  <span key={i} className="h-2 w-2 rounded-full bg-[var(--gold-primary)]" />
+                ))}
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-[13px] font-semibold text-[var(--text-main)]">{o.title}</span>
+                <span className="block text-[11px] text-[var(--text-subtle)]">{o.hint}</span>
+              </span>
+              {o.recommended && (
+                <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 dark:text-emerald-400">Best</span>
+              )}
+            </button>
+          ))}
+        </div>
+        {error && <p className="mt-3 text-center text-xs text-rose-600 dark:text-rose-400">{error}</p>}
+      </PinDialog>
+    )
+  }
+
+  if (step === 'done') {
+    return (
+      <PinDialog icon={Check} iconTone="success" title="PIN saved" subtitle={`${name} now needs your ${length}-digit PIN to open.`} />
+    )
+  }
+
+  const isConfirm = step === 'confirm'
+  return (
+    <PinDialog
+      icon={ShieldCheck}
+      title={isConfirm ? 'Confirm your PIN' : `Create a ${length}-digit PIN`}
+      subtitle={isConfirm ? 'Enter the same PIN again.' : 'Avoid easy picks like 1234 or birthdays.'}
+      onClose={onClose}
+      onBack={() => { setPin(''); setError(''); if (isConfirm) { setFirst(''); setStep('create') } else setStep('choose') }}
+    >
+      <PinPad
+        length={length}
+        value={pin}
+        onChange={(v) => { setPin(v); if (error) setError('') }}
+        onComplete={isConfirm ? handleConfirm : handleCreate}
+        disabled={saving}
+        shakeKey={shake}
+      />
+      <div className="mt-3 min-h-[36px] text-center" aria-live="polite">
+        {error
+          ? <p className="text-xs font-medium text-rose-600 dark:text-rose-400">{error}</p>
+          : saving ? <p className="text-xs text-[var(--text-subtle)]">Saving…</p>
+            : <p className="text-[11px] text-[var(--text-subtle)]">Step {isConfirm ? 2 : 1} of 2</p>}
       </div>
-    </div>
+    </PinDialog>
   )
 }

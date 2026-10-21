@@ -1,223 +1,144 @@
-const CACHE_NAME = 'cashbook-v7'
-const APP_SHELL = ['/', '/index.html', '/manifest.json']
+/* ArthaLedger service worker — one worker for offline caching AND push.
+ *
+ * Push messages are sent by the backend as FCM *data-only* web pushes, so this
+ * worker is woken by the browser even when the app is closed / swiped away
+ * from recents, and it shows the notification itself.
+ */
+importScripts('https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js')
+importScripts('https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging-compat.js')
 
-let reminderState = {
-  enabled: false,
-  time: '19:00',
-  lastSentDate: '',
+const CACHE_NAME = 'arthaledger-v8'
+const APP_SHELL = ['/', '/index.html', '/manifest.json', '/icons/icon-192.png', '/icons/icon-512.png']
+
+firebase.initializeApp({
+  apiKey: 'AIzaSyCMig9-P-BCxmSx5atatrvDOQLKxniRHqQ',
+  authDomain: 'cashbook-7087b.firebaseapp.com',
+  databaseURL: 'https://cashbook-7087b-default-rtdb.firebaseio.com',
+  projectId: 'cashbook-7087b',
+  storageBucket: 'cashbook-7087b.firebasestorage.app',
+  messagingSenderId: '920317817844',
+  appId: '1:920317817844:web:e82fbac1961961f9d0bfa1',
+})
+
+const messaging = firebase.messaging()
+
+function showAppNotification(title, { body, url = '/dashboard', tag, renotify = true } = {}) {
+  return self.registration.showNotification(title || 'ArthaLedger', {
+    body: body || '',
+    icon: '/icons/icon-192.png',
+    badge: '/icons/badge-96.png',
+    vibrate: [200, 100, 200],
+    tag: tag || undefined,
+    renotify: Boolean(tag) && renotify,
+    data: { url },
+  })
 }
 
-let reminderTimer = null
+// Background pushes (app closed, in background, or not in recents)
+messaging.onBackgroundMessage((payload) => {
+  // If the message carries a `notification` block the FCM SDK already shows it;
+  // showing it again would duplicate. Our backend sends data-only messages.
+  if (payload.notification) return
+  const d = payload.data || {}
+  return showAppNotification(d.title, { body: d.body, url: d.url, tag: d.tag })
+})
 
-function parseTime24SW(timeStr) {
-  if (!timeStr) return { hour: 19, minute: 0 }
-  const str = String(timeStr).trim().toUpperCase()
-  const isPM = str.includes('PM')
-  const isAM = str.includes('AM')
-  const cleanStr = str.replace(/AM|PM/g, '').trim()
-  const parts = cleanStr.split(':').map((n) => parseInt(n, 10) || 0)
-  let hour = parts[0] || 0
-  const minute = parts[1] || 0
-  if (isPM && hour < 12) hour += 12
-  if (isAM && hour === 12) hour = 0
-  return { hour, minute }
-}
-
-async function saveReminderState(state) {
-  try {
-    const cache = await caches.open('arthaledger-config')
-    await cache.put('/reminder-config', new Response(JSON.stringify(state)))
-  } catch (e) {
-    console.error('Failed to save reminder state:', e)
-  }
-}
-
-async function loadReminderState() {
-  try {
-    const cache = await caches.open('arthaledger-config')
-    const response = await cache.match('/reminder-config')
-    if (response) {
-      const data = await response.json()
-      reminderState = { ...reminderState, ...data }
-      scheduleExactReminderTimer()
-    }
-  } catch (e) {
-    console.error('Failed to load reminder state:', e)
-  }
-}
-
+// ── Lifecycle ───────────────────────────────────────────────────────────────
 self.addEventListener('install', (event) => {
-  event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL)))
-  self.skipWaiting()
+  event.waitUntil(
+    caches.open(CACHE_NAME)
+      .then((cache) => cache.addAll(APP_SHELL).catch(() => cache.addAll(['/', '/index.html'])))
+      .then(() => self.skipWaiting()),
+  )
 })
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    Promise.all([
-      caches.keys().then((keys) => Promise.all(keys.filter((k) => k !== CACHE_NAME && k !== 'arthaledger-config').map((k) => caches.delete(k)))),
-      loadReminderState(),
-    ])
+    caches.keys()
+      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k))))
+      .then(() => self.clients.claim()),
   )
-  self.clients.claim()
 })
 
-// ── Message Listener from Client App ──────────────────────────────────────
+// Local test notification (used when the server can't be reached)
 self.addEventListener('message', (event) => {
-  if (!event.data) return
-
-  if (event.data.type === 'SET_DAILY_REMINDER') {
-    reminderState.enabled = Boolean(event.data.enabled)
-    if (event.data.time) {
-      if (reminderState.time !== event.data.time) {
-        reminderState.lastSentDate = ''
-      }
-      reminderState.time = event.data.time
-    }
-    saveReminderState(reminderState)
-    scheduleExactReminderTimer()
-    checkBackgroundDailyReminder()
-  } else if (event.data.type === 'CHECK_REMINDER') {
-    loadReminderState().then(() => {
-      scheduleExactReminderTimer()
-      checkBackgroundDailyReminder()
-    })
-  } else if (event.data.type === 'TEST_NOTIFICATION') {
-    self.registration.showNotification('✍️ ArthaLedger Test Notification', {
-      body: "Mobile notifications are working! It's time to enter your today's expenses in ArthaLedger.",
-      icon: '/L.png',
-      badge: '/L.png',
-      vibrate: [100, 50, 100],
+  if (event.data?.type === 'TEST_NOTIFICATION') {
+    event.waitUntil(showAppNotification('ArthaLedger', {
+      body: 'Notifications are working on this device.',
       tag: 'test-notification',
-      data: { url: '/dashboard' },
-    })
+    }))
   }
 })
 
-// ── Schedule Millisecond Precision Alarm for Target Time ──────────────────
-function scheduleExactReminderTimer() {
-  if (reminderTimer) clearTimeout(reminderTimer)
-  if (!reminderState.enabled || !reminderState.time) return
-
-  const now = new Date()
-  const { hour: h, minute: m } = parseTime24SW(reminderState.time)
-  let target = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, m, 0)
-
-  if (target <= now) {
-    target.setDate(target.getDate() + 1)
-  }
-
-  const msUntilTarget = target.getTime() - now.getTime()
-  reminderTimer = setTimeout(() => {
-    triggerDailyNotification()
-    scheduleExactReminderTimer()
-  }, msUntilTarget)
-}
-
-function triggerDailyNotification() {
-  if (!reminderState.enabled) return
-
-  const now = new Date()
-  const todayStr = `${now.getFullYear()}-${now.getMonth() + 1}-${now.getDate()}`
-  if (reminderState.lastSentDate === todayStr) return
-
-  reminderState.lastSentDate = todayStr
-  saveReminderState(reminderState)
-
-  self.registration.showNotification('✍️ Daily Expense Reminder', {
-    body: "It's time to enter your today's expenses in ArthaLedger.",
-    icon: '/L.png',
-    badge: '/L.png',
-    vibrate: [200, 100, 200],
-    tag: 'daily-expense-reminder',
-    data: { url: '/dashboard' },
-  })
-}
-
-// ── Resilient Time-Window Check (Within 30 minutes of target time) ─────────
-function checkBackgroundDailyReminder() {
-  if (!reminderState.enabled || !reminderState.time) return
-
-  const now = new Date()
-  const { hour: targetHour, minute: targetMinute } = parseTime24SW(reminderState.time)
-  const currentTotal = now.getHours() * 60 + now.getMinutes()
-  const targetTotal = targetHour * 60 + targetMinute
-
-  const diffMinutes = currentTotal - targetTotal
-  if (diffMinutes < 0 || diffMinutes > 30) return
-
-  const todayStr = `${now.getFullYear()}-${now.getMonth() + 1}-${now.getDate()}`
-  if (reminderState.lastSentDate === todayStr) return
-
-  triggerDailyNotification()
-}
-
-// ── Notification Click Handler ─────────────────────────────────────────────
+// ── Notification tap → focus the app (or open it) on the right page ────────
 self.addEventListener('notificationclick', (event) => {
   event.notification.close()
-  const targetUrl = event.notification.data?.url || '/'
+  const targetUrl = new URL(event.notification.data?.url || '/dashboard', self.location.origin).href
 
-  event.waitUntil(
-    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
-      for (const client of clientList) {
-        if (client.url.includes(targetUrl) && 'focus' in client) {
-          return client.focus()
+  event.waitUntil((async () => {
+    const clientList = await self.clients.matchAll({ type: 'window', includeUncontrolled: true })
+    for (const client of clientList) {
+      if (new URL(client.url).origin === self.location.origin && 'focus' in client) {
+        await client.focus()
+        if ('navigate' in client && client.url !== targetUrl) {
+          try { await client.navigate(targetUrl) } catch { /* cross-origin or not controlled */ }
         }
+        return
       }
-      if (self.clients.openWindow) {
-        return self.clients.openWindow(targetUrl)
-      }
-    })
-  )
+    }
+    if (self.clients.openWindow) await self.clients.openWindow(targetUrl)
+  })())
 })
 
+// ── Offline caching ─────────────────────────────────────────────────────────
 self.addEventListener('fetch', (event) => {
-  if (event.request.method !== 'GET') return
-  const url = new URL(event.request.url)
-
-  if (url.hostname === 'localhost' || url.hostname === '127.0.0.1') return
+  const { request } = event
+  if (request.method !== 'GET') return
+  const url = new URL(request.url)
   if (!url.protocol.startsWith('http')) return
+  if (url.hostname === 'localhost' || url.hostname === '127.0.0.1') return
+  // Only handle our own origin; Firebase, APIs and fonts go straight to the network
+  if (url.origin !== self.location.origin) return
 
-  if (
-    url.hostname.includes('firebaseio.com') ||
-    url.hostname.includes('googleapis.com') ||
-    url.hostname.includes('firebaseapp.com') ||
-    url.hostname.includes('identitytoolkit.googleapis.com')
-  ) return
-
-  if (event.request.mode === 'navigate') {
+  // Pages: network first, fall back to the cached app shell (works offline)
+  if (request.mode === 'navigate') {
     event.respondWith(
-      fetch(event.request)
+      fetch(request)
         .then((response) => {
           const clone = response.clone()
-          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone))
+          caches.open(CACHE_NAME).then((cache) => cache.put('/index.html', clone))
           return response
         })
-        .catch(() => caches.match('/index.html')),
+        .catch(() => caches.match('/index.html').then((r) => r || caches.match('/'))),
     )
     return
   }
 
+  // Hashed build assets never change: cache first
   if (url.pathname.startsWith('/assets/')) {
     event.respondWith(
-      caches.match(event.request).then((cached) => {
-        if (cached) return cached
-        return fetch(event.request).then((response) => {
+      caches.match(request).then((cached) => cached || fetch(request).then((response) => {
+        if (response.ok) {
           const clone = response.clone()
-          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone))
-          return response
-        })
-      }),
+          caches.open(CACHE_NAME).then((cache) => cache.put(request, clone))
+        }
+        return response
+      })),
     )
     return
   }
 
+  // Everything else on our origin: stale-while-revalidate
   event.respondWith(
-    fetch(event.request)
-      .then((response) => {
-        const clone = response.clone()
-        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone))
+    caches.match(request).then((cached) => {
+      const network = fetch(request).then((response) => {
+        if (response.ok) {
+          const clone = response.clone()
+          caches.open(CACHE_NAME).then((cache) => cache.put(request, clone))
+        }
         return response
-      })
-      .catch(() => caches.match(event.request)),
+      }).catch(() => cached)
+      return cached || network
+    }),
   )
 })
