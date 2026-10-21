@@ -7,7 +7,9 @@
 importScripts('https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js')
 importScripts('https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging-compat.js')
 
-const CACHE_NAME = 'arthaledger-v8'
+// __BUILD_ID__ is replaced at build time, so every deploy ships a changed
+// worker: the browser installs it and old caches are dropped.
+const CACHE_NAME = 'arthaledger-__BUILD_ID__'
 const APP_SHELL = ['/', '/index.html', '/manifest.json', '/icons/icon-192.png', '/icons/icon-512.png']
 
 firebase.initializeApp({
@@ -99,11 +101,13 @@ self.addEventListener('fetch', (event) => {
   if (url.hostname === 'localhost' || url.hostname === '127.0.0.1') return
   // Only handle our own origin; Firebase, APIs and fonts go straight to the network
   if (url.origin !== self.location.origin) return
+  if (url.pathname === '/version.json') return
 
   // Pages: network first, fall back to the cached app shell (works offline)
   if (request.mode === 'navigate') {
     event.respondWith(
-      fetch(request)
+      // no-store: always get the newest index.html (and so the newest build)
+      fetch(request.url, { cache: 'no-store', credentials: 'same-origin' })
         .then((response) => {
           const clone = response.clone()
           caches.open(CACHE_NAME).then((cache) => cache.put('/index.html', clone))

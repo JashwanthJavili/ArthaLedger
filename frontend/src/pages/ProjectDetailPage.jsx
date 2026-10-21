@@ -11,8 +11,7 @@ import LayoutShell from '../components/LayoutShell'
 import PageSkeleton from '../components/common/PageSkeleton'
 import BookModal from '../components/forms/BookModal'
 import TransferModal from '../components/forms/TransferModal'
-import ConfirmDialog from '../components/common/ConfirmDialog'
-import PinVerificationModal from '../components/common/PinVerificationModal'
+import DeleteDialog from '../components/common/DeleteDialog'
 import PinModal from '../components/common/PinModal'
 import SetPinModal from '../components/common/SetPinModal'
 import Toast from '../components/common/Toast'
@@ -92,7 +91,7 @@ export default function ProjectDetailPage() {
     error,
     projects, booksByProject, entriesByBook,
     createBook, updateBook, deleteBook,
-    deleteProject, deleteProjectWithPin,
+    deleteProject,
     setPinForBook, setPinForProject,
     transferBetweenBooks,
   } = useAppData()
@@ -483,7 +482,7 @@ export default function ProjectDetailPage() {
                         book={book}
                         onEdit={() => { setEditingBook(book); setModalOpen(true) }}
                         onDelete={() => setDeleteTarget(book)}
-                        onDeleteBlocked={() => setPinForDeleteTarget(book)}
+                        onDeleteBlocked={() => setDeleteTarget(book)}
                       />
                     </div>
                   </motion.div>
@@ -520,54 +519,43 @@ export default function ProjectDetailPage() {
         }}
       />
 
-      {/* ── Delete book confirm (only shown after PIN verified or no PIN) ── */}
-      <ConfirmDialog
+      {/* ── Delete book ── */}
+      <DeleteDialog
         open={Boolean(deleteTarget)}
         onClose={() => setDeleteTarget(null)}
+        kind="book"
+        name={deleteTarget?.name}
+        stats={deleteTarget ? [
+          { label: 'Transactions', value: String((entriesByBook[deleteTarget.id] || []).length) },
+          { label: 'Balance', value: `${bookStats(deleteTarget).balance < 0 ? "−" : ""}${symbol}${formatAmount(Math.abs(bookStats(deleteTarget).balance))}` },
+        ] : []}
+        pin={deleteTarget?.pinHash && !isUnlocked(deleteTarget.id, deleteTarget.pinHash)
+          ? { storedHash: deleteTarget.pinHash, length: deleteTarget.pinLength, guardId: deleteTarget.id }
+          : null}
         onConfirm={async () => {
           await deleteBook(projectId, deleteTarget.id)
           showToast('Book deleted', 'info')
         }}
-        title="Delete Book?"
-        message={`"${deleteTarget?.name}" and all its entries will be permanently deleted. This cannot be undone.`}
-        danger
       />
 
-      {/* ── Delete project confirm (only if no locked books) ── */}
-      <ConfirmDialog
-        open={deleteProjectConfirm}
-        onClose={() => setDeleteProjectConfirm(false)}
+      {/* ── Delete project (PIN asked first when the project or a book is locked) ── */}
+      <DeleteDialog
+        open={deleteProjectConfirm || verifyProjectPinForDelete}
+        onClose={() => { setDeleteProjectConfirm(false); setVerifyProjectPinForDelete(false) }}
+        kind="project"
+        name={project?.name}
+        stats={[
+          { label: books.length === 1 ? 'Book' : 'Books', value: String(books.length) },
+          { label: 'Transactions', value: String(books.reduce((n, b) => n + (entriesByBook[b.id] || []).length, 0)) },
+        ]}
+        note="All books and transactions in this project are removed for good."
+        pin={verifyProjectPinForDelete && deletePinSource?.pinHash
+          ? { storedHash: deletePinSource.pinHash, length: deletePinSource.pinLength, guardId: deletePinSource.id }
+          : null}
         onConfirm={async () => {
-          try {
-            await deleteProject(projectId)
-            navigate('/dashboard')
-            showToast('Project deleted', 'info')
-          } catch (err) {
-            showToast(err.message || 'Failed to delete project', 'error')
-          }
-        }}
-        title="Delete Entire Project?"
-        message={`"${project.name}" and ALL its books and entries will be permanently deleted. This action is irreversible.`}
-        danger
-      />
-
-      {/* ── PIN verification for project deletion ── */}
-      <PinVerificationModal
-        open={verifyProjectPinForDelete}
-        onClose={() => setVerifyProjectPinForDelete(false)}
-        storedHash={deletePinSource?.pinHash || ''}
-        pinLength={deletePinSource?.pinLength}
-        guardId={deletePinSource?.id}
-        itemType="project"
-        itemName={project?.name}
-        onVerified={async (pin) => {
-          try {
-            await deleteProjectWithPin(projectId, pin)
-            navigate('/dashboard')
-            showToast('Project deleted', 'info')
-          } catch (err) {
-            showToast(err.message || 'Failed to delete project', 'error')
-          }
+          await deleteProject(projectId)
+          navigate('/dashboard')
+          showToast('Project deleted', 'info')
         }}
       />
 

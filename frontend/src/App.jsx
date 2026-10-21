@@ -1,4 +1,5 @@
-import { Navigate, Route, Routes } from 'react-router-dom'
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
+import { applyUpdateIfReady } from './lib/appUpdate'
 import { useState, useEffect } from 'react'
 import { AuthProvider } from './context/AuthContext'
 import { AppDataProvider } from './context/AppDataContext'
@@ -40,6 +41,13 @@ function HomeRoute() {
 
 // Once signed in: pull reminder settings and (re)register this device for
 // push, so reminders reach it even when the app is closed.
+// A newer build found in the background is applied on the next page change
+function UpdateOnNavigate() {
+  const { pathname } = useLocation()
+  useEffect(() => { applyUpdateIfReady() }, [pathname])
+  return null
+}
+
 function PushSync() {
   const { user } = useAuth()
   useEffect(() => {
@@ -94,6 +102,7 @@ export default function App() {
   return (
     <AuthProvider>
       <PushSync />
+      <UpdateOnNavigate />
       <AppDataProvider>
         {!splashDone && <SplashScreen onDone={handleSplashDone} />}
         <Routes>

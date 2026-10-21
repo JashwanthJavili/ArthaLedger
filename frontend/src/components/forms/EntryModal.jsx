@@ -147,6 +147,21 @@ export default function EntryModal({
 
   const availableSubcats = selectedCatObj?.subcategories || []
 
+  // Phone back button / back gesture closes this page instead of leaving the book
+  const onCloseRef = useRef(onClose)
+  useEffect(() => { onCloseRef.current = onClose }, [onClose])
+  useEffect(() => {
+    if (!open) return
+    window.history.pushState({ ...(window.history.state || {}), entryPage: true }, '')
+    // Still on one of our own history entries (dev double-mount): ignore
+    const onPop = () => { if (!window.history.state?.entryPage) onCloseRef.current?.() }
+    window.addEventListener('popstate', onPop)
+    return () => {
+      window.removeEventListener('popstate', onPop)
+      if (window.history.state?.entryPage) window.history.back()
+    }
+  }, [open])
+
   if (!open) return null
 
   const symbol   = currencyMap[localStorage.getItem('sl_currency') || 'INR'] || '₹'
@@ -329,11 +344,10 @@ export default function EntryModal({
       }
       if (!isIncome && budgetHint && budgetHint.pctAfter >= 80) {
         triggerBudgetAlertNotification({
-          category,
-          pct: budgetHint.pctAfter,
+          categoryName: category,
+          percentage: budgetHint.pctAfter,
           spent: budgetHint.totalAfter,
-          soft: budgetHint.softLimit,
-          symbol,
+          limit: budgetHint.softLimit,
         })
       }
       onClose()
@@ -398,6 +412,14 @@ export default function EntryModal({
   }
 
   const handleDescKeyDown = (e) => {
+    // Keyboard "Done" with nothing highlighted: close the keyboard so the
+    // categories below are reachable, instead of submitting the form.
+    if (e.key === 'Enter' && !e.ctrlKey && !e.metaKey && !(showSuggestions && activeSugg >= 0)) {
+      e.preventDefault()
+      setDescFocused(false)
+      e.currentTarget.blur()
+      return
+    }
     if (!showSuggestions) return
     if (e.key === 'ArrowDown') {
       e.preventDefault()
@@ -434,32 +456,26 @@ export default function EntryModal({
   }
 
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
-      <motion.div
-        initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.18 }}
-        className="absolute inset-0 bg-black/55 backdrop-blur-[3px]" onClick={onClose}
-      />
-
-      <motion.div
-        initial={{ y: 56, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ y: { duration: 0.32, ease: [0.16, 1, 0.3, 1] }, opacity: { duration: 0.12 } }}
-        className="relative w-full sm:max-w-[460px] will-change-transform"
-      >
-        {/* Floating close button */}
-        <button
-          type="button" onClick={onClose} aria-label="Close"
-          className="absolute left-1/2 -top-[60px] -translate-x-1/2 flex h-11 w-11 items-center justify-center rounded-full border border-white/20 bg-[var(--bg-page)] text-[var(--text-main)] shadow-[0_8px_24px_rgba(0,0,0,0.3)] hover:scale-105 active:scale-95 transition-transform cursor-pointer"
-        >
-          <X size={20} />
-        </button>
-
-        <div
-          className="sm:rounded-3xl rounded-t-3xl bg-[var(--bg-page)] border border-[var(--border-card)] shadow-[0_30px_80px_-20px_rgba(0,0,0,0.45)] flex flex-col overflow-hidden"
-          style={{ maxHeight: 'calc(94vh - 72px)' }}
-        >
-        {/* Cash In / Cash Out switch */}
-        <div className="flex-shrink-0 px-5 pt-5">
+    <motion.div
+      role="dialog"
+      aria-modal="true"
+      aria-label={initial ? 'Edit transaction' : 'New transaction'}
+      initial={{ x: '8%', opacity: 0 }}
+      animate={{ x: 0, opacity: 1 }}
+      transition={{ x: { duration: 0.32, ease: [0.16, 1, 0.3, 1] }, opacity: { duration: 0.16 } }}
+      className="fixed inset-0 z-50 flex flex-col bg-[var(--bg-page)] will-change-transform"
+      style={{ paddingTop: 'env(safe-area-inset-top)' }}
+    >
+      <div className="mx-auto flex h-full w-full max-w-[560px] flex-col overflow-hidden">
+        {/* Top bar: back + Cash In / Cash Out switch */}
+        <div className="flex flex-shrink-0 items-center gap-3 px-4 pt-3 pb-1">
+          <button
+            type="button" onClick={onClose} aria-label="Back"
+            className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border border-[var(--border-card)] bg-[var(--bg-card)] text-[var(--text-main)] active:scale-95 transition-transform cursor-pointer"
+          >
+            <ChevronLeft size={20} />
+          </button>
+          <div className="min-w-0 flex-1">
           <div role="tablist" aria-label="Entry type" className="relative isolate grid grid-cols-2 rounded-2xl bg-[var(--border-subtle)] p-1">
             {/* Sliding pill — plain x transform, so nothing flies in when the sheet opens */}
             <motion.span
@@ -488,6 +504,7 @@ export default function EntryModal({
                 </button>
               )
             })}
+          </div>
           </div>
         </div>
 
@@ -615,6 +632,7 @@ export default function EntryModal({
                 onFocus={() => setDescFocused(true)}
                 onBlur={() => { setDescFocused(false); setActiveSugg(-1) }}
                 onKeyDown={handleDescKeyDown}
+                enterKeyHint="done"
                 placeholder={isIncome ? 'e.g. Salary, Client payment' : 'e.g. Groceries, Rent'}
                 role="combobox"
                 aria-expanded={showSuggestions}
@@ -930,7 +948,7 @@ export default function EntryModal({
           </div>
 
           {/* Footer */}
-          <div className="flex-shrink-0 px-5 pt-3 pb-5 border-t border-[var(--border-subtle)] bg-[var(--bg-page)]">
+          <div className="flex-shrink-0 px-5 pt-3 border-t border-[var(--border-subtle)] bg-[var(--bg-page)]" style={{ paddingBottom: 'max(1.25rem, env(safe-area-inset-bottom))' }}>
             <button type="submit" disabled={submitting}
                 className={`w-full rounded-2xl py-3.5 text-[13px] font-semibold text-white shadow-lg transition-colors disabled:opacity-60 cursor-pointer ${tone.btn}`}>
                 {submitting
@@ -941,9 +959,8 @@ export default function EntryModal({
               </button>
           </div>
         </form>
-        </div>
-      </motion.div>
-    </div>,
+      </div>
+    </motion.div>,
     document.body,
   )
 }

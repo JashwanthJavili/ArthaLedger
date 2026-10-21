@@ -17,7 +17,7 @@ import CategoryManager from '../components/forms/CategoryManager'
 import FilterSheet from '../components/forms/FilterSheet'
 import { describeDateRange } from '../lib/dateRanges'
 import ConfirmDialog from '../components/common/ConfirmDialog'
-import PinVerificationModal from '../components/common/PinVerificationModal'
+import DeleteDialog from '../components/common/DeleteDialog'
 import SetPinModal from '../components/common/SetPinModal'
 import Toast from '../components/common/Toast'
 import { useAppData } from '../context/AppDataContext'
@@ -176,7 +176,7 @@ export default function BookPage() {
     error,
     projects, booksByProject, entriesByBook, templatesByBook, trips,
     addEntry, deleteEntry, updateCategories, getCategories,
-    updateBook, updateEntry, deleteBook, deleteBookWithPin, setPinForBook, setPinForProject,
+    updateBook, updateEntry, deleteBook, setPinForBook, setPinForProject,
     linkEntriesToTrip, unlinkEntryFromTrip, saveTemplate, deleteTemplate,
     transferBetweenBooks, updateTransfer,
     categories: liveCategories = [],
@@ -212,8 +212,6 @@ export default function BookPage() {
   const [transferOpen, setTransferOpen] = useState(false)
   const [editingTransfer, setEditingTransfer] = useState(null)
   const [deleteBookConfirm, setDeleteBookConfirm] = useState(false)
-  const [verifyPinForDelete, setVerifyPinForDelete] = useState(false)
-  const [deletingBook, setDeletingBook] = useState(false)
   const [setPinOpen, setSetPinOpen] = useState(false)
   const [, refreshLock] = useState(0)
   const [toast, setToast] = useState({ msg: '', type: 'success', visible: false })
@@ -918,37 +916,35 @@ export default function BookPage() {
           setCategories(cats)
           await updateCategories(projectId, bookId, cats)
         }}
-        onSubmit={async (payload) => {
-          try {
-            const { tripId, ...entryData } = payload
-            if (editingEntry) {
-              await updateEntry(projectId, bookId, editingEntry.id, entryData)
-              
-              // Handle Expense Group tagging changes
-              const oldTrip = trips?.find(t => t.entries && t.entries[`${projectId}_${bookId}_${editingEntry.id}`])
-              const oldTripId = oldTrip ? oldTrip.id : ''
-              const newTripId = tripId || ''
-              
-              if (oldTripId !== newTripId) {
-                if (oldTripId) {
-                  await unlinkEntryFromTrip(oldTripId, projectId, bookId, editingEntry.id)
+        onSubmit={(payload) => {
+          // Optimistic: the entry appears instantly (Firebase applies writes
+          // locally first), so the sheet closes right away. The server
+          // confirmation happens in the background; failures show a toast.
+          const { tripId, ...entryData } = payload
+          if (editingEntry) {
+            const entryId = editingEntry.id
+            const oldTrip = trips?.find(t => t.entries && t.entries[`${projectId}_${bookId}_${entryId}`])
+            const oldTripId = oldTrip ? oldTrip.id : ''
+            const newTripId = tripId || ''
+            updateEntry(projectId, bookId, entryId, entryData)
+              .then(async () => {
+                if (oldTripId !== newTripId) {
+                  if (oldTripId) await unlinkEntryFromTrip(oldTripId, projectId, bookId, entryId)
+                  if (newTripId) await linkEntriesToTrip(newTripId, [{ projectId, bookId, entryId }])
                 }
-                if (newTripId) {
-                  await linkEntriesToTrip(newTripId, [{ projectId, bookId, entryId: editingEntry.id }])
-                }
-              }
-              showToast('Entry updated ✓')
-            } else {
-              const newEntryId = await addEntry(projectId, bookId, entryData)
-              
-              // Handle Expense Group tagging
-              if (tripId) {
-                await linkEntriesToTrip(tripId, [{ projectId, bookId, entryId: newEntryId }])
-              }
-              showToast(entryData.type === 'income' ? 'Recorded with gratitude 🙏' : 'Entry noted mindfully 🕊️')
+              })
+              .catch(err => showToast(err?.message || 'Failed to update entry', 'error'))
+            showToast('Entry updated ✓')
+          } else {
+            try {
+              const { id: newEntryId, saved } = addEntry(projectId, bookId, entryData)
+              saved
+                .then(() => (tripId ? linkEntriesToTrip(tripId, [{ projectId, bookId, entryId: newEntryId }]) : null))
+                .catch(err => showToast(err?.message || 'Failed to save entry', 'error'))
+              showToast(entryData.type === 'income' ? 'Cash in recorded ✓' : 'Cash out recorded ✓')
+            } catch (err) {
+              showToast(err?.message || 'Failed to save entry', 'error')
             }
-          } catch (err) {
-            showToast(err?.message || 'Failed to save entry', 'error')
           }
         }}
       />
@@ -969,13 +965,16 @@ export default function BookPage() {
         open={Boolean(deleteEntryTarget)}
         onClose={() => setDeleteEntryTarget(null)}
         onConfirm={async () => {
-          try {
-            await deleteEntry(projectId, bookId, deleteEntryTarget.id)
-            showToast(deleteEntryTarget?.transferId ? 'Transfer deleted from both books' : 'Entry deleted', 'info')
-          } catch (err) {
+          const target = deleteEntryTarget
+          // Validation (e.g. receiving side of a transfer) throws right away;
+          // the write itself finishes in the background.
+          const pending = deleteEntry(projectId, bookId, target.id)
+          await Promise.race([pending, new Promise(r => setTimeout(r, 60))]).catch(err => {
             showToast(err?.message || 'Failed to delete', 'error')
             throw err
-          }
+          })
+          pending.catch(err => showToast(err?.message || 'Failed to delete', 'error'))
+          showToast(target?.transferId ? 'Transfer deleted from both books' : 'Entry deleted', 'info')
         }}
         title={deleteEntryTarget?.transferId ? 'Delete transfer?' : 'Delete entry?'}
         message={deleteEntryTarget?.transferId && deleteEntryTarget?.type === 'transfer_out'
@@ -984,40 +983,21 @@ export default function BookPage() {
         danger
       />
 
-      {/* ── Delete book confirm ── */}
-      <ConfirmDialog
-        open={deleteBookConfirm && !book?.pinHash}
+      {/* ── Delete book (PIN asked first when the book is locked) ── */}
+      <DeleteDialog
+        open={deleteBookConfirm}
         onClose={() => setDeleteBookConfirm(false)}
+        kind="book"
+        name={book.name}
+        stats={[
+          { label: 'Transactions', value: String(entries.length) },
+          { label: 'Balance', value: `${summary.net < 0 ? "−" : ""}${symbol}${formatAmount(Math.abs(summary.net))}` },
+        ]}
+        pin={book?.pinHash ? { storedHash: book.pinHash, length: book.pinLength, guardId: bookId } : null}
         onConfirm={async () => {
           await deleteBook(projectId, bookId)
           navigate(`/projects/${projectId}`)
           showToast('Book deleted', 'info')
-        }}
-        title="Delete Book?"
-        message={`"${book.name}" and all ${entries.length} entries will be permanently deleted. This cannot be undone.`}
-        danger
-      />
-
-      {/* ── PIN verification for deletion ── */}
-      <PinVerificationModal
-        open={deleteBookConfirm && Boolean(book?.pinHash)}
-        onClose={() => setDeleteBookConfirm(false)}
-        storedHash={book?.pinHash}
-        pinLength={book?.pinLength}
-        guardId={bookId}
-        itemType="book"
-        itemName={book?.name}
-        onVerified={async (pin) => {
-          try {
-            setDeletingBook(true)
-            await deleteBookWithPin(projectId, bookId, pin)
-            navigate(`/projects/${projectId}`)
-            showToast('Book deleted', 'info')
-          } catch (err) {
-            showToast(err.message || 'Failed to delete book', 'error')
-          } finally {
-            setDeletingBook(false)
-          }
         }}
       />
 

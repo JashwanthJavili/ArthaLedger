@@ -49,6 +49,38 @@ html.dark {
   -webkit-tap-highlight-color: transparent;
 }
 
+/* Native-app feel: tapping or long-pressing labels must not select text or
+   pop up the Copy / Translate toolbar. Typing fields stay fully selectable. */
+html,
+body,
+#root,
+#root * {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+/* No pull-to-refresh / bounce reload, no double-tap zoom: behave like an app */
+html,
+body {
+  overscroll-behavior: none;
+  touch-action: manipulation;
+}
+img,
+svg {
+  -webkit-user-drag: none;
+}
+input,
+textarea,
+select,
+[contenteditable='true'],
+.selectable,
+.selectable * {
+  -webkit-user-select: text;
+  user-select: text;
+  -webkit-touch-callout: default;
+}
+
 html {
   scroll-behavior: smooth;
   font-family: var(--font-sans);

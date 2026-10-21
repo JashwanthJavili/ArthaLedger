@@ -9,8 +9,7 @@ import LayoutShell from '../components/LayoutShell'
 import Loader from '../components/common/Loader'
 import QuoteCard from '../components/common/QuoteCard'
 import ProjectModal from '../components/forms/ProjectModal'
-import ConfirmDialog from '../components/common/ConfirmDialog'
-import PinVerificationModal from '../components/common/PinVerificationModal'
+import DeleteDialog from '../components/common/DeleteDialog'
 import Toast from '../components/common/Toast'
 import { useAppData } from '../context/AppDataContext'
 import { getQuoteOfTheDay } from '../lib/quotes'
@@ -65,7 +64,7 @@ function ProjectMenu({ onEdit, onDelete }) {
 }
 
 export default function DashboardPage() {
-  const { loading, error, projects, booksByProject, createProject, updateProject, deleteProject, deleteProjectWithPin } = useAppData()
+  const { loading, error, projects, booksByProject, createProject, updateProject, deleteProject } = useAppData()
   const [modalOpen, setModalOpen] = useState(false)
   const [editingProject, setEditingProject] = useState(null)
   const [deleteTarget, setDeleteTarget] = useState(null)
@@ -288,40 +287,26 @@ export default function DashboardPage() {
         }}
       />
 
-      {/* ── Confirm Delete Dialog ── */}
-      <ConfirmDialog
-        open={Boolean(deleteTarget) && !deleteTarget?.hasLockedBooks}
+      {/* ── Delete project (PIN asked first when a book inside is locked) ── */}
+      <DeleteDialog
+        open={Boolean(deleteTarget)}
         onClose={() => setDeleteTarget(null)}
+        kind="project"
+        name={deleteTarget?.name}
+        stats={deleteTarget ? (() => {
+          const list = booksByProject[deleteTarget.id] || []
+          return [
+            { label: list.length === 1 ? 'Book' : 'Books', value: String(list.length) },
+            { label: 'Transactions', value: String(list.reduce((n, b) => n + Object.keys(b.entries || {}).length, 0)) },
+          ]
+        })() : []}
+        note="All books and transactions in this project are removed for good."
+        pin={deleteTarget?.hasLockedBooks && deleteTarget?.lockedBookPin
+          ? { storedHash: deleteTarget.lockedBookPin, length: deleteTarget.lockedPinLength, guardId: deleteTarget.lockedGuardId }
+          : null}
         onConfirm={async () => {
-          try {
-            await deleteProject(deleteTarget.id)
-            showToast('Project deleted', 'info')
-          } catch (err) {
-            showToast(err.message || 'Failed to delete project', 'error')
-          }
-        }}
-        title="Delete Project?"
-        message={`"${deleteTarget?.name}" and all its books and entries will be permanently deleted.`}
-        danger
-      />
-
-      {/* ── PIN Verification Modal ── */}
-      <PinVerificationModal
-        open={Boolean(deleteTarget?.hasLockedBooks)}
-        onClose={() => setDeleteTarget(null)}
-        storedHash={deleteTarget?.lockedBookPin || ''}
-        pinLength={deleteTarget?.lockedPinLength}
-        guardId={deleteTarget?.lockedGuardId}
-        itemType="project"
-        itemName={deleteTarget?.name}
-        onVerified={async (pin) => {
-          try {
-            await deleteProjectWithPin(deleteTarget.id, pin)
-            showToast('Project deleted', 'info')
-          } catch (err) {
-            showToast(err.message || 'Failed to delete project', 'error')
-          }
-          setDeleteTarget(null)
+          await deleteProject(deleteTarget.id)
+          showToast('Project deleted', 'info')
         }}
       />
 
