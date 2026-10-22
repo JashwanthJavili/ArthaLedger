@@ -9,6 +9,26 @@ logger = logging.getLogger('arthaledger.push_service')
 _DEAD_TOKEN_CODES = ('unregistered', 'invalid-argument', 'invalid-registration', 'not-found', 'sender-id-mismatch')
 
 
+def get_user_devices(uid: str) -> List[Dict[str, Any]]:
+  """Registered devices (no full tokens): short id, kind, installed app or not, last seen."""
+  data = get_db_ref(f'users/{uid}/pushTokens').get() or {}
+  out = []
+  if isinstance(data, dict):
+    for obj in data.values():
+      if not isinstance(obj, dict) or not obj.get('token'):
+        continue
+      ua = str(obj.get('platform') or '')
+      kind = 'Android' if 'Android' in ua else 'iPhone' if ('iPhone' in ua or 'iPad' in ua) else 'Windows' if 'Windows' in ua else 'Mac' if 'Mac OS' in ua else 'Device'
+      out.append({
+        'id': obj['token'][-8:],
+        'kind': kind,
+        'app': bool(obj.get('standalone')),
+        'updatedAt': obj.get('updatedAt') or 0,
+      })
+  out.sort(key=lambda d: d['updatedAt'], reverse=True)
+  return out
+
+
 def get_user_tokens(uid: str) -> List[str]:
   """All push tokens registered for a user (one per device/browser)."""
   data = get_db_ref(f'users/{uid}/pushTokens').get() or {}
@@ -63,11 +83,13 @@ def send_fcm_multicast(
 
   response = messaging.send_each_for_multicast(message)
   dead: List[str] = []
+  errors: List[Dict[str, str]] = []
   for idx, resp in enumerate(response.responses):
     if resp.success:
       continue
     code = str(getattr(resp.exception, 'code', resp.exception)).lower()
     logger.warning('Push failed for token %s...: %s', tokens[idx][:15], code)
+    errors.append({'device': tokens[idx][-8:], 'error': code[:120]})
     if any(c in code for c in _DEAD_TOKEN_CODES):
       dead.append(tokens[idx])
 
@@ -80,6 +102,7 @@ def send_fcm_multicast(
     'success_count': response.success_count,
     'failure_count': response.failure_count,
     'pruned_count': len(dead),
+    'errors': errors,
   }
 
 

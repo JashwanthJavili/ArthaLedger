@@ -6,7 +6,7 @@ import {
 } from 'lucide-react'
 import {
   requestNotificationPermission, getNotificationPermissionState, sendNativeNotification,
-  getDailyReminderSettings, saveDailyReminderSettings, isBudgetAlertsEnabled, setBudgetAlertsEnabled, syncReminderFromFirebase, testMobileNotification, ensurePushRegistration, getServerReminderStatus, enableDailyReminder,
+  getDailyReminderSettings, saveDailyReminderSettings, isBudgetAlertsEnabled, setBudgetAlertsEnabled, syncReminderFromFirebase, testMobileNotification, ensurePushRegistration, getServerReminderStatus, enableDailyReminder, remindIn, nextReminderInfo, formatTimeLeft, thisDeviceId,
 } from '../lib/notifications'
 import { requestFCMToken } from '../lib/firebase'
 import { motion } from 'framer-motion'
@@ -227,6 +227,34 @@ export default function SettingsPage() {
     sendNativeNotification('Budget alerts are on', { body: 'You’ll be alerted when a category reaches 80% and 100% of its budget.' })
   }
 
+  // Live clock for "in N min" countdowns (ticks every 30 s)
+  const [clock, setClock] = useState(() => Date.now())
+  useEffect(() => {
+    const id = setInterval(() => setClock(Date.now()), 30 * 1000)
+    return () => clearInterval(id)
+  }, [])
+
+  // One-off "remind me in N minutes"
+  const [quickAt, setQuickAt] = useState(null)
+  const [quickBusy, setQuickBusy] = useState(0)
+  const quickRemind = async (minutes) => {
+    if (quickBusy) return
+    setQuickBusy(minutes)
+    try {
+      const { at, minutesLeft } = await remindIn(minutes)
+      setNotifPermission(getNotificationPermissionState())
+      setQuickAt(at)
+      showToast(`I’ll remind you at ${new Date(at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })} · ${formatTimeLeft(minutesLeft)}`)
+    } catch (err) {
+      setNotifPermission(getNotificationPermissionState())
+      showToast(err?.message || 'Couldn’t set the reminder', 'error')
+    } finally {
+      setQuickBusy(0)
+    }
+  }
+  const quickPending = quickAt && quickAt > clock
+  const nextDaily = dailyReminder.enabled ? nextReminderInfo(reminderTimes, new Date(clock)) : null
+
   // Daily reminder: on = system permission dialog + save + device registration
   // + server confirmation (shared with the Home prompt via enableDailyReminder).
   const [reminderBusy, setReminderBusy] = useState(false)
@@ -299,6 +327,12 @@ export default function SettingsPage() {
       logs.push(`6. Server: reminder ${st.enabled ? 'ON ✓' : 'OFF ✗'} · ${st.devices} device${st.devices === 1 ? '' : 's'} registered`)
       logs.push(`   • Times: ${(st.times || []).map(formatTime12).join(', ')} (${st.timezone})`)
       logs.push(`   • Next: ${st.next_reminder || '—'} · server time ${st.server_time}`)
+      const mine = thisDeviceId()
+      ;(st.device_list || []).forEach((d, i) => {
+        const seen = d.updatedAt ? new Date(d.updatedAt).toLocaleString([], { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) : '—'
+        logs.push(`   • Device ${i + 1}: ${d.kind}${d.app ? ' (installed app)' : ' (browser)'} · seen ${seen}${d.id === mine ? '  ← this device' : ''}`)
+      })
+      if (mine && !(st.device_list || []).some(d => d.id === mine)) logs.push('   ⚠ This device is not registered on the server. Turn notifications off and on again.')
     } catch (e) {
       logs.push(`6. Server check failed: ${e?.message || String(e)} (it may be waking up — try again in a minute)`)
     }
@@ -474,12 +508,38 @@ export default function SettingsPage() {
           <Row icon={Bell} tint="emerald" label="Budget alerts"
             hint={notifPermission === 'denied' ? 'Blocked in phone settings' : 'Alert me at 80% and 100% of a budget'}
             trailing={<Switch checked={budgetAlertsOn} onChange={toggleBudgetAlerts} label="Budget alerts" />} />
-          <Row icon={BellRing} tint="emerald" label="Daily reminder" hint="A nudge to log the day's expenses"
+          <Row icon={BellRing} tint="emerald" label="Daily reminder"
+            hint={nextDaily
+              ? `Next ${formatTimeLeft(nextDaily.minutes)} · ${nextDaily.at.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`
+              : 'A nudge to log the day’s expenses'}
             trailing={<Switch checked={dailyReminder.enabled} onChange={toggleDailyReminder} label="Daily reminder" disabled={reminderBusy} />} />
           {dailyReminder.enabled && (
             <Row icon={Clock} tint="emerald" label="Reminder times" value={reminderTimes.map(formatTime12).join(', ')}
               onClick={() => setSheet('reminders')} />
           )}
+          <div className="px-4 py-3">
+            <div className="flex items-center gap-3">
+              <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                <Clock size={15} />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-[14px] font-medium text-[var(--text-main)]">Quick reminder</span>
+                <span className="block truncate text-[12px] text-[var(--text-muted)]">
+                  {quickPending
+                    ? `Coming at ${new Date(quickAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })} · ${formatTimeLeft(Math.max(1, Math.ceil((quickAt - clock) / 60000)))}`
+                    : 'Remind me once, a little later'}
+                </span>
+              </span>
+            </div>
+            <div className="mt-2.5 grid grid-cols-3 gap-1.5 pl-11">
+              {[5, 10, 30].map(m => (
+                <button key={m} type="button" onClick={() => quickRemind(m)} disabled={Boolean(quickBusy)}
+                  className="rounded-xl border border-[var(--border-card)] bg-[var(--bg-page)] py-2 text-[12px] font-semibold tabular-nums text-[var(--text-main)] hover:border-[var(--gold-primary)] active:scale-95 transition disabled:opacity-50 cursor-pointer">
+                  {quickBusy === m ? '…' : `${m} min`}
+                </button>
+              ))}
+            </div>
+          </div>
           {(canTest || canDebug) && (
             <Row icon={Stethoscope} tint="neutral" label="Test & diagnostics" onClick={() => setSheet('diagnostics')} />
           )}

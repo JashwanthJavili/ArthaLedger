@@ -29,7 +29,7 @@ const messaging = firebase.messaging()
  * monochrome status-bar badge, grouped by tag, optional action buttons
  * (e.g. "Add to <book>" / "Later") and the time it was sent.
  */
-function showAppNotification(title, { body, url = '/dashboard', tag, actions, addUrl, renotify = true } = {}) {
+function showAppNotification(title, { body, url = '/dashboard', tag, actions, addUrl, snoozeUrl, image, silent = false, renotify = true } = {}) {
   let parsedActions = []
   try { parsedActions = Array.isArray(actions) ? actions : JSON.parse(actions || '[]') } catch { parsedActions = [] }
   const maxActions = (self.Notification && Notification.maxActions) || 2
@@ -42,7 +42,9 @@ function showAppNotification(title, { body, url = '/dashboard', tag, actions, ad
     tag: tag || undefined,
     renotify: Boolean(tag) && renotify,
     actions: parsedActions.slice(0, maxActions),
-    data: { url, addUrl },
+    image: image || undefined,
+    silent,
+    data: { url, addUrl, snoozeUrl },
   })
 }
 
@@ -52,7 +54,10 @@ messaging.onBackgroundMessage((payload) => {
   // showing it again would duplicate. Our backend sends data-only messages.
   if (payload.notification) return
   const d = payload.data || {}
-  return showAppNotification(d.title, { body: d.body, url: d.url, tag: d.tag, actions: d.actions, addUrl: d.addUrl })
+  return showAppNotification(d.title, {
+    body: d.body, url: d.url, tag: d.tag, actions: d.actions,
+    addUrl: d.addUrl, snoozeUrl: d.snoozeUrl, image: d.image,
+  })
 })
 
 // ── Lifecycle ───────────────────────────────────────────────────────────────
@@ -87,6 +92,19 @@ self.addEventListener('notificationclick', (event) => {
   event.notification.close()
   if (event.action === 'dismiss') return
   const data = event.notification.data || {}
+
+  // "In 10 min": ask the server to remind again, confirm quietly, don't open the app
+  if (event.action === 'snooze' && data.snoozeUrl) {
+    const back = new Date(Date.now() + 10 * 60 * 1000)
+    const at = back.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+    event.waitUntil(
+      fetch(data.snoozeUrl, { method: 'POST', mode: 'no-cors', keepalive: true })
+        .then(() => showAppNotification('Snoozed \u23f0', { body: `I'll remind you again at ${at}.`, tag: 'daily-reminder', silent: true, renotify: false }))
+        .catch(() => showAppNotification('Couldn\u2019t snooze', { body: 'No connection. Open ArthaLedger to log today\u2019s spending.', tag: 'daily-reminder' })),
+    )
+    return
+  }
+
   // "Add to <book>" opens that book straight into a new entry
   const path = event.action === 'add' && data.addUrl ? data.addUrl : (data.url || '/dashboard')
   const targetUrl = new URL(path, self.location.origin).href

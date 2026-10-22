@@ -8,6 +8,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 
 from app.services.firebase_service import get_db_ref
 from app.services.push_service import send_to_user
+from app.services.reminder_content import build_reminder
 
 logger = logging.getLogger('arthaledger.scheduler')
 _scheduler = None
@@ -63,58 +64,14 @@ def _due_times(settings: dict, now_utc: datetime.datetime):
       yield key, today
 
 
-def _fmt_money(n: float) -> str:
-  n = round(float(n))
-  return ('-' if n < 0 else '') + '\u20b9' + f'{abs(n):,}'
-
-
 def build_daily_reminder(uid: str, tz_name) -> dict:
-  """
-  Personal reminder content: what was logged today, plus an "Add" action
-  that opens the most recently used book straight into a new entry.
-  """
-  tz = _zone(tz_name)
-  now = datetime.datetime.now(tz)
-  start = now.replace(hour=0, minute=0, second=0, microsecond=0).timestamp() * 1000
-  spent = 0.0
-  count = 0
-  latest = None  # (updatedAt, projectId, bookId, bookName)
-  projects = get_db_ref(f'users/{uid}/projects').get() or {}
-  if isinstance(projects, dict):
-    for pid, project in projects.items():
-      books = (project or {}).get('books') if isinstance(project, dict) else None
-      if not isinstance(books, dict):
-        continue
-      for bid, book in books.items():
-        if not isinstance(book, dict):
-          continue
-        updated = book.get('updatedAt') or book.get('createdAt') or 0
-        if latest is None or updated > latest[0]:
-          latest = (updated, pid, bid, book.get('name') or 'book')
-        entries = book.get('entries') or {}
-        if isinstance(entries, dict):
-          for e in entries.values():
-            if not isinstance(e, dict) or (e.get('timestamp') or 0) < start:
-              continue
-            count += 1
-            if e.get('type') == 'expense':
-              spent += float(e.get('amount') or 0)
+  return build_reminder(uid, tz_name)
 
-  if count:
-    title = 'How did today go?'
-    body = f"{count} {'entry' if count == 1 else 'entries'} today \u00b7 {_fmt_money(spent)} spent. Anything else to add?"
-  else:
-    title = 'Nothing logged yet today'
-    body = 'Take a minute to record today\u2019s spending so your balances stay true.'
 
-  extra = {}
-  if latest:
-    extra['addUrl'] = f'/projects/{latest[1]}/books/{latest[2]}?add=expense'
-    extra['actions'] = json.dumps([
-      {'action': 'add', 'title': f'Add to {latest[3]}'[:28]},
-      {'action': 'dismiss', 'title': 'Later'},
-    ])
-  return {'title': title, 'body': body, 'url': '/dashboard', 'extra': extra}
+def _send_reminder(uid: str, tz_name) -> int:
+  msg = build_reminder(uid, tz_name)
+  result = send_to_user(uid, msg['title'], msg['body'], msg['url'], tag='daily-reminder', extra=msg['extra'])
+  return result.get('success_count', 0)
 
 
 def check_and_send_scheduled_reminders() -> dict:
@@ -128,35 +85,72 @@ def check_and_send_scheduled_reminders() -> dict:
   sent = 0
   checked = 0
   scanned = 0
+  error = None
   try:
     now_utc = datetime.datetime.now(datetime.timezone.utc)
+    now_ms = now_utc.timestamp() * 1000
     # Shallow read: only user IDs, not every user's whole ledger
     uids = get_db_ref('users').get(shallow=True) or {}
     for uid in (uids.keys() if isinstance(uids, dict) else []):
       scanned += 1
       settings = get_db_ref(f'users/{uid}/reminderSettings').get()
-      if not isinstance(settings, dict) or settings.get('enabled') is not True:
+      if not isinstance(settings, dict):
+        continue
+      tz_name = settings.get('timezone')
+
+      # One-off "remind me in N minutes" / snooze
+      one_off = settings.get('oneOffAt')
+      if isinstance(one_off, (int, float)) and one_off <= now_ms:
+        get_db_ref(f'users/{uid}/reminderSettings/oneOffAt').delete()
+        if now_ms - one_off <= SEND_WINDOW_MINUTES * 60000:
+          checked += 1
+          try:
+            sent += _send_reminder(uid, tz_name)
+          except Exception as err:
+            logger.error('One-off reminder failed for %s: %s', uid, err)
+
+      if settings.get('enabled') is not True:
         continue
       checked += 1
       for key, today in _due_times(settings, now_utc):
         # Mark first so overlapping runs (cron + scheduler) never double-send
         get_db_ref(f'users/{uid}/reminderSettings/lastSentMap/{key}').set(today)
         try:
-          msg = build_daily_reminder(uid, settings.get('timezone'))
-          result = send_to_user(uid, msg['title'], msg['body'], msg['url'], tag='daily-reminder', extra=msg['extra'])
-          sent += result.get('success_count', 0)
+          sent += _send_reminder(uid, tz_name)
         except Exception as err:
           logger.error('Reminder push failed for %s: %s', uid, err)
   except Exception as err:
-    logger.error('Error in check_and_send_scheduled_reminders: %s', err, exc_info=True)
+    error = f'{type(err).__name__}: {getattr(err, "detail", None) or err}'
+    logger.error('Error in check_and_send_scheduled_reminders: %s', error, exc_info=True)
   finally:
     _run_lock.release()
-  return {'users_scanned': scanned, 'users_with_reminders': checked, 'notifications_sent': sent}
+  result = {'users_scanned': scanned, 'users_with_reminders': checked, 'notifications_sent': sent}
+  if error:
+    result['error'] = error[:300]
+  return result
+
+
+def backend_config_summary() -> dict:
+  """Non-secret facts about the Firebase connection, for diagnosing setup."""
+  import os
+  from app.core.config import settings as cfg
+  info = {
+    'credentials_path_set': bool(cfg.firebase_credentials_path),
+    'credentials_file_exists': bool(cfg.firebase_credentials_path) and os.path.exists(cfg.firebase_credentials_path),
+    'database_url': cfg.firebase_database_url or None,
+  }
+  try:
+    import json as _json
+    with open(cfg.firebase_credentials_path, encoding='utf-8') as fh:
+      info['credentials_project_id'] = _json.load(fh).get('project_id')
+  except Exception as err:
+    info['credentials_read_error'] = type(err).__name__
+  return info
 
 
 def reminder_status(uid: str) -> dict:
   """What the server sees for this user; shown in the app's diagnostics."""
-  from app.services.push_service import get_user_tokens
+  from app.services.push_service import get_user_devices
   settings = get_db_ref(f'users/{uid}/reminderSettings').get() or {}
   if not isinstance(settings, dict):
     settings = {}
@@ -164,6 +158,7 @@ def reminder_status(uid: str) -> dict:
   now = datetime.datetime.now(tz)
   times = settings.get('times') if isinstance(settings.get('times'), list) else [settings.get('time') or '19:00']
   enabled = settings.get('enabled') is True
+  devices = get_user_devices(uid)
   upcoming = []
   for t in times:
     h, m = parse_time_24(t)
@@ -176,7 +171,9 @@ def reminder_status(uid: str) -> dict:
     'enabled': enabled,
     'times': times,
     'timezone': str(tz.key),
-    'devices': len(get_user_tokens(uid)),
+    'devices': len(devices),
+    'device_list': devices,
+    'one_off_at': settings.get('oneOffAt') if isinstance(settings.get('oneOffAt'), (int, float)) else None,
     'server_time': now.strftime('%Y-%m-%d %H:%M'),
     'next_reminder': nxt.strftime('%a %d %b, %I:%M %p') if nxt else None,
   }
@@ -187,6 +184,7 @@ def start_scheduler():
   if _scheduler is not None:
     return
   _scheduler = BackgroundScheduler(job_defaults={'coalesce': True, 'max_instances': 1})
-  _scheduler.add_job(check_and_send_scheduled_reminders, 'interval', minutes=1)
+  # Run at second 0 of every minute, so a 4:11 reminder goes out at 4:11:00
+  _scheduler.add_job(check_and_send_scheduled_reminders, 'cron', second=0, misfire_grace_time=30)
   _scheduler.start()
-  logger.info('Reminder scheduler running (1-minute interval)')
+  logger.info('Reminder scheduler running (every minute at :00)')

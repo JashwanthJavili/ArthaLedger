@@ -1,0 +1,157 @@
+"""
+Notification content for reminders: personal, varied by time of day, with a
+banner image, the user's logging streak and quick actions.
+"""
+import datetime
+import hashlib
+import hmac
+import json
+import os
+import random
+import time
+from urllib.parse import urlencode
+from zoneinfo import ZoneInfo
+
+from app.core.config import settings
+from app.services.firebase_service import get_db_ref
+
+DEFAULT_TZ = 'Asia/Kolkata'
+PUBLIC_API_URL = os.getenv('PUBLIC_API_URL', 'https://arthaledger-api.onrender.com').rstrip('/')
+SNOOZE_LINK_TTL_S = 24 * 60 * 60
+
+
+def zone(name) -> ZoneInfo:
+  try:
+    return ZoneInfo(str(name)) if name else ZoneInfo(DEFAULT_TZ)
+  except Exception:
+    return ZoneInfo(DEFAULT_TZ)
+
+
+def fmt_money(n: float) -> str:
+  n = round(float(n))
+  return ('-' if n < 0 else '') + '₹' + f'{abs(n):,}'
+
+
+# ── Snooze links (the service worker has no login token, so the link is signed) ──
+def _snooze_sig(uid: str, exp: int) -> str:
+  return hmac.new(settings.cron_secret.encode(), f'{uid}.{exp}'.encode(), hashlib.sha256).hexdigest()[:40]
+
+
+def snooze_url(uid: str):
+  if not settings.cron_secret:
+    return None
+  exp = int(time.time()) + SNOOZE_LINK_TTL_S
+  return f'{PUBLIC_API_URL}/api/v1/notifications/snooze?' + urlencode({'u': uid, 'exp': exp, 'sig': _snooze_sig(uid, exp)})
+
+
+def verify_snooze(uid: str, exp: int, sig: str) -> bool:
+  if not settings.cron_secret or not uid or not sig:
+    return False
+  if int(exp) < int(time.time()):
+    return False
+  return hmac.compare_digest(_snooze_sig(uid, int(exp)), sig)
+
+
+# ── Content ───────────────────────────────────────────────────────────────────
+def _slot(hour: int) -> str:
+  if 5 <= hour < 12:
+    return 'morning'
+  if 12 <= hour < 17:
+    return 'afternoon'
+  if 17 <= hour < 21:
+    return 'evening'
+  return 'night'
+
+
+GREETING = {
+  'morning': ['Good morning ☀️', 'A fresh page today ☀️'],
+  'afternoon': ['Afternoon check-in', 'Halfway through the day'],
+  'evening': ['Evening check-in \U0001f319', 'How did today go?'],
+  'night': ['Before you sleep ✨', 'Close the day calmly ✨'],
+}
+EMPTY_TITLES = ['Your ledger is waiting ✍️', 'A calm minute for your money', 'Nothing logged yet today']
+
+
+def _scan(uid: str, tz: ZoneInfo, now: datetime.datetime) -> dict:
+  """Today's entries and spend, last 7 days' spend, logging streak, last-used book."""
+  start_today = now.replace(hour=0, minute=0, second=0, microsecond=0)
+  t0 = start_today.timestamp() * 1000
+  week0 = (start_today - datetime.timedelta(days=6)).timestamp() * 1000
+  out = {'count': 0, 'spent': 0.0, 'week': 0.0, 'days': set(), 'latest': None}
+  projects = get_db_ref(f'users/{uid}/projects').get() or {}
+  if not isinstance(projects, dict):
+    return out
+  for pid, project in projects.items():
+    books = project.get('books') if isinstance(project, dict) else None
+    if not isinstance(books, dict):
+      continue
+    for bid, book in books.items():
+      if not isinstance(book, dict):
+        continue
+      updated = book.get('updatedAt') or book.get('createdAt') or 0
+      if out['latest'] is None or updated > out['latest'][0]:
+        out['latest'] = (updated, pid, bid, book.get('name') or 'book')
+      entries = book.get('entries') or {}
+      if not isinstance(entries, dict):
+        continue
+      for e in entries.values():
+        if not isinstance(e, dict):
+          continue
+        ts = e.get('timestamp') or 0
+        if ts >= week0 - 60 * 86400000:  # streak looks back up to ~2 months
+          out['days'].add(datetime.datetime.fromtimestamp(ts / 1000, tz).date())
+        is_spend = e.get('type') == 'expense'
+        if ts >= t0:
+          out['count'] += 1
+          if is_spend:
+            out['spent'] += float(e.get('amount') or 0)
+        if ts >= week0 and is_spend:
+          out['week'] += float(e.get('amount') or 0)
+  return out
+
+
+def _streak(days: set, today: datetime.date) -> int:
+  """Consecutive days with at least one entry, ending today (or yesterday)."""
+  day = today if today in days else today - datetime.timedelta(days=1)
+  n = 0
+  while day in days:
+    n += 1
+    day -= datetime.timedelta(days=1)
+  return n
+
+
+def build_reminder(uid: str, tz_name, snooze: bool = True) -> dict:
+  tz = zone(tz_name)
+  now = datetime.datetime.now(tz)
+  slot = _slot(now.hour)
+  data = _scan(uid, tz, now)
+  streak = _streak(data['days'], now.date())
+  logged_today = data['count'] > 0
+
+  if logged_today:
+    title = random.choice(GREETING[slot])
+    noun = 'entry' if data['count'] == 1 else 'entries'
+    body = f"{data['count']} {noun} today · {fmt_money(data['spent'])} spent. Anything else to add?"
+    if streak >= 2:
+      body += f' \U0001f525 {streak}-day streak'
+  elif streak >= 2:
+    title = f'Keep your {streak}-day streak \U0001f525'
+    body = 'Nothing logged today yet — one entry keeps it going.'
+  else:
+    title = random.choice(EMPTY_TITLES)
+    body = (f"This week: {fmt_money(data['week'])} spent. Take a minute to log today."
+            if data['week'] > 0 else 'Take a minute to record today’s spending.')
+
+  actions = []
+  extra = {'image': f'/notify/{slot}.png'}
+  if data['latest']:
+    _, pid, bid, name = data['latest']
+    extra['addUrl'] = f'/projects/{pid}/books/{bid}?add=expense'
+    actions.append({'action': 'add', 'title': f'➕ Add to {name}'[:28]})
+  link = snooze_url(uid) if snooze else None
+  if link:
+    extra['snoozeUrl'] = link
+    actions.append({'action': 'snooze', 'title': '⏰ In 10 min'})
+  if actions:
+    extra['actions'] = json.dumps(actions)
+  return {'title': title, 'body': body, 'url': '/dashboard', 'extra': extra}

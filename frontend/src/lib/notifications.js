@@ -244,16 +244,22 @@ export async function testMobileNotification() {
   try {
     const token = await ensurePushRegistration()
     const idToken = await auth.currentUser?.getIdToken()
-    if (!token || !idToken) throw new Error('This device is not registered for push yet.')
+    if (!token) throw new Error('This device is not registered for push yet. Allow notifications first.')
+    if (!idToken) throw new Error('Please sign in again.')
+    // Send to THIS device only, so a test on the phone arrives on the phone
     const res = await fetch(`${API_BASE}/api/v1/notifications/test`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
+      body: JSON.stringify({ token }),
     })
     const body = await res.json().catch(() => ({}))
     if (!res.ok) throw new Error(body.detail || `Server error ${res.status}`)
     const sent = Number(body.result?.success_count || 0)
-    if (sent === 0) throw new Error('The server could not reach this device.')
-    return { ok: true, sent, message: `Sent to ${sent} device${sent === 1 ? '' : 's'}. Close the app to see it arrive in the background.` }
+    if (sent === 0) {
+      const why = body.result?.errors?.[0]?.error || 'unknown error'
+      throw new Error(`The server couldn't reach this device (${why}). Turn notifications off and on again.`)
+    }
+    return { ok: true, sent, message: 'Sent to this device. Lock the phone or close the app to see it arrive.' }
   } catch (err) {
     // Fall back to a local notification so the user still sees something
     if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
@@ -263,6 +269,61 @@ export async function testMobileNotification() {
     }
     return { ok: false, sent: 0, message: err?.message || 'Push server unreachable' }
   }
+}
+
+/** Short id of this device's push registration (matches the server's device list). */
+export function thisDeviceId() {
+  try { return (localStorage.getItem('al_fcm_token') || '').slice(-8) } catch { return '' }
+}
+
+/**
+ * One-off reminder N minutes from now. Makes sure notifications are allowed
+ * and this device is registered first. Resolves to { at (ms), minutesLeft }.
+ */
+export async function remindIn(minutes) {
+  const perm = await requestNotificationPermission()
+  if (perm !== 'granted') {
+    throw new Error(perm === 'denied'
+      ? 'Notifications are blocked. Allow them in phone Settings → Apps → ArthaLedger → Notifications.'
+      : 'Notification permission is needed.')
+  }
+  const token = await ensurePushRegistration()
+  if (!token) throw new Error('This device couldn’t register for notifications.')
+  const idToken = await auth.currentUser?.getIdToken()
+  if (!idToken) throw new Error('Please sign in again.')
+  const res = await fetch(`${API_BASE}/api/v1/notifications/remind-in`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
+    body: JSON.stringify({ minutes }),
+  })
+  const body = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(body.detail || `Server error ${res.status} (it may be waking up — try again)`)
+  const at = Number(body.at)
+  return { at, minutesLeft: Math.max(1, Math.ceil((at - Date.now()) / 60000)) }
+}
+
+/** Next occurrence of any "HH:MM" time from now: { at: Date, minutes } or null. */
+export function nextReminderInfo(times = [], now = new Date()) {
+  let best = null
+  for (const t of times) {
+    const [h, m] = String(t).split(':').map(Number)
+    if (Number.isNaN(h) || Number.isNaN(m)) continue
+    const at = new Date(now)
+    at.setHours(h, m, 0, 0)
+    if (at <= now) at.setDate(at.getDate() + 1)
+    if (!best || at < best) best = at
+  }
+  return best ? { at: best, minutes: Math.max(0, Math.ceil((best - now) / 60000)) } : null
+}
+
+/** "in 5 min" / "in 2 h 10 min" / "in 1 day" */
+export function formatTimeLeft(minutes) {
+  if (minutes <= 0) return 'now'
+  if (minutes < 60) return `in ${minutes} min`
+  const h = Math.floor(minutes / 60)
+  const m = minutes % 60
+  if (h >= 24) return 'in 1 day'
+  return m ? `in ${h} h ${m} min` : `in ${h} h`
 }
 
 // App-open hook: refreshes this device's push registration
