@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import LayoutShell from '../components/LayoutShell'
 import Loader from '../components/common/Loader'
 import QuoteCard from '../components/common/QuoteCard'
+import ReminderPrompt from '../components/common/ReminderPrompt'
 import ProjectModal from '../components/forms/ProjectModal'
 import DeleteDialog from '../components/common/DeleteDialog'
 import Toast from '../components/common/Toast'
@@ -133,6 +134,7 @@ export default function DashboardPage() {
 
   return (
     <LayoutShell>
+      <ReminderPrompt />
       <div className="mx-auto max-w-2xl space-y-6">
         {loading && stalled && (
           <div className="rounded-2xl border border-[var(--border-card)] bg-[var(--bg-card)] px-4 py-3 text-[11px] text-[var(--text-muted)]">

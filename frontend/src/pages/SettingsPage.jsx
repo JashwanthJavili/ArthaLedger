@@ -6,7 +6,7 @@ import {
 } from 'lucide-react'
 import {
   requestNotificationPermission, getNotificationPermissionState, sendNativeNotification,
-  getDailyReminderSettings, saveDailyReminderSettings, isBudgetAlertsEnabled, setBudgetAlertsEnabled, syncReminderFromFirebase, testMobileNotification, ensurePushRegistration, getServerReminderStatus,
+  getDailyReminderSettings, saveDailyReminderSettings, isBudgetAlertsEnabled, setBudgetAlertsEnabled, syncReminderFromFirebase, testMobileNotification, ensurePushRegistration, getServerReminderStatus, enableDailyReminder,
 } from '../lib/notifications'
 import { requestFCMToken } from '../lib/firebase'
 import { motion } from 'framer-motion'
@@ -227,45 +227,28 @@ export default function SettingsPage() {
     sendNativeNotification('Budget alerts are on', { body: 'You’ll be alerted when a category reaches 80% and 100% of its budget.' })
   }
 
-  // Daily reminder: saved to the server, the device registered for push, and
-  // then confirmed with the server — so "on" really means it will arrive.
+  // Daily reminder: on = system permission dialog + save + device registration
+  // + server confirmation (shared with the Home prompt via enableDailyReminder).
   const [reminderBusy, setReminderBusy] = useState(false)
-  const confirmWithServer = async (times) => {
-    try {
-      const st = await getServerReminderStatus()
-      if (!st.enabled) return showToast('Saved, but the server doesn’t see it yet. Try again in a moment.', 'error')
-      if (!st.devices) return showToast('Reminder saved, but this device couldn’t register for notifications.', 'error')
-      showToast(`Daily reminder on · next ${st.next_reminder || times.map(formatTime12).join(', ')} ✓`)
-    } catch {
-      // Server asleep or offline: the setting is still saved and will be used
-      showToast(`Daily reminder on · ${times.map(formatTime12).join(', ')} ✓`)
-    }
-  }
-
   const toggleDailyReminder = async () => {
     if (reminderBusy) return
     const next = !dailyReminder.enabled
-    if (next && notifPermission !== 'granted') {
-      if (notifPermission === 'denied') {
-        showToast('Notifications are blocked. Allow them in phone Settings → Apps → ArthaLedger / Chrome → Notifications.', 'error')
-        return
-      }
-      const perm = await requestNotificationPermission()
-      setNotifPermission(perm)
-      if (perm !== 'granted') {
-        showToast('Notification permission is needed for reminders', 'error')
-        return
-      }
-    }
     setReminderBusy(true)
-    setDailyReminder(prev => ({ ...prev, enabled: next, times: reminderTimes, time: reminderTimes[0] }))
     try {
-      await saveDailyReminderSettings({ enabled: next, times: reminderTimes })
-      if (next) await confirmWithServer(reminderTimes)
-      else showToast('Daily reminder off', 'info')
+      if (next) {
+        const { status } = await enableDailyReminder(reminderTimes)
+        setNotifPermission(getNotificationPermissionState())
+        setDailyReminder(prev => ({ ...prev, enabled: true, times: reminderTimes, time: reminderTimes[0] }))
+        showToast(`Daily reminder on · next ${status?.next_reminder || reminderTimes.map(formatTime12).join(', ')} ✓`)
+      } else {
+        await saveDailyReminderSettings({ enabled: false, times: reminderTimes })
+        setDailyReminder(prev => ({ ...prev, enabled: false }))
+        showToast('Daily reminder off', 'info')
+      }
     } catch (err) {
-      setDailyReminder(prev => ({ ...prev, enabled: !next }))
-      showToast(err?.message?.includes('permission') ? 'Couldn’t save: permission denied' : 'Couldn’t save the reminder. Check your connection.', 'error')
+      setNotifPermission(getNotificationPermissionState())
+      if (err?.code === 'no-device') setDailyReminder(prev => ({ ...prev, enabled: true }))
+      showToast(err?.message || 'Couldn’t update the reminder.', 'error')
     } finally {
       setReminderBusy(false)
     }

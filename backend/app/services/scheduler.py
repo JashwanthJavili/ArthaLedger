@@ -127,11 +127,13 @@ def check_and_send_scheduled_reminders() -> dict:
     return {'skipped': 'already running'}
   sent = 0
   checked = 0
+  scanned = 0
   try:
     now_utc = datetime.datetime.now(datetime.timezone.utc)
     # Shallow read: only user IDs, not every user's whole ledger
     uids = get_db_ref('users').get(shallow=True) or {}
     for uid in (uids.keys() if isinstance(uids, dict) else []):
+      scanned += 1
       settings = get_db_ref(f'users/{uid}/reminderSettings').get()
       if not isinstance(settings, dict) or settings.get('enabled') is not True:
         continue
@@ -149,7 +151,7 @@ def check_and_send_scheduled_reminders() -> dict:
     logger.error('Error in check_and_send_scheduled_reminders: %s', err, exc_info=True)
   finally:
     _run_lock.release()
-  return {'users_with_reminders': checked, 'notifications_sent': sent}
+  return {'users_scanned': scanned, 'users_with_reminders': checked, 'notifications_sent': sent}
 
 
 def reminder_status(uid: str) -> dict:

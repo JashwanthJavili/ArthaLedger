@@ -200,6 +200,42 @@ export async function getServerReminderStatus() {
 }
 
 /**
+ * Turns the daily reminder on, end to end. Used by both the Home prompt and
+ * Settings so they behave identically:
+ *   1. asks Android/the browser for notification permission (system dialog)
+ *   2. saves the reminder times to the server
+ *   3. registers this device for push
+ *   4. asks the server to confirm what it now sees
+ *
+ * Resolves to { status } (status may be null if the server is still waking up).
+ * Rejects with err.code: 'unsupported' | 'blocked' | 'not-granted' | 'save-failed' | 'no-device'.
+ */
+export async function enableDailyReminder(times = ['19:00']) {
+  const fail = (code, message) => Object.assign(new Error(message), { code })
+  if (!('Notification' in window) || !('serviceWorker' in navigator)) {
+    throw fail('unsupported', 'This device doesn’t support notifications.')
+  }
+  if (Notification.permission === 'denied') {
+    throw fail('blocked', 'Notifications are blocked. Allow them in phone Settings → Apps → ArthaLedger → Notifications.')
+  }
+  const perm = await requestNotificationPermission()
+  if (perm === 'denied') throw fail('blocked', 'Notifications were blocked. You can allow them later in phone Settings → Apps → ArthaLedger.')
+  if (perm !== 'granted') throw fail('not-granted', 'Notification permission is needed for reminders.')
+
+  try {
+    await saveDailyReminderSettings({ enabled: true, times })
+  } catch {
+    throw fail('save-failed', 'Couldn’t save the reminder. Check your connection and try again.')
+  }
+  const token = await ensurePushRegistration()
+  if (!token) throw fail('no-device', 'Reminder saved, but this device couldn’t register for notifications.')
+
+  let status = null
+  try { status = await getServerReminderStatus() } catch { /* server waking up; settings are saved */ }
+  return { status }
+}
+
+/**
  * Sends a real push through the server to every registered device of this
  * user — the same path daily reminders use, so it proves closed-app delivery.
  * Returns { ok, sent, message }.
