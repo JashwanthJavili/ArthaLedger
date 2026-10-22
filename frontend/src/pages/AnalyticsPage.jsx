@@ -371,7 +371,7 @@ export default function AnalyticsPage() {
                 className="relative flex w-full sm:max-w-[480px] flex-col overflow-hidden rounded-t-3xl sm:rounded-3xl border border-[var(--border-card)] bg-[var(--bg-page)] shadow-[0_30px_80px_-20px_rgba(0,0,0,0.45)]"
                 style={{ maxHeight: '85vh' }}
               >
-                <div className="flex items-start justify-between gap-3 border-b border-[var(--border-subtle)] px-5 pt-5 pb-4">
+                <div className="flex flex-shrink-0 items-start justify-between gap-3 border-b border-[var(--border-subtle)] px-5 pt-5 pb-4">
                   <div className="min-w-0">
                     <h3 className="truncate text-[15px] font-semibold text-[var(--text-main)]">{selectedCategory}</h3>
                     <p className="mt-0.5 text-[11px] text-[var(--text-subtle)]">
@@ -385,7 +385,7 @@ export default function AnalyticsPage() {
                 </div>
 
                 {availableSubcatFilters.length > 0 && (
-                  <div className="flex gap-1.5 overflow-x-auto px-5 pt-3 pb-1">
+                  <div className="flex flex-shrink-0 gap-1.5 overflow-x-auto px-5 pt-3 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                     {['all', ...availableSubcatFilters].map((sub) => {
                       const active = selectedSubcatFilter === sub
                       return (

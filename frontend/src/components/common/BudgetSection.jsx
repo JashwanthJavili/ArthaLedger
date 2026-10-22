@@ -99,7 +99,7 @@ function Sheet({ onClose, label, children, wide = false }) {
 
 function SheetHeader({ title, subtitle, onClose }) {
   return (
-    <div className="flex items-start justify-between gap-3 border-b border-[var(--border-subtle)] px-5 pt-5 pb-4">
+    <div className="flex flex-shrink-0 items-start justify-between gap-3 border-b border-[var(--border-subtle)] px-5 pt-5 pb-4">
       <div className="min-w-0">
         <h3 className="truncate text-[15px] font-semibold text-[var(--text-main)]">{title}</h3>
         {subtitle && <p className="mt-0.5 text-[11px] text-[var(--text-subtle)]">{subtitle}</p>}
@@ -376,7 +376,7 @@ function BudgetForm({ editingKey, initialCfg, options, usedKeys, expenses, sym, 
           </AnimatePresence>
         </div>
 
-        <div className="border-t border-[var(--border-subtle)] px-5 py-4">
+        <div className="flex-shrink-0 border-t border-[var(--border-subtle)] px-5 py-4">
           <button type="submit" disabled={saving || !key || softNum <= 0}
             className="flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--gold-primary)] py-3 text-[14px] font-semibold text-white hover:bg-[var(--gold-hover)] transition-colors disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed">
             {saving && <Loader2 size={15} className="animate-spin" />}
@@ -465,7 +465,7 @@ function BudgetDetail({ state, monthKey, progress, transactions, money, bookIdMa
           )}
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-2 border-t border-[var(--border-subtle)] px-5 py-4">
+      <div className="grid flex-shrink-0 grid-cols-2 gap-2 border-t border-[var(--border-subtle)] px-5 py-4">
         <button type="button" onClick={onDelete}
           className="flex items-center justify-center gap-1.5 rounded-xl border border-[var(--border-card)] py-2.5 text-[13px] font-medium text-rose-600 dark:text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer">
           <Trash2 size={14} /> Remove

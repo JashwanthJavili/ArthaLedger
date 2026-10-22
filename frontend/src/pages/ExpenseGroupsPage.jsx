@@ -273,7 +273,7 @@ export default function ExpenseGroupsPage() {
                 className="relative flex w-full sm:max-w-[440px] flex-col overflow-hidden rounded-t-3xl sm:rounded-3xl border border-[var(--border-card)] bg-[var(--bg-page)] shadow-[0_30px_80px_-20px_rgba(0,0,0,0.45)]"
                 style={{ maxHeight: '88vh', paddingBottom: 'env(safe-area-inset-bottom)' }}
               >
-                <div className="flex items-start justify-between gap-3 border-b border-[var(--border-subtle)] px-5 pt-5 pb-4">
+                <div className="flex flex-shrink-0 items-start justify-between gap-3 border-b border-[var(--border-subtle)] px-5 pt-5 pb-4">
                   <div className="min-w-0">
                     <h3 className="truncate text-[15px] font-semibold text-[var(--text-main)]">New group</h3>
                     <p className="mt-0.5 text-[11px] text-[var(--text-subtle)]">Collect related spending from any book</p>

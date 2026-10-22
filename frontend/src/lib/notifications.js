@@ -75,7 +75,19 @@ export async function sendNativeNotification(title, options = {}) {
   }
 }
 
+const BUDGET_ALERTS_KEY = 'al_budget_alerts'
+
+/** Budget alerts are on unless the user switched them off (and permission is granted). */
+export function isBudgetAlertsEnabled() {
+  try { return localStorage.getItem(BUDGET_ALERTS_KEY) !== 'false' } catch { return true }
+}
+
+export function setBudgetAlertsEnabled(on) {
+  try { localStorage.setItem(BUDGET_ALERTS_KEY, String(Boolean(on))) } catch { /* storage unavailable */ }
+}
+
 export function triggerBudgetAlertNotification({ categoryName, spent, limit, percentage }) {
+  if (!isBudgetAlertsEnabled()) return
   if (percentage >= 100) {
     sendNativeNotification(`🚨 Budget Exceeded: ${categoryName}`, {
       body: `You have reached ${Math.round(percentage)}% of your target budget (₹${spent.toLocaleString('en-IN')} / ₹${limit.toLocaleString('en-IN')}).`,

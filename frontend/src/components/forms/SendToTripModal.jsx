@@ -55,7 +55,7 @@ export default function SendToTripModal({ open, onClose, onSend }) {
             style={{ maxHeight: '88vh', paddingBottom: 'env(safe-area-inset-bottom)' }}
           >
             {/* Header */}
-            <div className="flex items-start justify-between gap-3 border-b border-[var(--border-subtle)] px-5 pt-5 pb-4">
+            <div className="flex flex-shrink-0 items-start justify-between gap-3 border-b border-[var(--border-subtle)] px-5 pt-5 pb-4">
               <div className="min-w-0">
                 <h3 className="truncate text-[15px] font-semibold text-[var(--text-main)]">Add to group</h3>
                 <p className="mt-0.5 text-[11px] text-[var(--text-subtle)]">The selected transactions stay in this book</p>

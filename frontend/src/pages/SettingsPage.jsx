@@ -1,12 +1,12 @@
 import { useState, useEffect, useCallback } from 'react'
 import { isDarkMode, setDarkMode as applyDarkMode } from '../lib/theme'
 import {
-  Moon, Coins, Download, FileText, LogOut, Lock, KeyRound, UserRound, Bell, BellRing,
+  Moon, Coins, Download, FileText, LogOut, Lock, KeyRound, Bell, BellRing,
   Clock, Stethoscope, Smartphone, CheckCircle2, Trash2, HelpCircle, Info, ShieldCheck, Pencil,
 } from 'lucide-react'
 import {
   requestNotificationPermission, getNotificationPermissionState, sendNativeNotification,
-  getDailyReminderSettings, saveDailyReminderSettings, syncReminderFromFirebase, testMobileNotification, ensurePushRegistration,
+  getDailyReminderSettings, saveDailyReminderSettings, isBudgetAlertsEnabled, setBudgetAlertsEnabled, syncReminderFromFirebase, testMobileNotification, ensurePushRegistration,
 } from '../lib/notifications'
 import { requestFCMToken } from '../lib/firebase'
 import { motion } from 'framer-motion'
@@ -17,7 +17,7 @@ import DownloadModal from '../components/forms/DownloadModal'
 import { Group, Row, Switch } from '../components/settings/ui'
 import {
   EditProfileSheet, ChangePasswordSheet, CurrencySheet, RemindersSheet, DiagnosticsSheet,
-  InstallSheet, FaqSheet, AboutSheet, DeleteAccountSheet,
+  FaqSheet, AboutSheet, DeleteAccountSheet,
 } from '../components/settings/SettingsSheets'
 import { useAuth } from '../context/AuthContext'
 import { useAppData } from '../context/AppDataContext'
@@ -109,11 +109,6 @@ function formatTime12(t) {
   return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`
 }
 
-function formatDob(dob) {
-  const d = new Date(dob)
-  return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
-}
-
 function isStandalone() {
   return window.matchMedia?.('(display-mode: standalone)').matches || window.navigator.standalone === true
 }
@@ -175,7 +170,12 @@ export default function SettingsPage() {
   }, [])
 
   const handleInstallClick = async () => {
-    if (!installPrompt) { setSheet('install'); return }
+    if (!installPrompt) {
+      // The browser hasn't offered its install prompt (iOS, or already dismissed)
+      const ios = /iphone|ipad|ipod/i.test(navigator.userAgent)
+      showToast(ios ? 'In Safari, tap Share → Add to Home Screen' : 'Open the browser menu (⋮) → Install app', 'info')
+      return
+    }
     installPrompt.prompt()
     const { outcome } = await installPrompt.userChoice
     if (outcome === 'accepted') {
@@ -200,18 +200,31 @@ export default function SettingsPage() {
     return () => { cancelled = true }
   }, [])
 
-  const enablePush = async () => {
-    const perm = await requestNotificationPermission()
-    setNotifPermission(perm)
-    if (perm === 'granted') {
-      const token = await ensurePushRegistration()
-      showToast(token ? 'Notifications enabled ✓' : 'Notifications allowed, but this device could not register for push', token ? undefined : 'error')
-      sendNativeNotification('🔔 Notifications enabled', {
-        body: 'You’ll get reminders and budget alerts here, even when ArthaLedger is closed.',
-      })
-    } else if (perm === 'denied') {
-      showToast('Notifications blocked in browser settings', 'error')
+  // Budget alerts: switching on asks the phone for notification permission
+  const [budgetAlertsPref, setBudgetAlertsPref] = useState(() => isBudgetAlertsEnabled())
+  const budgetAlertsOn = budgetAlertsPref && notifPermission === 'granted'
+  const toggleBudgetAlerts = async () => {
+    if (budgetAlertsOn) {
+      setBudgetAlertsEnabled(false)
+      setBudgetAlertsPref(false)
+      showToast('Budget alerts off', 'info')
+      return
     }
+    if (notifPermission === 'denied') {
+      showToast('Notifications are blocked. Allow them in phone Settings → Apps → ArthaLedger / Chrome → Notifications.', 'error')
+      return
+    }
+    const perm = notifPermission === 'granted' ? 'granted' : await requestNotificationPermission()
+    setNotifPermission(perm)
+    if (perm !== 'granted') {
+      showToast(perm === 'denied' ? 'Notifications were blocked on this device' : 'Notification permission not given', 'error')
+      return
+    }
+    setBudgetAlertsEnabled(true)
+    setBudgetAlertsPref(true)
+    ensurePushRegistration()
+    showToast('Budget alerts on ✓')
+    sendNativeNotification('Budget alerts are on', { body: 'You’ll be alerted when a category reaches 80% and 100% of its budget.' })
   }
 
   const toggleDailyReminder = async () => {
@@ -361,18 +374,6 @@ export default function SettingsPage() {
   const totalEntries = Object.values(entriesByBook).flat().length
 
   const displayName = profileData.displayName || user?.displayName || 'User'
-  const detailsHint = [
-    profileData.phone && `+91 ${profileData.phone}`,
-    profileData.dob && formatDob(profileData.dob),
-    profileData.gender && profileData.gender[0].toUpperCase() + profileData.gender.slice(1),
-  ].filter(Boolean).join(' · ') || 'Add phone, birthday & more'
-
-  const pushStatus = notifPermission === 'granted'
-    ? <StatusPill tone="on">On</StatusPill>
-    : notifPermission === 'denied'
-      ? <StatusPill tone="blocked">Blocked</StatusPill>
-      : <StatusPill tone="off">Off</StatusPill>
-
   const canTest = dailyReminder.enabled
   const canDebug = notifPermission === 'granted'
 
@@ -419,7 +420,6 @@ export default function SettingsPage() {
 
         {/* ── Account ── */}
         <Group title="Account" delay={0.03}>
-          <Row icon={UserRound} label="Personal details" hint={detailsHint} onClick={openEditProfile} />
           {isPasswordUser && <Row icon={KeyRound} label="Change password" onClick={() => setSheet('password')} />}
           <Row icon={ShieldCheck} tint="neutral" label="Sign-in method" value={isPasswordUser ? 'Email & password' : 'Google'} />
         </Group>
@@ -432,7 +432,13 @@ export default function SettingsPage() {
           {isInstalled ? (
             <Row icon={Smartphone} label="Install app" trailing={<StatusPill tone="on"><CheckCircle2 size={11} className="mr-1" />Installed</StatusPill>} />
           ) : (
-            <Row icon={Smartphone} label="Install app" hint="Add ArthaLedger to your home screen" onClick={handleInstallClick} />
+            <Row icon={Smartphone} label="Install app" hint="Use ArthaLedger like a phone app"
+              trailing={
+                <button type="button" onClick={handleInstallClick}
+                  className="flex-shrink-0 rounded-full bg-[var(--gold-primary)] px-3.5 py-1.5 text-[12px] font-semibold text-white hover:bg-[var(--gold-hover)] active:scale-95 transition cursor-pointer">
+                  Install
+                </button>
+              } />
           )}
         </Group>
 
@@ -444,11 +450,9 @@ export default function SettingsPage() {
             ? 'Notifications are blocked for this site. Allow them from your browser’s site settings, then reload.'
             : 'Budget alerts fire when a category reaches 80% (warning) or 100% (limit) of its budget.'}
         >
-          <Row icon={Bell} tint="emerald" label="Budget alerts" hint="Push notifications on this device"
-            onClick={notifPermission === 'default' ? enablePush : undefined}
-            trailing={notifPermission === 'default'
-              ? <span className="flex-shrink-0 text-[13px] font-semibold text-[var(--gold-primary)]">Enable</span>
-              : pushStatus} />
+          <Row icon={Bell} tint="emerald" label="Budget alerts"
+            hint={notifPermission === 'denied' ? 'Blocked in phone settings' : 'Alert me at 80% and 100% of a budget'}
+            trailing={<Switch checked={budgetAlertsOn} onChange={toggleBudgetAlerts} label="Budget alerts" />} />
           <Row icon={BellRing} tint="emerald" label="Daily reminder" hint="A nudge to log the day's expenses"
             trailing={<Switch checked={dailyReminder.enabled} onChange={toggleDailyReminder} label="Daily reminder" />} />
           {dailyReminder.enabled && (
@@ -466,7 +470,7 @@ export default function SettingsPage() {
           delay={0.12}
           footer="Only you can access your data — it’s protected by Firebase security rules and encrypted in transit and at rest. Your password is handled by Firebase Authentication; we never see or store it."
         >
-          <Row icon={Lock} tint="sky" label="Deep Analytics & Vault" hint="PIN-protected insights & private income" to="/vault" />
+          <Row icon={Lock} tint="sky" label="Deep Analytics & Vault" hint="Password-protected insights & private income" to="/vault" />
           <Row icon={FileText} tint="sky" label="Download report" hint="PDF or spreadsheet, filtered by book & date" onClick={() => setSheet('download')} />
           <Row icon={Download} tint="sky" label="Export all data" hint="Complete backup as JSON" onClick={handleExport} trailing={null} />
         </Group>
@@ -509,7 +513,6 @@ export default function SettingsPage() {
       <RemindersSheet open={sheet === 'reminders'} onClose={closeSheet} times={reminderTimes} onChange={updateReminderTimes} />
       <DiagnosticsSheet open={sheet === 'diagnostics'} onClose={closeSheet} canTest={canTest} canDebug={canDebug}
         onTest={sendTestNotification} onCopyToken={copyFcmToken} onRunDiagnostic={runDiagnostic} />
-      <InstallSheet open={sheet === 'install'} onClose={closeSheet} />
       <FaqSheet open={sheet === 'faq'} onClose={closeSheet} items={FAQ} />
       <AboutSheet open={sheet === 'about'} onClose={closeSheet} version={APP_VERSION} />
       <DeleteAccountSheet open={sheet === 'delete'} onClose={closeSheet} needsPassword={Boolean(isPasswordUser)}
