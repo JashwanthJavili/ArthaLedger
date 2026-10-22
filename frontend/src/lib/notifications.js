@@ -50,7 +50,8 @@ export async function sendNativeNotification(title, options = {}) {
   const defaultOptions = {
     icon: '/icons/icon-192.png',
     badge: '/icons/badge-96.png',
-    vibrate: [100, 50, 100],
+    vibrate: [120, 60, 120],
+    timestamp: Date.now(),
     ...options,
   }
 
@@ -77,28 +78,37 @@ export async function sendNativeNotification(title, options = {}) {
 
 const BUDGET_ALERTS_KEY = 'al_budget_alerts'
 
-/** Budget alerts are on unless the user switched them off (and permission is granted). */
+/** Budget alerts are off until the user switches them on in Settings. */
 export function isBudgetAlertsEnabled() {
-  try { return localStorage.getItem(BUDGET_ALERTS_KEY) !== 'false' } catch { return true }
+  try { return localStorage.getItem(BUDGET_ALERTS_KEY) === 'true' } catch { return false }
 }
 
 export function setBudgetAlertsEnabled(on) {
   try { localStorage.setItem(BUDGET_ALERTS_KEY, String(Boolean(on))) } catch { /* storage unavailable */ }
 }
 
+const inr = (n) => `\u20b9${Math.round(Number(n) || 0).toLocaleString('en-IN')}`
+
 export function triggerBudgetAlertNotification({ categoryName, spent, limit, percentage }) {
   if (!isBudgetAlertsEnabled()) return
+  const pct = Math.round(percentage)
+  const left = Number(limit) - Number(spent)
+  const common = {
+    data: { url: '/analytics' },
+    actions: [{ action: 'view', title: 'View budget' }, { action: 'dismiss', title: 'Dismiss' }],
+    renotify: true,
+  }
   if (percentage >= 100) {
-    sendNativeNotification(`🚨 Budget Exceeded: ${categoryName}`, {
-      body: `You have reached ${Math.round(percentage)}% of your target budget (₹${spent.toLocaleString('en-IN')} / ₹${limit.toLocaleString('en-IN')}).`,
-      tag: `budget-exceeded-${categoryName}`,
-      data: { url: '/analytics' },
+    sendNativeNotification(`${categoryName} is over budget`, {
+      ...common,
+      body: `${inr(spent)} of ${inr(limit)} spent this month \u00b7 ${inr(-left)} over`,
+      tag: `budget-${categoryName}`,
     })
   } else if (percentage >= 80) {
-    sendNativeNotification(`⚠️ Budget Warning: ${categoryName}`, {
-      body: `You have used ${Math.round(percentage)}% of your target budget (₹${spent.toLocaleString('en-IN')} / ₹${limit.toLocaleString('en-IN')}).`,
-      tag: `budget-warning-${categoryName}`,
-      data: { url: '/analytics' },
+    sendNativeNotification(`${categoryName} \u00b7 ${pct}% of budget used`, {
+      ...common,
+      body: `${inr(spent)} of ${inr(limit)} spent \u00b7 ${inr(left)} left this month`,
+      tag: `budget-${categoryName}`,
     })
   }
 }
@@ -169,17 +179,24 @@ export function saveDailyReminderSettings({ enabled, times = ['19:00'] }) {
   localStorage.setItem(REMINDER_KEY_TIMES, JSON.stringify(finalTimes))
   localStorage.setItem(REMINDER_KEY_TIME, finalTimes[0])
 
-  if (auth.currentUser?.uid) {
-    const path = `users/${auth.currentUser.uid}/reminderSettings`
-    Promise.all([
-      set(ref(db, `${path}/enabled`), Boolean(enabled)),
-      set(ref(db, `${path}/times`), finalTimes),
-      set(ref(db, `${path}/time`), finalTimes[0]),
-      set(ref(db, `${path}/timezone`), userTimeZone()),
-      set(ref(db, `${path}/updatedAt`), Date.now()),
-    ]).catch((e) => console.warn('Firebase reminder save error:', e))
-  }
-  if (enabled) ensurePushRegistration()
+  if (!auth.currentUser?.uid) return Promise.resolve()
+  const path = `users/${auth.currentUser.uid}/reminderSettings`
+  return Promise.all([
+    set(ref(db, `${path}/enabled`), Boolean(enabled)),
+    set(ref(db, `${path}/times`), finalTimes),
+    set(ref(db, `${path}/time`), finalTimes[0]),
+    set(ref(db, `${path}/timezone`), userTimeZone()),
+    set(ref(db, `${path}/updatedAt`), Date.now()),
+  ]).then(() => (enabled ? ensurePushRegistration() : null))
+}
+
+/** Reminder state as the server sees it: { enabled, times, timezone, devices, next_reminder }. */
+export async function getServerReminderStatus() {
+  const idToken = await auth.currentUser?.getIdToken()
+  if (!idToken) throw new Error('Not signed in')
+  const res = await fetch(`${API_BASE}/api/v1/notifications/status`, { headers: { Authorization: `Bearer ${idToken}` } })
+  if (!res.ok) throw new Error(`Server error ${res.status}`)
+  return res.json()
 }
 
 /**
@@ -206,7 +223,7 @@ export async function testMobileNotification() {
     if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
       navigator.serviceWorker.controller.postMessage({ type: 'TEST_NOTIFICATION' })
     } else {
-      sendNativeNotification('ArthaLedger', { body: 'Notifications are working on this device.' })
+      sendNativeNotification('Notifications are on', { body: 'This is how ArthaLedger reminders will look on this device.' })
     }
     return { ok: false, sent: 0, message: err?.message || 'Push server unreachable' }
   }

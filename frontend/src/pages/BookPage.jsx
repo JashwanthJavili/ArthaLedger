@@ -202,7 +202,17 @@ export default function BookPage() {
     return result
   }, [entriesByBook])
 
-  const [modalType, setModalType] = useState(null)
+  // ?add=expense|income (from a reminder's "Add" button) opens a new entry directly
+  const [modalType, setModalType] = useState(() => {
+    const add = new URLSearchParams(window.location.search).get('add')
+    return add === 'income' || add === 'expense' ? add : null
+  })
+  useEffect(() => {
+    const url = new URL(window.location.href)
+    if (!url.searchParams.has('add')) return
+    url.searchParams.delete('add')
+    window.history.replaceState(window.history.state, '', url.pathname + url.search + url.hash)
+  }, [])
   const [search, setSearch] = useState('')
   const [showFilters, setShowFilters] = useState(false)
   const [showCatManager, setShowCatManager] = useState(false)

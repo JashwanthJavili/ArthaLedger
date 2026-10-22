@@ -29,6 +29,7 @@ def send_fcm_multicast(
     url: str = '/dashboard',
     tag: Optional[str] = None,
     ttl_seconds: int = 6 * 60 * 60,
+    extra: Optional[Dict[str, str]] = None,
 ) -> Dict[str, Any]:
   """
   Sends a *data-only* web push to each token.
@@ -48,6 +49,10 @@ def send_fcm_multicast(
   data = {'title': title, 'body': body, 'url': url}
   if tag:
     data['tag'] = tag
+  # FCM data values must be strings
+  for k, v in (extra or {}).items():
+    if v is not None:
+      data[k] = str(v)
 
   message = messaging.MulticastMessage(
     tokens=tokens,
@@ -91,5 +96,6 @@ def _prune_tokens(uid: str, dead: List[str]) -> None:
     logger.error('Failed to prune dead tokens for %s: %s', uid, err)
 
 
-def send_to_user(uid: str, title: str, body: str, url: str = '/dashboard', tag: Optional[str] = None) -> Dict[str, Any]:
-  return send_fcm_multicast(uid, get_user_tokens(uid), title, body, url, tag)
+def send_to_user(uid: str, title: str, body: str, url: str = '/dashboard', tag: Optional[str] = None,
+                 extra: Optional[Dict[str, str]] = None) -> Dict[str, Any]:
+  return send_fcm_multicast(uid, get_user_tokens(uid), title, body, url, tag, extra=extra)

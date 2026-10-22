@@ -7,23 +7,25 @@ from fastapi import APIRouter, Depends, Header, HTTPException
 from app.api.deps import get_current_user
 from app.core.config import settings
 from app.services.push_service import send_to_user
-from app.services.scheduler import check_and_send_scheduled_reminders
+from app.services.scheduler import build_daily_reminder, check_and_send_scheduled_reminders, reminder_status
 
 logger = logging.getLogger('arthaledger.notifications')
 
 router = APIRouter(prefix='/v1/notifications', tags=['Notifications'])
 
 
+@router.get('/status')
+def get_reminder_status(user: dict = Depends(get_current_user)):
+  """Reminder settings and registered devices, as the server sees them."""
+  return reminder_status(user['uid'])
+
+
 @router.post('/test')
 def send_test_push(user: dict = Depends(get_current_user)):
-  """Sends a real push to every device the signed-in user has registered."""
-  result = send_to_user(
-    user['uid'],
-    title='ArthaLedger',
-    body='Push notifications are working. You will get reminders even when the app is closed.',
-    url='/settings',
-    tag='test-notification',
-  )
+  """Sends a real push, styled like the daily reminder, to every device of this user."""
+  status = reminder_status(user['uid'])
+  msg = build_daily_reminder(user['uid'], status.get('timezone'))
+  result = send_to_user(user['uid'], msg['title'], msg['body'], msg['url'], tag='test-notification', extra=msg['extra'])
   return {'status': 'success', 'result': result}
 
 

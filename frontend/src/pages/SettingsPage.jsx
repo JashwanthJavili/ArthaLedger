@@ -6,7 +6,7 @@ import {
 } from 'lucide-react'
 import {
   requestNotificationPermission, getNotificationPermissionState, sendNativeNotification,
-  getDailyReminderSettings, saveDailyReminderSettings, isBudgetAlertsEnabled, setBudgetAlertsEnabled, syncReminderFromFirebase, testMobileNotification, ensurePushRegistration,
+  getDailyReminderSettings, saveDailyReminderSettings, isBudgetAlertsEnabled, setBudgetAlertsEnabled, syncReminderFromFirebase, testMobileNotification, ensurePushRegistration, getServerReminderStatus,
 } from '../lib/notifications'
 import { requestFCMToken } from '../lib/firebase'
 import { motion } from 'framer-motion'
@@ -227,25 +227,55 @@ export default function SettingsPage() {
     sendNativeNotification('Budget alerts are on', { body: 'You’ll be alerted when a category reaches 80% and 100% of its budget.' })
   }
 
+  // Daily reminder: saved to the server, the device registered for push, and
+  // then confirmed with the server — so "on" really means it will arrive.
+  const [reminderBusy, setReminderBusy] = useState(false)
+  const confirmWithServer = async (times) => {
+    try {
+      const st = await getServerReminderStatus()
+      if (!st.enabled) return showToast('Saved, but the server doesn’t see it yet. Try again in a moment.', 'error')
+      if (!st.devices) return showToast('Reminder saved, but this device couldn’t register for notifications.', 'error')
+      showToast(`Daily reminder on · next ${st.next_reminder || times.map(formatTime12).join(', ')} ✓`)
+    } catch {
+      // Server asleep or offline: the setting is still saved and will be used
+      showToast(`Daily reminder on · ${times.map(formatTime12).join(', ')} ✓`)
+    }
+  }
+
   const toggleDailyReminder = async () => {
-    if (notifPermission !== 'granted') {
+    if (reminderBusy) return
+    const next = !dailyReminder.enabled
+    if (next && notifPermission !== 'granted') {
+      if (notifPermission === 'denied') {
+        showToast('Notifications are blocked. Allow them in phone Settings → Apps → ArthaLedger / Chrome → Notifications.', 'error')
+        return
+      }
       const perm = await requestNotificationPermission()
       setNotifPermission(perm)
       if (perm !== 'granted') {
-        showToast('Notification permission required', 'error')
+        showToast('Notification permission is needed for reminders', 'error')
         return
       }
     }
-    const next = !dailyReminder.enabled
+    setReminderBusy(true)
     setDailyReminder(prev => ({ ...prev, enabled: next, times: reminderTimes, time: reminderTimes[0] }))
-    saveDailyReminderSettings({ enabled: next, times: reminderTimes })
-    showToast(next ? `Daily reminder on · ${reminderTimes.map(formatTime12).join(', ')} ✓` : 'Daily reminder disabled')
+    try {
+      await saveDailyReminderSettings({ enabled: next, times: reminderTimes })
+      if (next) await confirmWithServer(reminderTimes)
+      else showToast('Daily reminder off', 'info')
+    } catch (err) {
+      setDailyReminder(prev => ({ ...prev, enabled: !next }))
+      showToast(err?.message?.includes('permission') ? 'Couldn’t save: permission denied' : 'Couldn’t save the reminder. Check your connection.', 'error')
+    } finally {
+      setReminderBusy(false)
+    }
   }
 
   const updateReminderTimes = (times, msg) => {
     setDailyReminder(prev => ({ ...prev, times, time: times[0] }))
     saveDailyReminderSettings({ enabled: true, times })
-    if (msg) showToast(msg)
+      .then(() => { if (msg) showToast(msg) })
+      .catch(() => showToast('Couldn’t save reminder times. Check your connection.', 'error'))
   }
 
   const sendTestNotification = async () => {
@@ -280,6 +310,14 @@ export default function SettingsPage() {
       logs.push(token ? `5. FCM Push Token: Ready ✓ (${token.slice(0, 15)}...)` : '5. FCM Push Token: Failed ✗')
     } catch (e) {
       logs.push(`5. FCM Error: ${e?.message || String(e)}`)
+    }
+    try {
+      const st = await getServerReminderStatus()
+      logs.push(`6. Server: reminder ${st.enabled ? 'ON ✓' : 'OFF ✗'} · ${st.devices} device${st.devices === 1 ? '' : 's'} registered`)
+      logs.push(`   • Times: ${(st.times || []).map(formatTime12).join(', ')} (${st.timezone})`)
+      logs.push(`   • Next: ${st.next_reminder || '—'} · server time ${st.server_time}`)
+    } catch (e) {
+      logs.push(`6. Server check failed: ${e?.message || String(e)} (it may be waking up — try again in a minute)`)
     }
     return logs
   }
@@ -454,7 +492,7 @@ export default function SettingsPage() {
             hint={notifPermission === 'denied' ? 'Blocked in phone settings' : 'Alert me at 80% and 100% of a budget'}
             trailing={<Switch checked={budgetAlertsOn} onChange={toggleBudgetAlerts} label="Budget alerts" />} />
           <Row icon={BellRing} tint="emerald" label="Daily reminder" hint="A nudge to log the day's expenses"
-            trailing={<Switch checked={dailyReminder.enabled} onChange={toggleDailyReminder} label="Daily reminder" />} />
+            trailing={<Switch checked={dailyReminder.enabled} onChange={toggleDailyReminder} label="Daily reminder" disabled={reminderBusy} />} />
           {dailyReminder.enabled && (
             <Row icon={Clock} tint="emerald" label="Reminder times" value={reminderTimes.map(formatTime12).join(', ')}
               onClick={() => setSheet('reminders')} />

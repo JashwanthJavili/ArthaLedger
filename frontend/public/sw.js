@@ -24,15 +24,25 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging()
 
-function showAppNotification(title, { body, url = '/dashboard', tag, renotify = true } = {}) {
+/**
+ * Shows a notification styled like a native Android one: coloured app icon,
+ * monochrome status-bar badge, grouped by tag, optional action buttons
+ * (e.g. "Add to <book>" / "Later") and the time it was sent.
+ */
+function showAppNotification(title, { body, url = '/dashboard', tag, actions, addUrl, renotify = true } = {}) {
+  let parsedActions = []
+  try { parsedActions = Array.isArray(actions) ? actions : JSON.parse(actions || '[]') } catch { parsedActions = [] }
+  const maxActions = (self.Notification && Notification.maxActions) || 2
   return self.registration.showNotification(title || 'ArthaLedger', {
     body: body || '',
     icon: '/icons/icon-192.png',
     badge: '/icons/badge-96.png',
-    vibrate: [200, 100, 200],
+    vibrate: [120, 60, 120],
+    timestamp: Date.now(),
     tag: tag || undefined,
     renotify: Boolean(tag) && renotify,
-    data: { url },
+    actions: parsedActions.slice(0, maxActions),
+    data: { url, addUrl },
   })
 }
 
@@ -42,7 +52,7 @@ messaging.onBackgroundMessage((payload) => {
   // showing it again would duplicate. Our backend sends data-only messages.
   if (payload.notification) return
   const d = payload.data || {}
-  return showAppNotification(d.title, { body: d.body, url: d.url, tag: d.tag })
+  return showAppNotification(d.title, { body: d.body, url: d.url, tag: d.tag, actions: d.actions, addUrl: d.addUrl })
 })
 
 // ── Lifecycle ───────────────────────────────────────────────────────────────
@@ -65,8 +75,8 @@ self.addEventListener('activate', (event) => {
 // Local test notification (used when the server can't be reached)
 self.addEventListener('message', (event) => {
   if (event.data?.type === 'TEST_NOTIFICATION') {
-    event.waitUntil(showAppNotification('ArthaLedger', {
-      body: 'Notifications are working on this device.',
+    event.waitUntil(showAppNotification('Notifications are on', {
+      body: 'This is how ArthaLedger reminders will look on this device.',
       tag: 'test-notification',
     }))
   }
@@ -75,7 +85,11 @@ self.addEventListener('message', (event) => {
 // ── Notification tap → focus the app (or open it) on the right page ────────
 self.addEventListener('notificationclick', (event) => {
   event.notification.close()
-  const targetUrl = new URL(event.notification.data?.url || '/dashboard', self.location.origin).href
+  if (event.action === 'dismiss') return
+  const data = event.notification.data || {}
+  // "Add to <book>" opens that book straight into a new entry
+  const path = event.action === 'add' && data.addUrl ? data.addUrl : (data.url || '/dashboard')
+  const targetUrl = new URL(path, self.location.origin).href
 
   event.waitUntil((async () => {
     const clientList = await self.clients.matchAll({ type: 'window', includeUncontrolled: true })

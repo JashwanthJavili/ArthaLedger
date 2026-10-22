@@ -53,14 +53,10 @@ function PushSync() {
   const { user } = useAuth()
   useEffect(() => {
     if (!user?.uid) return
-    syncReminderFromFirebase()
-    ensurePushRegistration()
-    const handleVisChange = () => {
-      if (!document.hidden) {
-        syncReminderFromFirebase()
-        ensurePushRegistration()
-      }
-    }
+    // Keep this device's push token fresh only while a reminder is on
+    const refresh = () => syncReminderFromFirebase().then((r) => { if (r?.enabled) ensurePushRegistration() })
+    refresh()
+    const handleVisChange = () => { if (!document.hidden) refresh() }
     document.addEventListener('visibilitychange', handleVisChange)
     return () => document.removeEventListener('visibilitychange', handleVisChange)
   }, [user?.uid])
