@@ -63,13 +63,39 @@ def _slot(hour: int) -> str:
   return 'night'
 
 
-GREETING = {
-  'morning': ['Good morning ☀️', 'A fresh page today ☀️'],
-  'afternoon': ['Afternoon check-in', 'Halfway through the day'],
-  'evening': ['Evening check-in \U0001f319', 'How did today go?'],
-  'night': ['Before you sleep ✨', 'Close the day calmly ✨'],
+# Short, playful copy (no emojis). Bodies stay under ~70 characters so they
+# aren't cut off when the notification is collapsed.
+COPY = {
+  'morning': [
+    ('Good morning, money manager', "Plan today's spends before the day plans them for you."),
+    ('Needs first, wants later', 'A 10-second plan now saves a "where did it go?" tonight.'),
+    ('Your wallet woke up too', 'Tell it what today looks like. Needs on top, please.'),
+    ('Fresh day, fresh page', 'Decide what today deserves. Your ledger is ready.'),
+  ],
+  'afternoon': [
+    ('Lunch was good. Was it logged?', 'Add it now. Your future self is watching.'),
+    ('That chai counts too', 'Small spends add up quietly. Note them before they vanish.'),
+    ('Halfway through the day', 'Anything spent since morning? Takes five seconds.'),
+    ('Quick check-in', 'Spent something? Log it while you still remember the amount.'),
+  ],
+  'evening': [
+    ('Evening check-in', 'Anything sneak out of your wallet today? Note it down.'),
+    ('The day is wrapping up', 'Your ledger is too. Add what you spent today.'),
+    ('Psst, your wallet has stories', 'Tell your ledger before it forgets the details.'),
+    ('Golden hour for your ledger', 'Two minutes now, a clear picture forever.'),
+  ],
+  'night': [
+    ("Don't let today's spends sleep", 'Note them down before they turn into a mystery.'),
+    ('One last thing tonight', 'Close the day in ArthaLedger. Sleep better, literally.'),
+    ("Psst, it's almost tomorrow", "Today's spends are waiting to be written down."),
+    ('Before you scroll to sleep', 'Ten seconds to log today. We timed it.'),
+  ],
 }
-EMPTY_TITLES = ['Your ledger is waiting ✍️', 'A calm minute for your money', 'Nothing logged yet today']
+EMPTY_DAY = {
+  'afternoon': ('Nothing logged yet today', 'Either you spent nothing or you forgot. We bet on forgot.'),
+  'evening': ('We saw nothing today', "Either you're a saint or you forgot. Log it in seconds."),
+  'night': ('Your ledger is still empty', "Today happened. Let's write it down before bed."),
+}
 
 
 def _scan(uid: str, tz: ZoneInfo, now: datetime.datetime) -> dict:
@@ -126,32 +152,30 @@ def build_reminder(uid: str, tz_name, snooze: bool = True) -> dict:
   slot = _slot(now.hour)
   data = _scan(uid, tz, now)
   streak = _streak(data['days'], now.date())
-  logged_today = data['count'] > 0
+  count = data['count']
 
-  if logged_today:
-    title = random.choice(GREETING[slot])
-    noun = 'entry' if data['count'] == 1 else 'entries'
-    body = f"{data['count']} {noun} today · {fmt_money(data['spent'])} spent. Anything else to add?"
-    if streak >= 2:
-      body += f' \U0001f525 {streak}-day streak'
-  elif streak >= 2:
-    title = f'Keep your {streak}-day streak \U0001f525'
-    body = 'Nothing logged today yet — one entry keeps it going.'
-  else:
-    title = random.choice(EMPTY_TITLES)
-    body = (f"This week: {fmt_money(data['week'])} spent. Take a minute to log today."
-            if data['week'] > 0 else 'Take a minute to record today’s spending.')
+  title, body = random.choice(COPY[slot])
+  if slot in ('evening', 'night') and count:
+    # Real numbers beat clever lines
+    noun = 'entry' if count == 1 else 'entries'
+    title = f'{count} {noun} today, {fmt_money(data["spent"])} spent' if data['spent'] else f'{count} {noun} logged today'
+    body = 'Missed anything? Add it before the day is over.' if slot == 'evening' else 'Anything else before bed? Your ledger is all ears.'
+  elif slot != 'morning' and not count and streak >= 2:
+    title = f'Your {streak}-day streak is on the line'
+    body = 'One quick entry keeps it alive. No pressure. Some pressure.'
+  elif slot != 'morning' and not count and slot in EMPTY_DAY and random.random() < 0.5:
+    title, body = EMPTY_DAY[slot]
 
   actions = []
   extra = {'image': f'/notify/{slot}.png'}
   if data['latest']:
-    _, pid, bid, name = data['latest']
+    _, pid, bid, _name = data['latest']
     extra['addUrl'] = f'/projects/{pid}/books/{bid}?add=expense'
-    actions.append({'action': 'add', 'title': f'➕ Add to {name}'[:28]})
+    actions.append({'action': 'add', 'title': 'Add expense'})
   link = snooze_url(uid) if snooze else None
   if link:
     extra['snoozeUrl'] = link
-    actions.append({'action': 'snooze', 'title': '⏰ In 10 min'})
+    actions.append({'action': 'snooze', 'title': 'Remind in 10 min'})
   if actions:
     extra['actions'] = json.dumps(actions)
   return {'title': title, 'body': body, 'url': '/dashboard', 'extra': extra}

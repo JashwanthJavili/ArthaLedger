@@ -6,7 +6,7 @@ import {
 } from 'lucide-react'
 import {
   requestNotificationPermission, getNotificationPermissionState, sendNativeNotification,
-  getDailyReminderSettings, saveDailyReminderSettings, isBudgetAlertsEnabled, setBudgetAlertsEnabled, syncReminderFromFirebase, testMobileNotification, ensurePushRegistration, getServerReminderStatus, enableDailyReminder, remindIn, nextReminderInfo, formatTimeLeft, thisDeviceId,
+  getDailyReminderSettings, saveDailyReminderSettings, isBudgetAlertsEnabled, setBudgetAlertsEnabled, syncReminderFromFirebase, testMobileNotification, ensurePushRegistration, getServerReminderStatus, enableDailyReminder, DEFAULT_REMINDER_TIMES, remindIn, nextReminderInfo, formatTimeLeft, thisDeviceId,
 } from '../lib/notifications'
 import { requestFCMToken } from '../lib/firebase'
 import { motion } from 'framer-motion'
@@ -187,13 +187,13 @@ export default function SettingsPage() {
   // ── Notifications & reminders ──
   const [notifPermission, setNotifPermission] = useState(() => getNotificationPermissionState())
   const [dailyReminder, setDailyReminder] = useState(() => getDailyReminderSettings())
-  const reminderTimes = dailyReminder.times?.length ? dailyReminder.times : [dailyReminder.time || '19:00']
+  const reminderTimes = dailyReminder.times?.length ? dailyReminder.times : DEFAULT_REMINDER_TIMES
 
   useEffect(() => {
     let cancelled = false
     syncReminderFromFirebase().then((cloudData) => {
       if (cloudData && !cancelled) {
-        const times = cloudData.times?.length ? cloudData.times : [cloudData.time || '19:00']
+        const times = cloudData.times?.length ? cloudData.times : DEFAULT_REMINDER_TIMES
         setDailyReminder({ enabled: Boolean(cloudData.enabled), times, time: times[0] })
       }
     })

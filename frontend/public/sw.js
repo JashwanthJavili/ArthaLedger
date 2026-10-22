@@ -81,7 +81,8 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('message', (event) => {
   if (event.data?.type === 'TEST_NOTIFICATION') {
     event.waitUntil(showAppNotification('Notifications are on', {
-      body: 'This is how ArthaLedger reminders will look on this device.',
+      body: 'This is how ArthaLedger reminders will look here.',
+      image: '/notify/evening.png',
       tag: 'test-notification',
     }))
   }
@@ -99,7 +100,7 @@ self.addEventListener('notificationclick', (event) => {
     const at = back.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
     event.waitUntil(
       fetch(data.snoozeUrl, { method: 'POST', mode: 'no-cors', keepalive: true })
-        .then(() => showAppNotification('Snoozed \u23f0', { body: `I'll remind you again at ${at}.`, tag: 'daily-reminder', silent: true, renotify: false }))
+        .then(() => showAppNotification('Snoozed for 10 minutes', { body: `See you again at ${at}.`, tag: 'daily-reminder', silent: true, renotify: false }))
         .catch(() => showAppNotification('Couldn\u2019t snooze', { body: 'No connection. Open ArthaLedger to log today\u2019s spending.', tag: 'daily-reminder' })),
     )
     return

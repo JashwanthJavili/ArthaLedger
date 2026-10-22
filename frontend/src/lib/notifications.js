@@ -6,6 +6,12 @@ const REMINDER_KEY_ENABLED = 'al_reminder_enabled'
 const REMINDER_KEY_TIMES = 'al_reminder_times'
 const REMINDER_KEY_TIME = 'al_reminder_time'
 
+// Four nudges a day by default: plan the morning, check in after lunch,
+// wrap up the evening, and log before bed.
+export const DEFAULT_REMINDER_TIMES = ['09:00', '13:30', '19:30', '22:00']
+// Bumped when the default schedule changes; older saved schedules are upgraded once.
+const SCHEDULE_VERSION = 2
+
 export function parseTime24(timeStr) {
   if (!timeStr) return { hour: 19, minute: 0 }
 
@@ -121,10 +127,7 @@ export function getDailyReminderSettings() {
   } catch {
     times = []
   }
-  if (!Array.isArray(times) || times.length === 0) {
-    const single = localStorage.getItem(REMINDER_KEY_TIME) || '19:00'
-    times = [single]
-  }
+  if (!Array.isArray(times) || times.length === 0) times = [...DEFAULT_REMINDER_TIMES]
   return { enabled, times, time: times[0] }
 }
 
@@ -159,7 +162,16 @@ export async function syncReminderFromFirebase() {
       if (typeof data.enabled === 'boolean') {
         localStorage.setItem(REMINDER_KEY_ENABLED, String(data.enabled))
       }
-      const times = Array.isArray(data.times) && data.times.length ? data.times : (data.time ? [data.time] : ['19:00'])
+      let times = Array.isArray(data.times) && data.times.length ? data.times : (data.time ? [data.time] : [...DEFAULT_REMINDER_TIMES])
+      // One-time upgrade to the four-a-day schedule
+      if (Number(data.scheduleVersion || 1) < SCHEDULE_VERSION) {
+        times = [...DEFAULT_REMINDER_TIMES]
+        Promise.all([
+          set(ref(db, `${path}/times`), times),
+          set(ref(db, `${path}/time`), times[0]),
+          set(ref(db, `${path}/scheduleVersion`), SCHEDULE_VERSION),
+        ]).catch(() => {})
+      }
       localStorage.setItem(REMINDER_KEY_TIMES, JSON.stringify(times))
       localStorage.setItem(REMINDER_KEY_TIME, times[0])
       // Keep the server's idea of "7 PM" in this device's time zone
@@ -173,8 +185,8 @@ export async function syncReminderFromFirebase() {
   return null
 }
 
-export function saveDailyReminderSettings({ enabled, times = ['19:00'] }) {
-  const finalTimes = Array.isArray(times) && times.length > 0 ? times : ['19:00']
+export function saveDailyReminderSettings({ enabled, times = DEFAULT_REMINDER_TIMES }) {
+  const finalTimes = Array.isArray(times) && times.length > 0 ? times : [...DEFAULT_REMINDER_TIMES]
   localStorage.setItem(REMINDER_KEY_ENABLED, String(enabled))
   localStorage.setItem(REMINDER_KEY_TIMES, JSON.stringify(finalTimes))
   localStorage.setItem(REMINDER_KEY_TIME, finalTimes[0])
@@ -186,6 +198,7 @@ export function saveDailyReminderSettings({ enabled, times = ['19:00'] }) {
     set(ref(db, `${path}/times`), finalTimes),
     set(ref(db, `${path}/time`), finalTimes[0]),
     set(ref(db, `${path}/timezone`), userTimeZone()),
+    set(ref(db, `${path}/scheduleVersion`), SCHEDULE_VERSION),
     set(ref(db, `${path}/updatedAt`), Date.now()),
   ]).then(() => (enabled ? ensurePushRegistration() : null))
 }
@@ -210,7 +223,7 @@ export async function getServerReminderStatus() {
  * Resolves to { status } (status may be null if the server is still waking up).
  * Rejects with err.code: 'unsupported' | 'blocked' | 'not-granted' | 'save-failed' | 'no-device'.
  */
-export async function enableDailyReminder(times = ['19:00']) {
+export async function enableDailyReminder(times = DEFAULT_REMINDER_TIMES) {
   const fail = (code, message) => Object.assign(new Error(message), { code })
   if (!('Notification' in window) || !('serviceWorker' in navigator)) {
     throw fail('unsupported', 'This device doesn’t support notifications.')

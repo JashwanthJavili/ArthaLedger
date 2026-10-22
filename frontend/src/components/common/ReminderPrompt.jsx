@@ -1,14 +1,19 @@
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Bell, Check, Loader2, AlertTriangle, Target } from 'lucide-react'
-import { enableDailyReminder, getDailyReminderSettings, setBudgetAlertsEnabled } from '../../lib/notifications'
+import { Bell, Check, Loader2, AlertTriangle, Target, Sunrise, Sun, Sunset, Moon } from 'lucide-react'
+import { enableDailyReminder, getDailyReminderSettings, setBudgetAlertsEnabled, DEFAULT_REMINDER_TIMES } from '../../lib/notifications'
 
 const STORE_KEY = 'al_reminder_prompt'
 const MAX_ASKS = 3
 const ASK_AGAIN_MS = 3 * 24 * 60 * 60 * 1000
 const SHOW_DELAY_MS = 1800
-const PRESETS = ['20:00', '21:00', '22:00']
+const SLOTS = [
+  { key: 'morning', label: 'Morning', hint: 'Plan the day’s spends', Icon: Sunrise },
+  { key: 'afternoon', label: 'Afternoon', hint: 'Quick lunch-time check', Icon: Sun },
+  { key: 'evening', label: 'Evening', hint: 'Wrap up the day', Icon: Sunset },
+  { key: 'night', label: 'Night', hint: 'Log it before bed', Icon: Moon },
+]
 
 const fmt12 = (t) => {
   const [h, m] = t.split(':').map(Number)
@@ -55,9 +60,10 @@ export default function ReminderPrompt() {
 }
 
 function PromptSheet({ onClose }) {
-  const [time, setTime] = useState('21:00')
-  const [custom, setCustom] = useState(false)
+  const [slots, setSlots] = useState(() => SLOTS.map((sl, i) => ({ ...sl, time: DEFAULT_REMINDER_TIMES[i], on: true })))
   const [alerts, setAlerts] = useState(true)
+  const chosen = slots.filter(sl => sl.on).map(sl => sl.time).sort()
+  const update = (key, patch) => setSlots(list => list.map(sl => (sl.key === key ? { ...sl, ...patch } : sl)))
   const [step, setStep] = useState('ask') // ask | working | done | error
   const [next, setNext] = useState('')
   const [error, setError] = useState(null)
@@ -65,9 +71,9 @@ function PromptSheet({ onClose }) {
   const turnOn = async () => {
     setStep('working')
     try {
-      const { status } = await enableDailyReminder([time])
+      const { status } = await enableDailyReminder(chosen)
       setBudgetAlertsEnabled(alerts)
-      setNext(status?.next_reminder || `Today at ${fmt12(time)}`)
+      setNext(status?.next_reminder || chosen.map(fmt12).join(', '))
       setStep('done')
     } catch (err) {
       setError({ message: err?.message || 'Something went wrong.', code: err?.code })
@@ -85,7 +91,7 @@ function PromptSheet({ onClose }) {
         role="dialog" aria-modal="true" aria-label="Daily reminders"
         initial={{ y: 48, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 48, opacity: 0 }}
         transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-        className="relative w-full sm:max-w-[400px] rounded-t-3xl sm:rounded-3xl border border-[var(--border-card)] bg-[var(--bg-page)] px-6 pt-7 shadow-[0_30px_80px_-20px_rgba(0,0,0,0.5)]"
+        className="relative max-h-[92vh] w-full overflow-y-auto sm:max-w-[420px] rounded-t-3xl sm:rounded-3xl border border-[var(--border-card)] bg-[var(--bg-page)] px-5 pt-6 shadow-[0_30px_80px_-20px_rgba(0,0,0,0.5)]"
         style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))' }}
       >
         <AnimatePresence mode="wait" initial={false}>
@@ -142,37 +148,45 @@ function PromptSheet({ onClose }) {
                 </span>
                 <h2 className="mt-4 font-serif-luxury text-[22px] font-semibold text-[var(--text-main)]">Never miss a day</h2>
                 <p className="mt-1 max-w-[290px] text-[13px] leading-relaxed text-[var(--text-muted)]">
-                  A gentle nudge to log your spending, even when the app is closed.
+                  Four friendly nudges a day, even when the app is closed. Change them anytime.
                 </p>
               </div>
 
-              {/* Time */}
-              <p className="mt-6 px-1 text-[11px] font-semibold uppercase tracking-[0.1em] text-[var(--text-subtle)]">Remind me at</p>
-              <div className="mt-2 grid grid-cols-4 gap-1.5">
-                {PRESETS.map(t => (
-                  <button key={t} type="button" onClick={() => { setTime(t); setCustom(false) }}
-                    className={`rounded-xl border py-2.5 text-[12px] font-semibold tabular-nums transition-colors cursor-pointer ${
-                      !custom && time === t
-                        ? 'border-[var(--gold-primary)] bg-[var(--gold-light)] text-[var(--text-main)]'
-                        : 'border-[var(--border-card)] bg-[var(--bg-card)] text-[var(--text-muted)]'
+              {/* Four daily nudges, each can be switched off or moved */}
+              <div className="mt-5 divide-y divide-[var(--border-subtle)] rounded-2xl border border-[var(--border-card)] bg-[var(--bg-card)]">
+                {slots.map(sl => (
+                  <div key={sl.key} className="flex items-center gap-3 px-3.5 py-2.5">
+                    <span className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg transition-colors ${
+                      sl.on ? 'bg-[var(--gold-light)] text-[var(--gold-primary)]' : 'bg-[var(--border-subtle)] text-[var(--text-subtle)]'
                     }`}>
-                    {fmt12(t)}
-                  </button>
+                      <sl.Icon size={15} />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className={`block text-[13px] font-medium ${sl.on ? 'text-[var(--text-main)]' : 'text-[var(--text-subtle)]'}`}>{sl.label}</span>
+                      <span className="block truncate text-[11px] text-[var(--text-subtle)]">{sl.hint}</span>
+                    </span>
+                    {/* Tap the time to change it with the phone's clock picker */}
+                    <label className={`relative flex-shrink-0 rounded-lg border px-2 py-1 text-[12px] font-semibold tabular-nums cursor-pointer ${
+                      sl.on ? 'border-[var(--border-card)] text-[var(--text-main)]' : 'border-transparent text-[var(--text-subtle)]'
+                    }`}>
+                      {fmt12(sl.time)}
+                      <input type="time" value={sl.time} aria-label={`${sl.label} reminder time`} disabled={!sl.on}
+                        onChange={(e) => { if (e.target.value) update(sl.key, { time: e.target.value }) }}
+                        className="absolute inset-0 h-full w-full cursor-pointer opacity-0" />
+                    </label>
+                    <button type="button" role="switch" aria-checked={sl.on} aria-label={`${sl.label} reminder`}
+                      onClick={() => update(sl.key, { on: !sl.on })}
+                      className={`relative h-6 w-10 flex-shrink-0 rounded-full transition-colors cursor-pointer ${sl.on ? 'bg-[var(--gold-primary)]' : 'bg-[var(--border-card)]'}`}>
+                      <motion.span initial={false} animate={{ x: sl.on ? 16 : 0 }} transition={{ type: 'spring', stiffness: 600, damping: 35 }}
+                        className="absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow" />
+                    </button>
+                  </div>
                 ))}
-                <label className={`relative flex items-center justify-center rounded-xl border py-2.5 text-[12px] font-semibold tabular-nums transition-colors cursor-pointer ${
-                  custom ? 'border-[var(--gold-primary)] bg-[var(--gold-light)] text-[var(--text-main)]' : 'border-[var(--border-card)] bg-[var(--bg-card)] text-[var(--text-muted)]'
-                }`}>
-                  {custom ? fmt12(time) : 'Other'}
-                  {/* Native clock picker */}
-                  <input type="time" value={time} aria-label="Custom reminder time"
-                    onChange={(e) => { if (e.target.value) { setTime(e.target.value); setCustom(true) } }}
-                    className="absolute inset-0 h-full w-full cursor-pointer opacity-0" />
-                </label>
               </div>
 
               {/* Budget alerts */}
               <button type="button" role="switch" aria-checked={alerts} onClick={() => setAlerts(v => !v)}
-                className="mt-4 flex w-full items-center gap-3 rounded-2xl border border-[var(--border-card)] bg-[var(--bg-card)] px-4 py-3 text-left cursor-pointer">
+                className="mt-3 flex w-full items-center gap-3 rounded-2xl border border-[var(--border-card)] bg-[var(--bg-card)] px-3.5 py-3 text-left cursor-pointer">
                 <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-[var(--gold-light)] text-[var(--gold-primary)]">
                   <Target size={15} />
                 </span>
@@ -186,9 +200,11 @@ function PromptSheet({ onClose }) {
                 </span>
               </button>
 
-              <button type="button" onClick={turnOn} disabled={step === 'working'}
-                className="mt-6 flex w-full items-center justify-center gap-2 rounded-2xl bg-[var(--gold-primary)] py-3.5 text-[14px] font-semibold text-white hover:bg-[var(--gold-hover)] disabled:opacity-80 transition-colors cursor-pointer">
-                {step === 'working' ? <><Loader2 size={16} className="animate-spin" /> Turning on…</> : `Remind me at ${fmt12(time)}`}
+              <button type="button" onClick={turnOn} disabled={step === 'working' || chosen.length === 0}
+                className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl bg-[var(--gold-primary)] py-3.5 text-[14px] font-semibold text-white hover:bg-[var(--gold-hover)] disabled:opacity-80 transition-colors cursor-pointer">
+                {step === 'working'
+                  ? <><Loader2 size={16} className="animate-spin" /> Turning on…</>
+                  : chosen.length ? `Turn on ${chosen.length} daily reminder${chosen.length === 1 ? '' : 's'}` : 'Pick at least one'}
               </button>
               <button type="button" onClick={onClose} disabled={step === 'working'}
                 className="mt-1 w-full rounded-2xl py-3 text-[13px] font-medium text-[var(--text-muted)] hover:text-[var(--text-main)] disabled:opacity-40 transition-colors cursor-pointer">
