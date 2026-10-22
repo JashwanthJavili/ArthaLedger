@@ -479,6 +479,7 @@ export default function SettingsPage() {
         <Group title="Support" delay={0.15}>
           <Row icon={HelpCircle} tint="violet" label="Help & FAQ" onClick={() => setSheet('faq')} />
           <Row icon={Info} tint="violet" label="About ArthaLedger" value={`v${APP_VERSION}`} onClick={() => setSheet('about')} />
+          <Row icon={ShieldCheck} tint="violet" label="Privacy policy" to="/privacy" />
         </Group>
 
         {/* ── Danger zone ── */}

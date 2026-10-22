@@ -326,7 +326,13 @@ export function AuthProvider({ children }) {
     }
 
     const uid = currentUser.uid
-    try { await remove(ref(db, `users/${uid}`)) } catch { /* non-fatal */ }
+    // Data first, and stop if it fails: deleting the login while leaving the
+    // records behind would orphan them (and break the privacy promise).
+    try {
+      await remove(ref(db, `users/${uid}`))
+    } catch {
+      throw new Error('Could not delete your data. Check your connection and try again.')
+    }
 
     try {
       const { deleteUser } = await import('firebase/auth')

@@ -11,6 +11,7 @@ import ForgotPasswordPage from './pages/auth/ForgotPasswordPage'
 import VerifyEmailPage from './pages/auth/VerifyEmailPage'
 import { lockAll } from './lib/pin'
 import LandingPage from './pages/LandingPage'
+import PrivacyPage from './pages/PrivacyPage'
 import DashboardPage from './pages/DashboardPage'
 import ProjectDetailPage from './pages/ProjectDetailPage'
 import BookPage from './pages/BookPage'
@@ -107,6 +108,7 @@ export default function App() {
         {!splashDone && <SplashScreen onDone={handleSplashDone} />}
         <Routes>
           <Route path="/" element={<HomeRoute />} />
+          <Route path="/privacy" element={<PrivacyPage />} />
           <Route path="/login"           element={<PublicRoute><LoginPage /></PublicRoute>} />
           <Route path="/register"        element={<PublicRoute><RegisterPage /></PublicRoute>} />
           <Route path="/forgot-password" element={<PublicRoute><ForgotPasswordPage /></PublicRoute>} />

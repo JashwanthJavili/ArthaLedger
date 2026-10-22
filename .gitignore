@@ -27,3 +27,8 @@ Thumbs.db
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# Android signing keys (never commit)
+*.keystore
+*.jks
+signing-key-info.txt
