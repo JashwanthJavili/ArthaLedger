@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { isDarkMode, setDarkMode as applyDarkMode } from '../lib/theme'
 import {
   Moon, Coins, Download, FileText, LogOut, Lock, KeyRound, Bell, BellRing,
-  Clock, Stethoscope, Smartphone, CheckCircle2, Trash2, HelpCircle, Info, ShieldCheck, Pencil,
+  Clock, Stethoscope, Smartphone, CheckCircle2, Trash2, HelpCircle, Info, ShieldCheck, Pencil, MessageSquareHeart, LayoutDashboard,
 } from 'lucide-react'
 import {
   requestNotificationPermission, getNotificationPermissionState, sendNativeNotification,
@@ -14,6 +14,8 @@ import LayoutShell from '../components/LayoutShell'
 import Toast from '../components/common/Toast'
 import ConfirmDialog from '../components/common/ConfirmDialog'
 import UserAvatar from '../components/common/UserAvatar'
+import FeedbackSheet from '../components/common/FeedbackSheet'
+import { isAdminUser } from '../lib/admin'
 import DownloadModal from '../components/forms/DownloadModal'
 import { Group, Row, Switch } from '../components/settings/ui'
 import {
@@ -550,7 +552,14 @@ export default function SettingsPage() {
         </Group>
 
         {/* ── Support ── */}
+        {isAdminUser(user) && (
+          <Group title="Admin" delay={0.14}>
+            <Row icon={LayoutDashboard} tint="gold" label="Admin dashboard" hint="Feedback, users and testimonials" to="/admin" />
+          </Group>
+        )}
+
         <Group title="Support" delay={0.15}>
+          <Row icon={MessageSquareHeart} tint="violet" label="Send feedback" hint="Ideas, problems or a kind word" onClick={() => setSheet('feedback')} />
           <Row icon={HelpCircle} tint="violet" label="Help & FAQ" onClick={() => setSheet('faq')} />
           <Row icon={Info} tint="violet" label="About ArthaLedger" value={`v${APP_VERSION}`} onClick={() => setSheet('about')} />
           <Row icon={ShieldCheck} tint="violet" label="Privacy policy" to="/privacy" />
@@ -588,6 +597,7 @@ export default function SettingsPage() {
       <RemindersSheet open={sheet === 'reminders'} onClose={closeSheet} times={reminderTimes} onChange={updateReminderTimes} />
       <DiagnosticsSheet open={sheet === 'diagnostics'} onClose={closeSheet} canTest={canTest} canDebug={canDebug}
         onTest={sendTestNotification} onCopyToken={copyFcmToken} onRunDiagnostic={runDiagnostic} />
+      <FeedbackSheet open={sheet === 'feedback'} onClose={closeSheet} />
       <FaqSheet open={sheet === 'faq'} onClose={closeSheet} items={FAQ} />
       <AboutSheet open={sheet === 'about'} onClose={closeSheet} version={APP_VERSION} />
       <DeleteAccountSheet open={sheet === 'delete'} onClose={closeSheet} needsPassword={Boolean(isPasswordUser)}

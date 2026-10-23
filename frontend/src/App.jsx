@@ -20,6 +20,7 @@ import SettingsPage from './pages/SettingsPage'
 import VaultPage from './pages/VaultPage'
 import ExpenseGroupsPage from './pages/ExpenseGroupsPage'
 import ExpenseGroupDetailPage from './pages/ExpenseGroupDetailPage'
+import AdminPage from './pages/AdminPage'
 import SplashScreen from './components/common/SplashScreen'
 import { useAuth } from './context/AuthContext'
 import Loader from './components/common/Loader'
@@ -119,6 +120,7 @@ export default function App() {
           <Route path="/trips/:tripId"   element={<ProtectedRoute><ExpenseGroupDetailPage /></ProtectedRoute>} />
           <Route path="/settings"        element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
           <Route path="/vault"           element={<ProtectedRoute><VaultPage /></ProtectedRoute>} />
+          <Route path="/admin"           element={<ProtectedRoute><AdminPage /></ProtectedRoute>} />
           <Route path="/projects/:projectId"                    element={<ProtectedRoute><ProjectDetailPage /></ProtectedRoute>} />
           <Route path="/projects/:projectId/books/:bookId"      element={<ProtectedRoute><BookPage /></ProtectedRoute>} />
           <Route path="*" element={<Navigate to="/" replace />} />

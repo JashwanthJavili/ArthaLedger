@@ -3,11 +3,13 @@ import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  Settings, BarChart3, ShieldCheck, Users, Bell, ShieldQuestion, Mail, LogOut, ChevronRight, Pencil,
+  Settings, BarChart3, ShieldCheck, Users, Bell, ShieldQuestion, MessageSquareHeart, LogOut, ChevronRight, Pencil, LayoutDashboard,
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import ConfirmDialog from './ConfirmDialog'
 import UserAvatar from './UserAvatar'
+import FeedbackSheet from './FeedbackSheet'
+import { isAdminUser } from '../../lib/admin'
 
 const SHORTCUTS = [
   { to: '/analytics', label: 'Analytics', Icon: BarChart3 },
@@ -18,7 +20,7 @@ const ROWS = [
   { to: '/settings', label: 'Settings', hint: 'Profile, security, currency', Icon: Settings },
   { to: '/settings', label: 'Reminders', hint: 'Daily nudges and budget alerts', Icon: Bell },
   { to: '/privacy', label: 'Privacy policy', hint: 'How your data is handled', Icon: ShieldQuestion },
-  { href: 'mailto:jashwanthjavili7@gmail.com?subject=ArthaLedger%20feedback', label: 'Help & feedback', hint: 'Write to us, we reply', Icon: Mail },
+  { action: 'feedback', label: 'Send feedback', hint: 'Ideas, problems or a kind word', Icon: MessageSquareHeart },
 ]
 
 /**
@@ -31,6 +33,7 @@ export default function AccountMenu() {
   const navigate = useNavigate()
   const [open, setOpen] = useState(false)
   const [confirmLogout, setConfirmLogout] = useState(false)
+  const [feedbackOpen, setFeedbackOpen] = useState(false)
   const pushed = useRef(false)
 
   const name = user?.displayName || 'Your account'
@@ -119,7 +122,7 @@ export default function AccountMenu() {
 
                 {/* Everything else */}
                 <div className="mt-3 px-2">
-                  {ROWS.map(({ to, href, label, hint, Icon }) => {
+                  {[...ROWS, ...(isAdminUser(user) ? [{ to: '/admin', label: 'Admin dashboard', hint: 'Feedback, users, testimonials', Icon: LayoutDashboard }] : [])].map(({ to, href, action, label, hint, Icon }) => {
                     const inner = (
                       <>
                         <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-[var(--border-subtle)] text-[var(--text-muted)]">
@@ -133,9 +136,9 @@ export default function AccountMenu() {
                       </>
                     )
                     const cls = 'flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 hover:bg-[var(--border-subtle)] active:bg-[var(--border-subtle)] transition-colors cursor-pointer'
-                    return href
-                      ? <a key={label} href={href} onClick={close} className={cls}>{inner}</a>
-                      : <button key={label} type="button" onClick={() => go(to)} className={cls}>{inner}</button>
+                    if (href) return <a key={label} href={href} onClick={close} className={cls}>{inner}</a>
+                    if (action === 'feedback') return <button key={label} type="button" onClick={() => { close(); setFeedbackOpen(true) }} className={cls}>{inner}</button>
+                    return <button key={label} type="button" onClick={() => go(to)} className={cls}>{inner}</button>
                   })}
                 </div>
 
@@ -153,6 +156,8 @@ export default function AccountMenu() {
         </AnimatePresence>,
         document.body,
       )}
+
+      <FeedbackSheet open={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
 
       <ConfirmDialog
         open={confirmLogout}
