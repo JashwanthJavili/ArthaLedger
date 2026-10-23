@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from app.api.v1 import auth, projects, books, entries, analytics, notifications
+from app.api.v1 import auth, projects, books, entries, analytics, notifications, community
 
 router = APIRouter(prefix='/api')
 
@@ -10,3 +10,4 @@ router.include_router(books.router)
 router.include_router(entries.router)
 router.include_router(analytics.router)
 router.include_router(notifications.router)
+router.include_router(community.router)

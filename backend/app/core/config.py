@@ -13,6 +13,12 @@ class Settings:
     environment: str = os.getenv('ENVIRONMENT', 'development')
     # Shared secret for the external cron that wakes the server for reminders
     cron_secret: str = os.getenv('CRON_SECRET', '')
+    # Comma-separated emails allowed into the admin dashboard (verified email required)
+    admin_emails_raw: str = os.getenv('ADMIN_EMAILS', 'jashwanthjavili7@gmail.com')
+
+    @property
+    def admin_emails(self) -> List[str]:
+        return [e.strip().lower() for e in self.admin_emails_raw.split(',') if e.strip()]
 
     @property
     def allowed_origins(self) -> List[str]:

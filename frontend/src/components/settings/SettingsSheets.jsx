@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  Check, CheckCircle2, ChevronDown, Clock, Copy, Database, Globe, Key, Mail, Phone,
+  Check, CheckCircle2, ChevronDown, Clock, Copy, Globe, Key, Mail, Phone,
   Plus, Send, Shield, Stethoscope, Trash2,
 } from 'lucide-react'
 import {
@@ -355,10 +355,9 @@ export function FaqSheet({ open, onClose, items }) {
 
 // ── About ───────────────────────────────────────────────────────────────────
 const FACTS = [
-  { icon: Globe, label: 'Platform', value: 'Web + PWA' },
-  { icon: Database, label: 'Database', value: 'Firebase Realtime DB' },
-  { icon: Key, label: 'Authentication', value: 'Firebase Auth' },
-  { icon: Shield, label: 'Encryption', value: 'In transit & at rest' },
+  { icon: Globe, label: 'Available on', value: 'Android app & web' },
+  { icon: Key, label: 'Your data', value: 'Private to your account' },
+  { icon: Shield, label: 'Protection', value: 'Encrypted in transit & at rest' },
 ]
 
 export function AboutSheet({ open, onClose, version }) {
@@ -367,7 +366,7 @@ export function AboutSheet({ open, onClose, version }) {
       <SheetHeader title="About" onClose={onClose} />
       <SheetBody className="space-y-5">
         <div className="flex flex-col items-center text-center">
-          <img src="/L.png" alt="" className="h-16 w-16 rounded-2xl bg-[var(--gold-light)] object-contain p-1.5" />
+          <img src="/icons/maskable-192.png" alt="" className="h-16 w-16 rounded-full shadow-[0_10px_24px_-14px_rgba(0,0,0,0.4)]" />
           <p className="font-serif-luxury mt-3 text-[20px] font-semibold text-[var(--text-main)]">ArthaLedger</p>
           <p className="font-serif-luxury text-[14px] italic text-[var(--text-muted)]">Where every rupee has meaning</p>
           <p className="mt-1 text-[11px] text-[var(--text-subtle)]">Version {version}</p>
@@ -379,7 +378,6 @@ export function AboutSheet({ open, onClose, version }) {
 
         <div className="overflow-hidden rounded-2xl border border-[var(--border-card)] bg-[var(--bg-card)] divide-y divide-[var(--border-subtle)]">
           {FACTS.map(f => <Row key={f.label} icon={f.icon} tint="neutral" label={f.label} value={f.value} />)}
-          <Row icon={Database} tint="neutral" label="Built with" hint="React · Tailwind CSS · Framer Motion · Firebase · FastAPI · jsPDF · Recharts" />
         </div>
 
         <div className="space-y-2">
@@ -396,6 +394,12 @@ export function AboutSheet({ open, onClose, version }) {
             <Row icon={Phone} tint="neutral" label="Phone" value="+91 91601 25245" href="tel:+919160125245" trailing={null} />
           </div>
         </div>
+
+        <a href="mailto:jashwanthjavili7@gmail.com?subject=Collaboration%20with%20ArthaLedger"
+          className="block rounded-2xl border border-[var(--border-card)] bg-[var(--gold-light)] px-4 py-3.5 text-center transition-colors hover:border-[var(--gold-primary)]">
+          <span className="block text-[13.5px] font-semibold text-[var(--text-main)]">Want to collaborate?</span>
+          <span className="mt-0.5 block text-[12px] text-[var(--text-muted)]">Write to jashwanthjavili7@gmail.com</span>
+        </a>
 
         <p className="font-serif-luxury text-center text-[13px] italic text-[var(--text-subtle)]">“Mindful spending creates peaceful living.”</p>
       </SheetBody>
