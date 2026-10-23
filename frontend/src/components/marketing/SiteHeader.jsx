@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { motion, AnimatePresence, useScroll, useSpring, useMotionValueEvent } from 'framer-motion'
+import { motion, AnimatePresence, useScroll, useMotionValueEvent } from 'framer-motion'
 import { Download, Menu, X, ArrowRight } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { EASE, APK_URL, NAV, goldBtn, scrollToSection } from './constants'
@@ -29,7 +29,7 @@ function NavItem({ item, onHome, current, mobile, onClick }) {
   const isActive = item.page ? current === item.page : current === item.id
   const base = mobile
     ? 'flex min-h-12 items-center justify-between rounded-2xl px-4 text-[15px] font-medium'
-    : 'relative rounded-full px-3.5 py-2 text-[14px] font-medium transition-colors'
+    : 'relative rounded-full px-4 py-1.5 text-[14px] font-medium leading-6 transition-colors'
   const style = { color: isActive ? 'var(--text-main)' : mobile ? 'var(--text-main)' : 'var(--text-muted)', background: mobile && isActive ? 'var(--border-subtle)' : undefined }
   const inner = (
     <>
@@ -57,8 +57,7 @@ export default function SiteHeader() {
   const section = useActiveSection(onHome)
   const current = onHome ? section : pathname
 
-  const { scrollY, scrollYProgress } = useScroll()
-  const progress = useSpring(scrollYProgress, { stiffness: 200, damping: 30, restDelta: 0.001 })
+  const { scrollY } = useScroll()
   const [scrolled, setScrolled] = useState(false)
   const [open, setOpen] = useState(false)
   useMotionValueEvent(scrollY, 'change', (y) => setScrolled(y > 8))
@@ -87,17 +86,18 @@ export default function SiteHeader() {
           borderBottom: `1px solid ${solid ? 'var(--border-subtle)' : 'transparent'}`,
         }}
       >
-        <div className="mx-auto flex h-16 max-w-6xl items-center gap-3 px-4 sm:px-6">
-          <Link to="/" className="flex min-h-11 items-center gap-2.5" aria-label="ArthaLedger home" onClick={close}>
+        <div className="mx-auto grid h-16 max-w-6xl grid-cols-[1fr_auto] items-center gap-3 px-4 sm:px-6 lg:grid-cols-[1fr_auto_1fr]">
+          <Link to="/" className="flex min-h-11 items-center gap-2.5 justify-self-start" aria-label="ArthaLedger home" onClick={close}>
             <Logo size={34} />
             <span className="font-serif-luxury text-[18px] font-semibold tracking-tight" style={{ color: 'var(--text-main)' }}>ArthaLedger</span>
           </Link>
 
-          <nav className="isolate ml-4 hidden items-center gap-0.5 lg:ml-8 md:flex" aria-label="Main">
+          <nav className="isolate hidden items-center gap-0.5 rounded-full p-1 lg:flex" aria-label="Main"
+            style={{ background: solid ? 'transparent' : 'color-mix(in srgb, var(--bg-card) 70%, transparent)', border: `1px solid ${solid ? 'transparent' : 'var(--border-card)'}`, backdropFilter: solid ? 'none' : 'blur(10px)' }}>
             {NAV.map(item => <NavItem key={item.label} item={item} onHome={onHome} current={current} />)}
           </nav>
 
-          <div className="ml-auto flex items-center gap-2">
+          <div className="flex items-center gap-2 justify-self-end">
             {signedIn ? (
               <Link to="/dashboard" className="hidden min-h-11 items-center gap-1.5 rounded-full px-5 text-[14px] font-semibold hover:brightness-105 min-[420px]:inline-flex" style={goldBtn}>
                 Open app <ArrowRight size={15} />
@@ -113,7 +113,7 @@ export default function SiteHeader() {
               </>
             )}
             <button type="button" onClick={() => setOpen(v => !v)} aria-label={open ? 'Close menu' : 'Open menu'} aria-expanded={open} aria-controls="site-menu"
-              className="flex h-11 w-11 items-center justify-center rounded-full md:hidden" style={{ color: 'var(--text-main)', border: '1px solid var(--border-card)', background: 'var(--bg-card)' }}>
+              className="flex h-11 w-11 items-center justify-center rounded-full lg:hidden" style={{ color: 'var(--text-main)', border: '1px solid var(--border-card)', background: 'var(--bg-card)' }}>
               <AnimatePresence mode="wait" initial={false}>
                 <motion.span key={open ? 'x' : 'm'} initial={{ rotate: -90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: 90, opacity: 0 }} transition={{ duration: 0.18 }}>
                   {open ? <X size={19} /> : <Menu size={19} />}
@@ -123,10 +123,6 @@ export default function SiteHeader() {
           </div>
         </div>
 
-        {/* Reading progress */}
-        <motion.div aria-hidden="true" className="absolute bottom-[-1px] left-0 right-0 h-[2px] origin-left"
-          style={{ scaleX: progress, background: 'linear-gradient(90deg, var(--gold-hover), var(--gold-primary))', opacity: scrolled ? 1 : 0 }} />
-
         <AnimatePresence initial={false}>
           {open && (
             <motion.nav
@@ -134,7 +130,7 @@ export default function SiteHeader() {
               aria-label="Menu"
               initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}
               transition={{ duration: 0.28, ease: EASE }}
-              className="overflow-hidden md:hidden"
+              className="overflow-hidden lg:hidden"
             >
               <div className="mx-auto max-h-[calc(100dvh-4rem)] max-w-6xl space-y-1 overflow-y-auto px-4 pb-5 pt-1">
                 {NAV.map((item, i) => (
@@ -166,7 +162,7 @@ export default function SiteHeader() {
         {open && (
           <motion.button type="button" aria-label="Close menu" tabIndex={-1} onClick={close}
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 -z-10 bg-black/20 md:hidden" />
+            className="fixed inset-0 -z-10 bg-black/20 lg:hidden" />
         )}
       </AnimatePresence>
     </header>

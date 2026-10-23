@@ -1,11 +1,10 @@
 import { useEffect, useState } from 'react'
 import { useLocation } from 'react-router-dom'
-import { motion, useReducedMotion, useScroll, useTransform, useMotionValueEvent } from 'framer-motion'
+import { motion, useReducedMotion } from 'framer-motion'
 import {
-  Check, ArrowDownLeft, ArrowUpRight, BookOpen, Bell, WifiOff, ShieldCheck,
-  CloudUpload, Download, NotebookPen, Calculator, Landmark, Star, Mail,
-  Handshake, GraduationCap, Home as HomeIcon, Store, Laptop, Plane, Quote,
-  Briefcase, Sparkles, Gift, ChevronDown,
+  Check, WifiOff, ShieldCheck,
+  Download, Landmark, Star, Mail,
+  Handshake, Quote, Sparkles, Gift,
 } from 'lucide-react'
 import { forceLightTheme, restoreTheme } from '../lib/theme'
 import { api } from '../lib/api'
@@ -14,111 +13,17 @@ import SiteFooter from '../components/marketing/SiteFooter'
 import BeforeAfter from '../components/marketing/BeforeAfter'
 import FeatureBento from '../components/marketing/FeatureBento'
 import HowItWorksTour from '../components/marketing/HowItWorksTour'
+import HeroPhoto from '../components/marketing/HeroPhoto'
+import WhatIsArtha from '../components/marketing/WhatIsArtha'
+import AudienceBand from '../components/marketing/AudienceBand'
 import { Counter, Donut, InOutBars, Sparkline } from '../components/marketing/Charts'
 import { Reveal, Eyebrow, SectionTitle, PrimaryLink, GhostLink, FaqItem } from '../components/marketing/ui'
 import { EASE, APK_URL, CONTACT, GOLD_TINT, GOLD_SOFT, BAND_BG, goldBtn, card } from '../components/marketing/constants'
 
 /* ─────────────────────────── shared bits ─────────────────────────── */
 
-const IN = 'text-emerald-600'
-const OUT = 'text-rose-600'
 
 /* ─────────────────────────── phone mockup ─────────────────────────── */
-
-const mockEntries = [
-  { title: 'Salary', cat: 'Income · Monthly', amount: '+ ₹62,000', type: 'in' },
-  { title: 'Vegetables', cat: 'Groceries · Market', amount: '− ₹480', type: 'out' },
-  { title: 'Electricity bill', cat: 'Bills · Power', amount: '− ₹1,320', type: 'out' },
-  { title: 'Freelance work', cat: 'Income · Side work', amount: '+ ₹8,500', type: 'in' },
-]
-
-function PhoneMockup() {
-  const reduce = useReducedMotion()
-  return (
-    <motion.div
-      className="relative mx-auto w-full max-w-[290px]"
-      initial={reduce ? { opacity: 0 } : { opacity: 0, y: 40, rotate: -2 }}
-      animate={{ opacity: 1, y: 0, rotate: 0 }}
-      transition={{ duration: 1, delay: 0.25, ease: EASE }}
-    >
-      <motion.div animate={reduce ? undefined : { y: [0, -10, 0] }} transition={reduce ? undefined : { duration: 6, repeat: Infinity, ease: 'easeInOut' }}>
-        <div className="relative rounded-[2.6rem] p-[9px]" style={{ background: 'linear-gradient(160deg, #3A3530, #1B1815)', boxShadow: '0 40px 80px -30px rgba(0,0,0,0.45), 0 0 0 1px rgba(255,255,255,0.06) inset' }}>
-          <div className="overflow-hidden rounded-[2.1rem]" style={{ background: 'var(--bg-page)' }}>
-            <div className="flex items-center justify-between px-6 pt-3 pb-1 text-[10px] font-semibold" style={{ color: 'var(--text-main)' }}>
-              <span>9:41</span>
-              <span className="h-[18px] w-[70px] rounded-full bg-black/90" aria-hidden="true" />
-              <span className="flex items-center gap-1" aria-hidden="true">
-                <span className="h-1.5 w-3 rounded-sm" style={{ background: 'var(--text-main)' }} />
-                <span className="h-2 w-4 rounded-[3px] border" style={{ borderColor: 'var(--text-main)' }} />
-              </span>
-            </div>
-            <div className="flex items-center justify-between px-4 pt-2 pb-3">
-              <div>
-                <p className="text-[9px] uppercase tracking-[0.18em]" style={{ color: 'var(--text-subtle)' }}>Family project · Book</p>
-                <p className="font-serif-luxury text-[15px] font-semibold" style={{ color: 'var(--text-main)' }}>Home Expenses</p>
-              </div>
-              <div className="flex h-8 w-8 items-center justify-center rounded-full" style={{ background: GOLD_TINT, color: 'var(--gold-primary)' }}><BookOpen size={14} /></div>
-            </div>
-            <div className="px-4">
-              <div className="relative overflow-hidden rounded-2xl p-4" style={{ background: 'linear-gradient(140deg, #2B2620, #17140F)', color: '#F6EFE2' }}>
-                <div className="pointer-events-none absolute -right-8 -top-10 h-28 w-28 rounded-full" style={{ background: 'radial-gradient(circle, rgba(212,178,110,0.45), transparent 70%)' }} />
-                <p className="text-[9px] uppercase tracking-[0.2em] opacity-70">Money left</p>
-                <p className="mt-1 font-serif-luxury text-[24px] font-semibold tracking-tight">₹ 68,700</p>
-                <div className="mt-3 grid grid-cols-2 gap-2 text-[10px]">
-                  <div className="rounded-xl bg-white/8 px-2.5 py-1.5"><p className="opacity-60">Came in</p><p className="font-semibold text-emerald-300">₹ 70,500</p></div>
-                  <div className="rounded-xl bg-white/8 px-2.5 py-1.5"><p className="opacity-60">Went out</p><p className="font-semibold text-rose-300">₹ 1,800</p></div>
-                </div>
-              </div>
-            </div>
-            <div className="mx-4 mt-3 rounded-xl px-3 py-2.5" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-subtle)' }}>
-              <div className="flex items-center justify-between text-[10px]">
-                <span className="font-semibold" style={{ color: 'var(--text-main)' }}>Groceries budget</span>
-                <span style={{ color: 'var(--text-muted)' }}>₹4,800 / ₹6,000</span>
-              </div>
-              <div className="mt-1.5 h-1.5 overflow-hidden rounded-full" style={{ background: 'var(--border-subtle)' }}>
-                <motion.div className="h-full rounded-full" style={{ background: 'var(--gold-primary)' }}
-                  initial={{ width: reduce ? '80%' : '0%' }} animate={{ width: '80%' }} transition={{ duration: 1.4, delay: 0.9, ease: EASE }} />
-              </div>
-            </div>
-            <div className="px-4 pt-3 pb-2">
-              <p className="mb-1.5 text-[9px] font-semibold uppercase tracking-[0.18em]" style={{ color: 'var(--text-subtle)' }}>Today</p>
-              <ul className="space-y-1.5">
-                {mockEntries.map((e, i) => (
-                  <motion.li key={e.title} className="flex items-center gap-2.5 rounded-xl px-2.5 py-2" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-subtle)' }}
-                    initial={reduce ? false : { opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.5, delay: 0.8 + i * 0.12, ease: EASE }}>
-                    <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${e.type === 'in' ? 'bg-emerald-500/12' : 'bg-rose-500/12'} ${e.type === 'in' ? IN : OUT}`}>
-                      {e.type === 'in' ? <ArrowDownLeft size={13} /> : <ArrowUpRight size={13} />}
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-[11px] font-semibold" style={{ color: 'var(--text-main)' }}>{e.title}</span>
-                      <span className="block truncate text-[9px]" style={{ color: 'var(--text-subtle)' }}>{e.cat}</span>
-                    </span>
-                    <span className={`text-[11px] font-semibold tabular-nums ${e.type === 'in' ? IN : OUT}`}>{e.amount}</span>
-                  </motion.li>
-                ))}
-              </ul>
-            </div>
-            <div className="grid grid-cols-2 gap-2 px-4 pt-1 pb-5 text-[10px] font-semibold">
-              <span className="rounded-full bg-emerald-600 py-2 text-center text-white">+ Cash In</span>
-              <span className="rounded-full bg-rose-600 py-2 text-center text-white">− Cash Out</span>
-            </div>
-          </div>
-        </div>
-      </motion.div>
-
-      <motion.div className="absolute -left-4 top-24 hidden items-center gap-2 rounded-2xl px-3 py-2 text-[11px] shadow-lg min-[420px]:flex"
-        style={{ background: 'var(--bg-card)', border: '1px solid var(--border-card)', color: 'var(--text-main)', backdropFilter: 'blur(10px)' }}
-        initial={reduce ? { opacity: 0 } : { opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.7, delay: 1.3, ease: EASE }}>
-        <Bell size={13} style={{ color: 'var(--gold-primary)' }} /><span className="font-medium">Time to note today&rsquo;s spends</span>
-      </motion.div>
-      <motion.div className="absolute -right-4 bottom-28 hidden items-center gap-2 rounded-2xl px-3 py-2 text-[11px] shadow-lg min-[420px]:flex"
-        style={{ background: 'var(--bg-card)', border: '1px solid var(--border-card)', color: 'var(--text-main)', backdropFilter: 'blur(10px)' }}
-        initial={reduce ? { opacity: 0 } : { opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.7, delay: 1.5, ease: EASE }}>
-        <CloudUpload size={13} className={IN} /><span className="font-medium">Saved safely</span>
-      </motion.div>
-    </motion.div>
-  )
-}
 
 /* ─────────────────────────── hero ─────────────────────────── */
 
@@ -136,107 +41,50 @@ function Hero() {
         <div className="absolute inset-0 opacity-[0.35]" style={{ backgroundImage: 'radial-gradient(var(--border-card) 1px, transparent 1px)', backgroundSize: '22px 22px', maskImage: 'linear-gradient(to bottom, black, transparent 70%)', WebkitMaskImage: 'linear-gradient(to bottom, black, transparent 70%)' }} />
       </div>
 
-      <div className="relative mx-auto grid max-w-6xl items-center gap-12 px-4 pt-10 pb-16 sm:px-6 sm:pt-14 lg:grid-cols-[1.1fr_1fr] lg:gap-8 lg:pt-20 lg:pb-24">
+      <div className="relative mx-auto grid min-h-[calc(100svh-4rem)] max-w-6xl content-center items-center gap-8 px-4 pt-6 pb-10 sm:gap-12 sm:px-6 sm:py-12 lg:grid-cols-[1.1fr_1fr] lg:gap-8 lg:py-10">
         <div className="text-center lg:text-left">
           <motion.div {...fade(0)}><Eyebrow>Your money notebook, on your phone</Eyebrow></motion.div>
 
           <motion.h1 {...fade(0.08)}
-            className="font-serif-luxury mt-5 text-[2.15rem] min-[380px]:text-[2.5rem] leading-[1.06] font-semibold tracking-tight sm:text-6xl lg:text-[4.2rem]"
+            className="font-serif-luxury mt-4 text-[2.15rem] sm:mt-5 min-[380px]:text-[2.5rem] leading-[1.06] font-semibold tracking-tight sm:text-6xl lg:text-[4.2rem]"
             style={{ color: 'var(--text-main)' }}>
             Know where every
             <br className="hidden min-[380px]:block" /> rupee <em className="italic" style={{ color: 'var(--gold-primary)' }}>goes.</em>
           </motion.h1>
 
-          <motion.p {...fade(0.16)} className="mx-auto mt-5 max-w-lg text-[15.5px] leading-relaxed sm:text-lg lg:mx-0" style={{ color: 'var(--text-muted)' }}>
+          <motion.p {...fade(0.16)} className="mx-auto mt-4 max-w-lg text-[15.5px] sm:mt-5 leading-relaxed sm:text-lg lg:mx-0" style={{ color: 'var(--text-muted)' }}>
             Add money in and out in a few taps. ArthaLedger does the maths.
           </motion.p>
 
-          <motion.div {...fade(0.24)} className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center lg:justify-start">
-            <PrimaryLink to="/register">Start for free</PrimaryLink>
-            <GhostLink href={APK_URL} download icon={Download}>Download for Android</GhostLink>
+          <motion.div {...fade(0.24)} className="mt-6 grid grid-cols-2 gap-2.5 sm:mt-8 sm:flex sm:justify-center sm:gap-3 lg:justify-start">
+            <PrimaryLink to="/register" className="px-3 sm:px-6">Start for free</PrimaryLink>
+            <GhostLink href={APK_URL} download icon={Download} className="px-3 sm:px-6">
+              <span className="sm:hidden">Android app</span><span className="hidden sm:inline">Download for Android</span>
+            </GhostLink>
           </motion.div>
 
-          <motion.ul {...fade(0.32)} className="mt-7 flex flex-wrap justify-center gap-x-5 gap-y-2 text-[13px] lg:justify-start" style={{ color: 'var(--text-subtle)' }}>
+          <motion.ul {...fade(0.32)} className="mt-5 flex flex-wrap justify-center gap-x-3.5 gap-y-1.5 text-[12px] sm:mt-7 sm:gap-x-5 sm:gap-y-2 sm:text-[13px] lg:justify-start" style={{ color: 'var(--text-subtle)' }}>
             <li className="flex items-center gap-1.5"><Landmark size={14} style={{ color: 'var(--gold-primary)' }} /> No bank login needed</li>
             <li className="flex items-center gap-1.5"><ShieldCheck size={14} style={{ color: 'var(--gold-primary)' }} /> Private to you</li>
             <li className="flex items-center gap-1.5"><WifiOff size={14} style={{ color: 'var(--gold-primary)' }} /> Works without internet</li>
           </motion.ul>
         </div>
 
-        <PhoneMockup />
+        <HeroPhoto />
       </div>
     </section>
   )
 }
 
-/* ─────────────────────────── scroll cue ─────────────────────────── */
-
-/** A gentle "there is more below" cue on the first screen; fades as soon as you scroll. */
-function ScrollCue() {
-  const reduce = useReducedMotion()
-  const { scrollY } = useScroll()
-  const opacity = useTransform(scrollY, [0, 140], [1, 0])
-  const [gone, setGone] = useState(false)
-  useMotionValueEvent(scrollY, 'change', (y) => setGone(y > 140))
-  return (
-    <motion.div className="pointer-events-none fixed inset-x-0 bottom-0 z-40 flex justify-center pb-[max(18px,env(safe-area-inset-bottom))]" style={{ opacity }}>
-      <motion.button type="button" aria-label="Scroll down to learn more" tabIndex={gone ? -1 : 0}
-        onClick={() => document.getElementById('learn')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-        initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1.6, duration: 0.7, ease: EASE }}
-        className={`${gone ? '' : 'pointer-events-auto'} flex items-center gap-2.5 rounded-full py-2 pl-2.5 pr-3.5`}
-        style={{ background: 'var(--bg-card)', border: '1px solid var(--border-card)', boxShadow: '0 14px 34px -14px rgba(43,38,32,0.45)' }}>
-        <span className="relative flex h-7 w-[18px] justify-center rounded-full" style={{ border: '1.5px solid var(--gold-primary)' }} aria-hidden="true">
-          <motion.span className="mt-1 h-1.5 w-[3px] rounded-full" style={{ background: 'var(--gold-primary)' }}
-            animate={reduce ? undefined : { y: [0, 9, 9], opacity: [1, 0, 0] }} transition={{ duration: 1.8, repeat: Infinity, times: [0, 0.7, 1], ease: 'easeInOut' }} />
-        </span>
-        <span className="text-[11px] font-semibold uppercase tracking-[0.2em]" style={{ color: 'var(--text-main)' }}>Scroll</span>
-        <motion.span aria-hidden="true" style={{ color: 'var(--gold-primary)' }}
-          animate={reduce ? undefined : { y: [0, 4, 0] }} transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}>
-          <ChevronDown size={16} strokeWidth={2.5} />
-        </motion.span>
-      </motion.button>
-    </motion.div>
-  )
-}
-
 /* ─────────────────────────── what is it ─────────────────────────── */
-
-const BASICS = [
-  { Icon: NotebookPen, title: 'Like a khata, but on your phone', text: 'The same idea as the notebook many families use for household accounts, neatly organised into projects and books.' },
-  { Icon: Calculator, title: 'You add, it adds up', text: 'Totals, balances and monthly summaries are worked out for you. No spreadsheets, no formulas.' },
-  { Icon: Landmark, title: 'Never touches your bank', text: 'ArthaLedger does not connect to your bank, cards or UPI. You decide what to write. Nothing moves your money.' },
-]
 
 function WhatIsIt() {
   return (
     <section id="learn" className="scroll-mt-16 px-4 py-16 sm:px-6 sm:py-24">
       <div className="mx-auto max-w-6xl">
-        <SectionTitle eyebrow="New here?" title="What is ArthaLedger?" sub="An easy way to keep track of your money, made for everyday life in India." />
-        <div className="mt-12 grid gap-4 md:grid-cols-3">
-          {BASICS.map((b, i) => (
-            <Reveal key={b.title} delay={i * 0.08} className="rounded-3xl p-6 sm:p-7" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-card)' }}>
-              <span className="flex h-12 w-12 items-center justify-center rounded-2xl" style={{ background: GOLD_TINT, color: 'var(--gold-primary)' }}><b.Icon size={22} /></span>
-              <h3 className="mt-5 text-[17px] font-semibold" style={{ color: 'var(--text-main)' }}>{b.title}</h3>
-              <p className="mt-2 text-[14.5px] leading-relaxed" style={{ color: 'var(--text-muted)' }}>{b.text}</p>
-            </Reveal>
-          ))}
-        </div>
+        <WhatIsArtha />
 
-        <Reveal className="mt-14 rounded-3xl px-5 py-8 text-center sm:px-10" style={{ background: 'color-mix(in srgb, var(--gold-primary) 6%, var(--bg-page))', border: '1px solid var(--border-card)' }}>
-          <h3 className="font-serif-luxury text-[1.45rem] font-semibold leading-snug [text-wrap:balance] sm:text-[1.8rem]" style={{ color: 'var(--text-main)' }}>
-            If money passes through your hands, this is for you
-          </h3>
-          <p className="mx-auto mt-2 max-w-lg text-[14.5px] leading-relaxed" style={{ color: 'var(--text-muted)' }}>
-            Whether you manage a salary, a household, a shop or a trip with friends, knowing where your money goes is the first step to keeping more of it.
-          </p>
-          <div className="mt-6 flex flex-wrap justify-center gap-2">
-            {[['Students', GraduationCap], ['Families', HomeIcon], ['Shop owners', Store], ['Freelancers', Laptop], ['Salaried professionals', Briefcase], ['Trips with friends', Plane]].map(([l, I]) => (
-              <span key={l} className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-[13.5px] font-medium" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-card)', color: 'var(--text-main)' }}>
-                <I size={15} style={{ color: 'var(--gold-primary)' }} /> {l}
-              </span>
-            ))}
-          </div>
-        </Reveal>
+        <div className="mt-14"><AudienceBand /></div>
       </div>
     </section>
   )
@@ -248,7 +96,7 @@ function HowItWorks() {
   return (
     <section id="how" className="scroll-mt-20 overflow-hidden px-4 py-16 sm:px-6 sm:py-24" style={{ background: BAND_BG, borderBlock: '1px solid var(--border-subtle)' }}>
       <div className="mx-auto max-w-6xl">
-        <SectionTitle eyebrow="How it works" title="Projects hold books. Books hold your money." sub="Four steps, under a minute. Watch it play, or tap a step." />
+        <SectionTitle eyebrow="How it works" title="From first entry to full clarity" sub="Set up in under a minute. Watch the walkthrough, or select any step." />
         <HowItWorksTour />
       </div>
     </section>
@@ -544,17 +392,37 @@ function Collaborate() {
 function FinalCta() {
   return (
     <section className="px-4 pb-16 sm:px-6 sm:pb-24">
-      <Reveal className="relative isolate mx-auto max-w-5xl overflow-hidden rounded-[2rem] px-6 py-12 text-center sm:px-12 sm:py-16" style={{ background: 'linear-gradient(140deg, #2B2620, #15120E)' }}>
-        <div className="pointer-events-none absolute -top-24 left-1/2 -z-10 h-72 w-72 -translate-x-1/2 rounded-full blur-3xl" style={{ background: 'rgba(212,178,110,0.35)' }} aria-hidden="true" />
-        <img src="/icons/maskable-192.png" alt="" className="mx-auto h-14 w-14 rounded-full" style={{ boxShadow: '0 0 0 4px rgba(212,178,110,0.2)' }} />
-        <h2 className="font-serif-luxury mx-auto mt-6 max-w-xl text-[1.9rem] leading-tight font-semibold tracking-tight text-[#F6EFE2] [text-wrap:balance] sm:text-[2.6rem]">Start your money notebook today.</h2>
-        <p className="mx-auto mt-3 max-w-md text-[15px] text-[#F6EFE2]/70">Free for our first 50 users. Ready in a minute.</p>
-        <div className="mx-auto mt-8 flex max-w-sm flex-col gap-3 sm:max-w-none sm:flex-row sm:justify-center">
+      <Reveal className="relative isolate mx-auto max-w-3xl overflow-hidden rounded-[2rem] px-6 pt-12 pb-10 text-center sm:px-12 sm:pt-14 sm:pb-12"
+        style={{ background: 'linear-gradient(160deg, #B42334 0%, #8E1A2B 52%, #5C1020 100%)', boxShadow: '0 40px 90px -50px rgba(92,16,32,0.9)' }}>
+        {/* warm glows and a faint pattern */}
+        <div className="pointer-events-none absolute -left-24 -top-24 -z-10 h-80 w-80 rounded-full blur-3xl" style={{ background: 'rgba(233,196,106,0.30)' }} aria-hidden="true" />
+        <div className="pointer-events-none absolute -bottom-28 -right-20 -z-10 h-80 w-80 rounded-full blur-3xl" style={{ background: 'rgba(255,170,120,0.22)' }} aria-hidden="true" />
+        <div className="pointer-events-none absolute inset-0 -z-10 opacity-40" aria-hidden="true"
+          style={{ backgroundImage: 'radial-gradient(rgba(255,230,200,0.22) 1px, transparent 1px)', backgroundSize: '18px 18px', maskImage: 'linear-gradient(to bottom, black, transparent 60%)', WebkitMaskImage: 'linear-gradient(to bottom, black, transparent 60%)' }} />
+
+        <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[#F5D79A]">Free for our first 50 users</p>
+        <h2 className="font-serif-luxury mx-auto mt-3 max-w-xl text-[1.9rem] leading-tight font-semibold tracking-tight text-[#FFF4E6] [text-wrap:balance] sm:text-[2.6rem]">
+          Start your money notebook today.
+        </h2>
+
+        {/* her photo on a soft glow, fading into the card */}
+        <div className="relative mx-auto mt-6 w-[72%] max-w-[300px] sm:mt-8">
+          <div className="pointer-events-none absolute left-1/2 top-[10%] aspect-square w-[105%] -translate-x-1/2 rounded-full" aria-hidden="true"
+            style={{ background: 'radial-gradient(circle, rgba(245,215,154,0.55) 0%, rgba(245,215,154,0.16) 45%, transparent 70%)' }} />
+          <img src="/hero/shopper-600.webp" srcSet="/hero/shopper-600.webp 600w, /hero/shopper-1145.webp 1145w" sizes="300px"
+            width="1145" height="1374" alt="A young woman noting her vegetable shopping in ArthaLedger" loading="lazy" draggable="false"
+            className="relative block h-auto w-full select-none"
+            style={{ maskImage: 'linear-gradient(to bottom, black 72%, transparent 98%)', WebkitMaskImage: 'linear-gradient(to bottom, black 72%, transparent 98%)' }} />
+        </div>
+
+        <div className="relative mx-auto mt-1 flex max-w-sm flex-col gap-3 sm:max-w-none sm:flex-row sm:justify-center">
           <PrimaryLink to="/register">Create free account</PrimaryLink>
-          <a href={APK_URL} download className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full px-6 text-[15px] font-semibold text-[#F6EFE2] transition-colors hover:bg-white/10" style={{ border: '1px solid rgba(246,239,226,0.25)' }}>
+          <a href={APK_URL} download className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full px-6 text-[15px] font-semibold text-[#FFF4E6] transition-colors hover:bg-white/10"
+            style={{ border: '1px solid rgba(255,244,230,0.35)', background: 'rgba(255,255,255,0.06)' }}>
             <Download size={17} /> Download for Android
           </a>
         </div>
+        <p className="mt-4 text-[13px] text-[#FFF4E6]/70">Ready in a minute. No card needed.</p>
       </Reveal>
     </section>
   )
@@ -599,7 +467,6 @@ export default function LandingPage() {
       <SiteHeader />
       <main>
         <Hero />
-        <ScrollCue />
         <WhatIsIt />
         <Transformation />
         <HowItWorks />
