@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { APK_URL, CONTACT } from './constants'
+import { APK_URL, CONTACT, scrollToSection } from './constants'
 import { Logo } from './ui'
 
 function FooterCol({ title, children }) {
@@ -15,7 +15,7 @@ function FooterCol({ title, children }) {
 function FooterLink({ to, href, download, children }) {
   const cls = 'inline-flex min-h-8 items-center text-[13.5px] transition-colors hover:text-[var(--text-main)]'
   const style = { color: 'var(--text-muted)' }
-  return <li>{to ? <Link to={to} className={cls} style={style}>{children}</Link> : <a href={href} download={download} className={cls} style={style}>{children}</a>}</li>
+  return <li>{to ? <Link to={to} className={cls} style={style}>{children}</Link> : <a href={href} download={download} onClick={href?.startsWith('#') ? (e) => scrollToSection(e, href.slice(1)) : undefined} className={cls} style={style}>{children}</a>}</li>
 }
 
 export default function SiteFooter() {

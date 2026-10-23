@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence, useScroll, useSpring, useMotionValueEvent } from 'framer-motion'
 import { Download, Menu, X, ArrowRight } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
-import { EASE, APK_URL, NAV, goldBtn } from './constants'
+import { EASE, APK_URL, NAV, goldBtn, scrollToSection } from './constants'
 import { Logo } from './ui'
 
 /** Tracks which landing section is on screen, for the nav highlight. */
@@ -45,7 +45,7 @@ function NavItem({ item, onHome, current, mobile, onClick }) {
   if (item.page) return <Link to={item.page} onClick={onClick} className={cls} style={style} aria-current={isActive ? 'page' : undefined}>{inner}</Link>
   // On the landing page, jump to the section; from any other page, go there first
   return onHome
-    ? <a href={`#${item.id}`} onClick={onClick} className={cls} style={style}>{inner}</a>
+    ? <a href={`#${item.id}`} onClick={(e) => { scrollToSection(e, item.id); onClick?.() }} className={cls} style={style}>{inner}</a>
     : <Link to={`/#${item.id}`} onClick={onClick} className={cls} style={style}>{inner}</Link>
 }
 

@@ -60,11 +60,17 @@ body,
   -webkit-touch-callout: none;
 }
 
-/* No pull-to-refresh / bounce reload, no double-tap zoom: behave like an app */
+/* No double-tap zoom anywhere */
 html,
 body {
-  overscroll-behavior: none;
   touch-action: manipulation;
+}
+/* Pull-to-refresh stays in a browser tab; the installed app has none, like a native app */
+@media (display-mode: standalone), (display-mode: fullscreen), (display-mode: minimal-ui) {
+  html,
+  body {
+    overscroll-behavior-y: none;
+  }
 }
 img,
 svg {

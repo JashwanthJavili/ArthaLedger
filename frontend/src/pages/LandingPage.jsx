@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react'
 import { useLocation } from 'react-router-dom'
-import { motion, useReducedMotion } from 'framer-motion'
+import { motion, useReducedMotion, useScroll, useTransform, useMotionValueEvent } from 'framer-motion'
 import {
   Check, ArrowDownLeft, ArrowUpRight, BookOpen, Bell, Users, WifiOff, ShieldCheck,
   CloudUpload, Download, Plus, Minus, NotebookPen, Calculator, Landmark, Star, Mail,
   Handshake, GraduationCap, Home as HomeIcon, Store, Laptop, Plane, Quote,
-  User, Briefcase, ShoppingBasket, AlertTriangle, TrendingUp, Sparkles, Gift,
+  User, Briefcase, ShoppingBasket, Sparkles, Gift, ChevronDown,
 } from 'lucide-react'
 import { forceLightTheme, restoreTheme } from '../lib/theme'
 import { api } from '../lib/api'
@@ -13,7 +13,7 @@ import SiteHeader from '../components/marketing/SiteHeader'
 import SiteFooter from '../components/marketing/SiteFooter'
 import BeforeAfter from '../components/marketing/BeforeAfter'
 import FeatureBento from '../components/marketing/FeatureBento'
-import { Counter, Donut, InOutBars, BudgetBar, Sparkline } from '../components/marketing/Charts'
+import { Counter, Donut, InOutBars, Sparkline } from '../components/marketing/Charts'
 import { Reveal, Eyebrow, SectionTitle, PrimaryLink, GhostLink, FaqItem } from '../components/marketing/ui'
 import { EASE, APK_URL, CONTACT, GOLD_TINT, GOLD_SOFT, BAND_BG, goldBtn, card } from '../components/marketing/constants'
 
@@ -168,6 +168,36 @@ function Hero() {
   )
 }
 
+/* ─────────────────────────── scroll cue ─────────────────────────── */
+
+/** A gentle "there is more below" cue on the first screen; fades as soon as you scroll. */
+function ScrollCue() {
+  const reduce = useReducedMotion()
+  const { scrollY } = useScroll()
+  const opacity = useTransform(scrollY, [0, 140], [1, 0])
+  const [gone, setGone] = useState(false)
+  useMotionValueEvent(scrollY, 'change', (y) => setGone(y > 140))
+  return (
+    <motion.div className="pointer-events-none fixed inset-x-0 bottom-0 z-40 flex justify-center pb-[max(18px,env(safe-area-inset-bottom))]" style={{ opacity }}>
+      <motion.button type="button" aria-label="Scroll down to learn more" tabIndex={gone ? -1 : 0}
+        onClick={() => document.getElementById('learn')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+        initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1.6, duration: 0.7, ease: EASE }}
+        className={`${gone ? '' : 'pointer-events-auto'} flex items-center gap-2.5 rounded-full py-2 pl-2.5 pr-3.5`}
+        style={{ background: 'var(--bg-card)', border: '1px solid var(--border-card)', boxShadow: '0 14px 34px -14px rgba(43,38,32,0.45)' }}>
+        <span className="relative flex h-7 w-[18px] justify-center rounded-full" style={{ border: '1.5px solid var(--gold-primary)' }} aria-hidden="true">
+          <motion.span className="mt-1 h-1.5 w-[3px] rounded-full" style={{ background: 'var(--gold-primary)' }}
+            animate={reduce ? undefined : { y: [0, 9, 9], opacity: [1, 0, 0] }} transition={{ duration: 1.8, repeat: Infinity, times: [0, 0.7, 1], ease: 'easeInOut' }} />
+        </span>
+        <span className="text-[11px] font-semibold uppercase tracking-[0.2em]" style={{ color: 'var(--text-main)' }}>Scroll</span>
+        <motion.span aria-hidden="true" style={{ color: 'var(--gold-primary)' }}
+          animate={reduce ? undefined : { y: [0, 4, 0] }} transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}>
+          <ChevronDown size={16} strokeWidth={2.5} />
+        </motion.span>
+      </motion.button>
+    </motion.div>
+  )
+}
+
 /* ─────────────────────────── what is it ─────────────────────────── */
 
 const BASICS = [
@@ -178,7 +208,7 @@ const BASICS = [
 
 function WhatIsIt() {
   return (
-    <section className="px-4 py-16 sm:px-6 sm:py-24">
+    <section id="learn" className="scroll-mt-16 px-4 py-16 sm:px-6 sm:py-24">
       <div className="mx-auto max-w-6xl">
         <SectionTitle eyebrow="New here?" title="What is ArthaLedger?" sub="An easy way to keep track of your money, made for everyday life in India." />
         <div className="mt-12 grid gap-4 md:grid-cols-3">
@@ -345,7 +375,6 @@ const SPEND = [
   { label: 'Eating out', value: 3800, color: '#E11D48' },
   { label: 'Other', value: 4200, color: '#94A3B8' },
 ]
-const SAVED_6M = MONTHS.reduce((s, d) => s + d.in - d.out, 0)
 
 function Panel({ title, sub, children, className = '' }) {
   return (
@@ -395,33 +424,13 @@ function Insights() {
             </div>
 
             <Panel title="In and out, month by month" sub="Last 6 months" className="lg:col-span-2">
-              <InOutBars data={MONTHS} />
+              <InOutBars data={MONTHS} height={150} />
             </Panel>
 
             <Panel title="Where it went" sub="October spending by category">
-              <Donut data={SPEND} size={176} thickness={24} />
+              <Donut data={SPEND} size={150} thickness={22} />
             </Panel>
 
-            <Panel title="Monthly budgets" sub="Limits you set for each category" className="lg:col-span-2">
-              <div className="grid gap-5 sm:grid-cols-3">
-                <BudgetBar label="Groceries" spent={8400} limit={10000} delay={0.1} />
-                <BudgetBar label="Eating out" spent={3800} limit={3000} delay={0.2} />
-                <BudgetBar label="Travel" spent={4600} limit={6000} delay={0.3} />
-              </div>
-              <motion.div initial={{ opacity: 0, y: 8 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: 1.2, duration: 0.5, ease: EASE }}
-                className="mt-5 flex items-start gap-2.5 rounded-xl px-3.5 py-3 text-[13px]" style={{ background: 'color-mix(in srgb, #E11D48 8%, var(--bg-card))', color: 'var(--text-main)' }}>
-                <AlertTriangle size={16} className="mt-px shrink-0 text-rose-600" />
-                <span><b>Heads-up:</b> Eating out is ₹800 over this month&rsquo;s budget.</span>
-              </motion.div>
-            </Panel>
-
-            <Panel className="relative overflow-hidden">
-              <div className="pointer-events-none absolute -right-10 -top-10 h-36 w-36 rounded-full blur-2xl" style={{ background: GOLD_SOFT }} aria-hidden="true" />
-              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/12 text-emerald-600"><TrendingUp size={19} /></span>
-              <p className="mt-4 text-[12.5px]" style={{ color: 'var(--text-subtle)' }}>Saved in the last 6 months</p>
-              <Counter value={SAVED_6M} className="font-serif-luxury mt-1 block text-[2rem] font-semibold leading-none text-emerald-600" />
-              <p className="mt-3 text-[13px] leading-relaxed" style={{ color: 'var(--text-muted)' }}>Money left has grown every month since June. Seeing it clearly is what makes the difference.</p>
-            </Panel>
           </div>
         </Reveal>
       </div>
@@ -623,10 +632,23 @@ export default function LandingPage() {
     return () => { restoreTheme(); html.style.scrollBehavior = prev }
   }, [])
 
-  // Arriving from another page with a section link, such as /#faq
+  // Always open at the top: no restored scroll position on reload
+  useEffect(() => {
+    if (!('scrollRestoration' in window.history)) return undefined
+    const prev = window.history.scrollRestoration
+    window.history.scrollRestoration = 'manual'
+    if (!window.location.hash) window.scrollTo(0, 0)
+    return () => { window.history.scrollRestoration = prev }
+  }, [])
+
+  // Arriving from another page with a section link, such as /#faq: scroll
+  // there, then drop the #faq so a reload starts at the top again
   useEffect(() => {
     if (!hash) return undefined
-    const t = setTimeout(() => document.getElementById(hash.slice(1))?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80)
+    const t = setTimeout(() => {
+      document.getElementById(hash.slice(1))?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      window.history.replaceState(window.history.state, '', window.location.pathname + window.location.search)
+    }, 80)
     return () => clearTimeout(t)
   }, [hash])
 
@@ -635,6 +657,7 @@ export default function LandingPage() {
       <SiteHeader />
       <main>
         <Hero />
+        <ScrollCue />
         <WhatIsIt />
         <Transformation />
         <HowItWorks />

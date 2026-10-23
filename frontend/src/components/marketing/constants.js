@@ -23,3 +23,12 @@ export const goldBtn = {
 }
 
 export const card = { background: 'var(--bg-card)', border: '1px solid var(--border-card)' }
+
+/** Smooth-scroll to a landing section without putting #id in the address
+ *  (so a reload starts at the top, not at the FAQ). */
+export function scrollToSection(e, id) {
+  const el = document.getElementById(id)
+  if (!el) return
+  e?.preventDefault()
+  el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+}
