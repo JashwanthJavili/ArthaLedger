@@ -36,3 +36,7 @@ signing-key-info.txt
 # Python bytecode (generated automatically)
 __pycache__/
 *.pyc
+
+# Android builds from PWABuilder
+*.apk
+*.aab
