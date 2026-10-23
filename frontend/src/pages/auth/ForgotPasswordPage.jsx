@@ -55,9 +55,9 @@ export default function ForgotPasswordPage() {
           </button>
         </motion.div>
       ) : (
-        <form onSubmit={onSubmit} className="space-y-4" noValidate>
+        <form onSubmit={onSubmit} className="space-y-3" noValidate>
           <Field icon={Mail} label="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)}
-            placeholder="you@example.com" autoComplete="email" inputMode="email" enterKeyHint="send" />
+            placeholder="Email address" autoComplete="email" inputMode="email" enterKeyHint="send" />
           <FormError>{error}</FormError>
           <PrimaryButton loading={loading} loadingText="Sending…">Send reset link</PrimaryButton>
         </form>

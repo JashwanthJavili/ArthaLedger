@@ -40,3 +40,4 @@ __pycache__/
 # Android builds from PWABuilder
 *.apk
 *.aab
+!frontend/public/download/ArthaLedger.apk

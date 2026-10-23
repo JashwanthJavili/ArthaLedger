@@ -2,7 +2,7 @@ import { useMemo, useState, useEffect, useRef } from 'react'
 import { format } from 'date-fns'
 import { Link } from 'react-router-dom'
 import {
-  Plus, Search, FolderOpen, MoreVertical, Pencil, Trash2, ChevronRight, X, Moon, Sun,
+  Plus, Search, FolderOpen, MoreVertical, Pencil, Trash2, ChevronRight, X,
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import LayoutShell from '../components/LayoutShell'
@@ -17,7 +17,6 @@ import Toast from '../components/common/Toast'
 import { useAppData } from '../context/AppDataContext'
 import { getQuoteOfTheDay } from '../lib/quotes'
 import { useAuth } from '../context/AuthContext'
-import { isDarkMode, setDarkMode } from '../lib/theme'
 
 function ProjectMenu({ onEdit, onDelete }) {
   const [open, setOpen] = useState(false)
@@ -91,8 +90,6 @@ export default function DashboardPage() {
     [booksByProject],
   )
 
-  const [dark, setDark] = useState(isDarkMode)
-  const toggleTheme = () => setDark((d) => { setDarkMode(!d); return !d })
 
   const showToast = (msg, type = 'success') => {
     setToast({ msg, type, visible: true })
@@ -129,7 +126,6 @@ export default function DashboardPage() {
   if (loading && !stalled) return <Loader />
 
   const firstName = user?.displayName?.split(' ')[0] || 'there'
-  const iconBtn = 'flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border border-[var(--border-card)] bg-[var(--bg-card)] text-[var(--text-muted)] hover:text-[var(--text-main)] hover:border-[var(--text-subtle)] transition-colors cursor-pointer'
 
   return (
     <LayoutShell>
@@ -154,9 +150,6 @@ export default function DashboardPage() {
               <span className="font-semibold text-[var(--text-muted)]">{totalBooksCount}</span> {totalBooksCount === 1 ? 'book' : 'books'}
             </p>
           </div>
-          <button onClick={toggleTheme} className={iconBtn} aria-label={dark ? 'Switch to light mode' : 'Switch to dark mode'}>
-            {dark ? <Sun size={17} className="text-[var(--gold-primary)]" /> : <Moon size={17} />}
-          </button>
           <AccountMenu />
         </motion.header>
 

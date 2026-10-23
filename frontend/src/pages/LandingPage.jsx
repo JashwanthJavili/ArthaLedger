@@ -1,11 +1,12 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion, useReducedMotion } from 'framer-motion'
 import {
   ArrowRight, ArrowDownLeft, ArrowUpRight, BookOpen, Bell, Users, Lock,
   FileText, FileSpreadsheet, Moon, Smartphone, WifiOff, ShieldCheck,
-  Tags, PieChart, Wallet, FolderOpen, CloudUpload, KeyRound, ChevronRight,
+  Tags, PieChart, Wallet, FolderOpen, CloudUpload, KeyRound, ChevronRight, Download,
 } from 'lucide-react'
+import { forceLightTheme, restoreTheme } from '../lib/theme'
 
 /* ─────────────────────────── shared bits ─────────────────────────── */
 
@@ -105,19 +106,20 @@ function TopBar() {
           </span>
         </Link>
         <nav className="flex items-center gap-2">
+          <a
+            href="/download/ArthaLedger.apk"
+            download
+            className="inline-flex min-h-11 items-center gap-1.5 rounded-full px-4 text-sm font-semibold hover:brightness-105"
+            style={{ background: 'var(--gold-primary)', color: '#1F1A14' }}
+          >
+            <Download size={15} /> <span className="hidden min-[380px]:inline">Download</span> app
+          </a>
           <Link
             to="/login"
             className="inline-flex min-h-11 items-center rounded-full px-4 text-sm font-semibold transition-colors"
             style={{ color: 'var(--text-main)', border: '1px solid var(--border-card)' }}
           >
             Sign in
-          </Link>
-          <Link
-            to="/register"
-            className="hidden min-h-11 items-center rounded-full px-5 text-sm font-semibold sm:inline-flex hover:brightness-105"
-            style={{ background: 'var(--gold-primary)', color: '#1F1A14' }}
-          >
-            Get started
           </Link>
         </nav>
       </div>
@@ -292,10 +294,15 @@ function Hero() {
 
       <div className="relative mx-auto grid max-w-6xl items-center gap-12 px-4 pt-12 pb-16 sm:px-6 sm:pt-16 lg:grid-cols-[1.1fr_1fr] lg:gap-8 lg:pt-24 lg:pb-24">
         <div className="text-center lg:text-left">
-          <motion.div {...fade(0)} className="inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 text-xs font-medium" style={{ background: GOLD_TINT, color: 'var(--text-main)', border: '1px solid var(--border-card)' }}>
-            <span className="h-1.5 w-1.5 rounded-full" style={{ background: 'var(--gold-primary)' }} />
-            A calm cashbook for Indian households
-          </motion.div>
+          <motion.a {...fade(0)} href="/download/ArthaLedger.apk" download
+            className="inline-flex min-h-10 items-center gap-2.5 rounded-full py-1.5 pl-1.5 pr-4 text-[13px] font-semibold transition-transform active:scale-[0.98]"
+            style={{ background: GOLD_TINT, color: 'var(--text-main)', border: '1px solid var(--border-card)' }}>
+            <span className="flex h-7 w-7 items-center justify-center rounded-full" style={{ background: 'var(--gold-primary)', color: '#1F1A14' }}>
+              <Download size={14} />
+            </span>
+            Download the Android app now
+            <ArrowRight size={14} style={{ color: 'var(--gold-primary)' }} />
+          </motion.a>
 
           <motion.h1
             {...fade(0.08)}
@@ -313,8 +320,12 @@ function Hero() {
           </motion.p>
 
           <motion.div {...fade(0.24)} className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center lg:justify-start">
-            <PrimaryButton to="/register">Create your ledger</PrimaryButton>
-            <GhostButton to="/login">I already have an account</GhostButton>
+            <a href="/download/ArthaLedger.apk" download
+              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full px-7 text-[15px] font-semibold shadow-[0_14px_30px_-14px_rgba(176,126,52,0.8)] hover:brightness-105"
+              style={{ background: 'var(--gold-primary)', color: '#1F1A14' }}>
+              <Download size={17} /> Download app
+            </a>
+            <GhostButton to="/register">Create your ledger</GhostButton>
           </motion.div>
 
           <motion.ul {...fade(0.32)} className="mt-8 flex flex-wrap justify-center gap-x-5 gap-y-2 text-[13px] lg:justify-start" style={{ color: 'var(--text-subtle)' }}>
@@ -701,6 +712,11 @@ function FinalCta() {
           It takes a minute to set up. Your future self will thank you every month.
         </p>
         <div className="mt-8 flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:items-center">
+          <a href="/download/ArthaLedger.apk" download
+            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full px-7 text-[15px] font-semibold hover:brightness-105"
+            style={{ background: 'var(--gold-primary)', color: '#1F1A14' }}>
+            <Download size={17} /> Download app
+          </a>
           <PrimaryButton to="/register">Create account</PrimaryButton>
           <Link
             to="/login"
@@ -739,6 +755,12 @@ function Footer() {
 /* ─────────────────────────── page ─────────────────────────── */
 
 export default function LandingPage() {
+  // The landing page is always shown in light mode
+  useEffect(() => {
+    forceLightTheme()
+    return () => restoreTheme()
+  }, [])
+
   return (
     <div className="min-h-screen overflow-x-clip" style={{ background: 'var(--bg-page)', color: 'var(--text-main)' }}>
       <TopBar />

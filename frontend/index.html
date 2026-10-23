@@ -26,10 +26,8 @@
     <title>ArthaLedger - Where every rupee has meaning.</title>
     <script>
       try {
-        var saved = localStorage.getItem('sl_dark');
-        var dark = saved === null
-          ? window.matchMedia('(prefers-color-scheme: dark)').matches
-          : saved === 'true';
+        // Light by default; dark only if chosen in Settings. Landing page is always light.
+        var dark = localStorage.getItem('sl_dark') === 'true' && location.pathname !== '/';
         var meta = document.querySelector('meta[name="theme-color"]');
         if (meta) meta.setAttribute('content', dark ? '#26282E' : '#FAF8F5');
         if (dark) {

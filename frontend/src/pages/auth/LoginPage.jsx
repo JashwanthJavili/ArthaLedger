@@ -57,7 +57,7 @@ export default function LoginPage() {
     >
       {justVerified && (
         <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}
-          className="mb-5 flex items-start gap-3 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-3.5 py-3">
+          className="mb-3 flex items-start gap-3 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-3.5 py-3">
           <CheckCircle2 size={17} className="mt-px flex-shrink-0 text-emerald-600 dark:text-emerald-400" />
           <div>
             <p className="text-[13px] font-semibold text-emerald-700 dark:text-emerald-300">Email verified</p>
@@ -66,13 +66,13 @@ export default function LoginPage() {
         </motion.div>
       )}
 
-      <form onSubmit={onSubmit} className="space-y-4" noValidate>
+      <form onSubmit={onSubmit} className="space-y-3" noValidate>
         <Field icon={Mail} label="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)}
-          placeholder="you@example.com" autoComplete="email" inputMode="email" enterKeyHint="next" />
+          placeholder="Email address" autoComplete="email" inputMode="email" enterKeyHint="next" />
         <div>
           <Field icon={Lock} label="Password" type="password" value={password} onChange={(e) => setPassword(e.target.value)}
-            placeholder="Your password" autoComplete="current-password" enterKeyHint="go" />
-          <div className="mt-2 text-right">
+            placeholder="Password" autoComplete="current-password" enterKeyHint="go" />
+          <div className="mt-1.5 text-right">
             <Link to="/forgot-password" className="text-[12.5px] font-medium text-[var(--gold-primary)] hover:underline">Forgot password?</Link>
           </div>
         </div>

@@ -86,25 +86,25 @@ export default function RegisterPage() {
   return (
     <AuthLayout
       title="Create your ledger"
-      subtitle="Track every rupee, privately. It takes less than a minute."
+      subtitle="Track every rupee, privately. Takes a minute."
       back="/login"
       footer={<>Already have an account? <AuthLink to="/login">Sign in</AuthLink></>}
     >
-      <form onSubmit={onSubmit} className="space-y-4" noValidate>
+      <form onSubmit={onSubmit} className="space-y-2.5" noValidate>
         <Field icon={User} label="Full name" value={name} error={errors.name}
           onChange={(e) => { setName(e.target.value); clearFieldError('name') }}
-          placeholder="Your name" autoComplete="name" autoCapitalize="words" enterKeyHint="next" />
+          placeholder="Full name" autoComplete="name" autoCapitalize="words" enterKeyHint="next" />
 
         <Field icon={Mail} label="Email" type="email" value={email} error={errors.email}
           onChange={(e) => { setEmail(e.target.value); clearFieldError('email') }}
-          placeholder="you@example.com" autoComplete="email" inputMode="email" enterKeyHint="next" />
+          placeholder="Email address" autoComplete="email" inputMode="email" enterKeyHint="next" />
 
         <div>
           <Field icon={Lock} label="Password" type="password" value={password} error={errors.password}
             onChange={(e) => { setPassword(e.target.value); clearFieldError('password') }}
-            placeholder="At least 6 characters" autoComplete="new-password" enterKeyHint="next" />
+            placeholder="Password (6+ characters)" autoComplete="new-password" enterKeyHint="next" />
           {strength && (
-            <div className="mt-2 flex items-center gap-2.5">
+            <div className="mt-1.5 flex items-center gap-2.5 px-1">
               <div className="flex flex-1 gap-1">
                 {[1, 2, 3, 4].map(i => (
                   <span key={i} className={`h-1 flex-1 rounded-full transition-colors duration-300 ${i <= strength.level ? strength.color : 'bg-[var(--border-card)]'}`} />
@@ -117,7 +117,7 @@ export default function RegisterPage() {
 
         <Field icon={Lock} label="Confirm password" type="password" value={confirmPassword} error={errors.confirmPassword}
           onChange={(e) => { setConfirmPassword(e.target.value); clearFieldError('confirmPassword') }}
-          placeholder="Type it again" autoComplete="new-password" enterKeyHint="go"
+          placeholder="Confirm password" autoComplete="new-password" enterKeyHint="go"
           trailing={matches ? <CheckCircle2 size={17} className="flex-shrink-0 text-emerald-500" /> : null} />
 
         <FormError>{globalError}</FormError>
@@ -127,7 +127,7 @@ export default function RegisterPage() {
 
       <GoogleOption onClick={onGoogle} disabled={loading} />
 
-      <p className="mt-5 text-center text-[11.5px] leading-relaxed text-[var(--text-subtle)]">
+      <p className="mt-3 text-center text-[11px] leading-relaxed text-[var(--text-subtle)]">
         By continuing you agree to our <AuthLink to="/privacy">privacy policy</AuthLink>.
       </p>
     </AuthLayout>
