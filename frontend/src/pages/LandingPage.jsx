@@ -4,7 +4,7 @@ import { motion, AnimatePresence, useReducedMotion, useScroll, useMotionValueEve
 import {
   ArrowRight, ArrowDownLeft, ArrowUpRight, BookOpen, Bell, Users, Lock, FileSpreadsheet, WifiOff, ShieldCheck,
   Tags, PieChart, CloudUpload, Download, Menu, X, Plus, Minus, NotebookPen, Calculator, Landmark, Star, Mail,
-  Handshake, GraduationCap, Home as HomeIcon, Store, Laptop, Plane, Target, Quote, ChevronDown, FolderOpen,
+  Handshake, GraduationCap, Home as HomeIcon, Store, Laptop, Plane, Target, Quote, ChevronDown, FolderOpen, Check,
   User, Briefcase, ShoppingBasket, ArrowLeftRight,
 } from 'lucide-react'
 import { forceLightTheme, restoreTheme } from '../lib/theme'
@@ -19,7 +19,7 @@ const IN = 'text-emerald-600'
 const OUT = 'text-rose-600'
 const GOLD_TINT = 'color-mix(in srgb, var(--gold-primary) 14%, transparent)'
 const GOLD_SOFT = 'color-mix(in srgb, var(--gold-primary) 26%, transparent)'
-const NAV = [['#how', 'How it works'], ['#features', 'Features'], ['#faq', 'FAQ']]
+const NAV = [['#how', 'How it works'], ['#features', 'Features'], ['#pricing', 'Pricing'], ['#faq', 'FAQ']]
 
 function Reveal({ children, delay = 0, className = '', style, as = 'div' }) {
   const reduce = useReducedMotion()
@@ -329,6 +329,22 @@ function WhatIsIt() {
             </Reveal>
           ))}
         </div>
+
+        <Reveal className="mt-14 rounded-3xl px-5 py-8 text-center sm:px-10" style={{ background: 'color-mix(in srgb, var(--gold-primary) 6%, var(--bg-page))', border: '1px solid var(--border-card)' }}>
+          <h3 className="font-serif-luxury text-[1.45rem] font-semibold leading-snug [text-wrap:balance] sm:text-[1.8rem]" style={{ color: 'var(--text-main)' }}>
+            If money passes through your hands, this is for you
+          </h3>
+          <p className="mx-auto mt-2 max-w-lg text-[14.5px] leading-relaxed" style={{ color: 'var(--text-muted)' }}>
+            Whether you manage a salary, a household, a shop or a trip with friends, knowing where your money goes is the first step to keeping more of it.
+          </p>
+          <div className="mt-6 flex flex-wrap justify-center gap-2">
+            {[['Students', GraduationCap], ['Families', HomeIcon], ['Shop owners', Store], ['Freelancers', Laptop], ['Salaried professionals', Briefcase], ['Trips with friends', Plane]].map(([l, I]) => (
+              <span key={l} className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-[13.5px] font-medium" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-card)', color: 'var(--text-main)' }}>
+                <I size={15} style={{ color: 'var(--gold-primary)' }} /> {l}
+              </span>
+            ))}
+          </div>
+        </Reveal>
       </div>
     </section>
   )
@@ -426,7 +442,7 @@ function Features() {
   return (
     <section id="features" className="scroll-mt-20 px-4 py-16 sm:px-6 sm:py-24">
       <div className="mx-auto max-w-6xl">
-        <SectionTitle eyebrow="Features" title="Everything you need, nothing you don't" sub="Simple on the first day, still useful years later." />
+        <SectionTitle eyebrow="Features" title="Small habits. Big clarity." sub="Each tool is built to save you a few minutes today and a lot of worry by the end of the month." />
         <div className="mt-12 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {FEATURES.map((f, i) => (
             <Reveal key={f.title} delay={(i % 3) * 0.06} className="group flex gap-4 rounded-2xl p-5 transition-colors hover:bg-[var(--bg-card-hover)]" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-card)' }}>
@@ -439,15 +455,61 @@ function Features() {
           ))}
         </div>
 
-        <Reveal className="mt-12 text-center">
-          <p className="text-[13px] font-medium" style={{ color: 'var(--text-subtle)' }}>Made for</p>
-          <div className="mt-3 flex flex-wrap justify-center gap-2">
-            {[['Students', GraduationCap], ['Families', HomeIcon], ['Shop owners', Store], ['Freelancers', Laptop], ['Trips with friends', Plane]].map(([l, I]) => (
-              <span key={l} className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-[13.5px] font-medium" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-card)', color: 'var(--text-main)' }}>
-                <I size={15} style={{ color: 'var(--gold-primary)' }} /> {l}
-              </span>
-            ))}
-          </div>
+      </div>
+    </section>
+  )
+}
+
+/* ─────────────────────────── pricing ─────────────────────────── */
+
+const PLAN_FEATURES = ['Unlimited projects and books', 'Budgets, summaries and reports', 'Groups, reminders and PIN lock', 'Sync across your devices']
+
+function PriceCard({ name, price, period, note, badge, highlight, cta, delay }) {
+  return (
+    <Reveal delay={delay} className="relative flex flex-col rounded-3xl p-6 sm:p-7"
+      style={highlight
+        ? { background: 'linear-gradient(160deg, #2B2620, #15120E)', color: '#F6EFE2', boxShadow: '0 30px 70px -35px rgba(43,38,32,0.8)' }
+        : { background: 'var(--bg-card)', border: '1px solid var(--border-card)', color: 'var(--text-main)' }}>
+      {badge && (
+        <span className="absolute right-5 top-5 rounded-full px-3 py-1 text-[11px] font-semibold"
+          style={highlight ? { background: 'var(--gold-primary)', color: '#1F1A14' } : { background: GOLD_TINT, color: 'var(--text-main)' }}>{badge}</span>
+      )}
+      <p className="text-[13px] font-semibold uppercase tracking-[0.16em]" style={{ color: highlight ? '#D4B26E' : 'var(--gold-primary)' }}>{name}</p>
+      <p className="mt-4 flex items-baseline gap-1.5">
+        <span className="font-serif-luxury text-[2.6rem] font-semibold leading-none tracking-tight">{price}</span>
+        {period && <span className="text-[14px]" style={{ opacity: 0.7 }}>{period}</span>}
+      </p>
+      <p className="mt-2 text-[14px] leading-relaxed" style={{ opacity: highlight ? 0.75 : 1, color: highlight ? undefined : 'var(--text-muted)' }}>{note}</p>
+      <ul className="mt-6 flex-1 space-y-2.5">
+        {PLAN_FEATURES.map(f => (
+          <li key={f} className="flex items-start gap-2.5 text-[14px]">
+            <Check size={16} className="mt-0.5 shrink-0" style={{ color: highlight ? '#D4B26E' : 'var(--gold-primary)' }} />
+            <span style={{ opacity: highlight ? 0.9 : 1 }}>{f}</span>
+          </li>
+        ))}
+      </ul>
+      <div className="mt-7">{cta}</div>
+    </Reveal>
+  )
+}
+
+function Pricing() {
+  const soon = (
+    <span className="flex min-h-12 w-full items-center justify-center rounded-full text-[14.5px] font-semibold"
+      style={{ border: '1px dashed var(--border-card)', color: 'var(--text-subtle)' }}>Coming soon</span>
+  )
+  return (
+    <section id="pricing" className="scroll-mt-20 px-4 py-16 sm:px-6 sm:py-24">
+      <div className="mx-auto max-w-6xl">
+        <SectionTitle eyebrow="Pricing" title="Free for our first 50 users" sub="Paid plans are coming soon. For now, everyone can explore every feature at no cost." />
+        <div className="mt-12 grid gap-4 lg:grid-cols-3">
+          <PriceCard delay={0} highlight name="Early access" price="Free" note="For our first 50 users. Every feature, no card needed."
+            badge="Limited" cta={<PrimaryLink to="/register" className="w-full">Claim your spot</PrimaryLink>} />
+          <PriceCard delay={0.08} name="Monthly" price="₹199" period="/ month" note="Pay month to month. Cancel any time." badge="Coming soon" cta={soon} />
+          <PriceCard delay={0.16} name="Yearly" price="₹999" period="/ year" note="Just ₹83 a month. Save 58% compared to monthly." badge="Best value" cta={soon} />
+        </div>
+        <Reveal delay={0.1} className="mt-6 text-center text-[13.5px]" style={{ color: 'var(--text-subtle)' }}>
+          Prices in Indian rupees. We will let you know well before paid plans begin.
         </Reveal>
       </div>
     </section>
@@ -499,7 +561,7 @@ function Founder() {
         <Eyebrow>A note from our founder</Eyebrow>
         <div className="font-serif-luxury mt-5 space-y-4 text-[1.1rem] leading-[1.7] sm:text-[1.3rem]" style={{ color: 'var(--text-main)' }}>
           <p>ArthaLedger began with a simple observation: most of us do not lack income as much as we lack clarity. Small everyday expenses add up quietly, and by the end of the month it is hard to say where the money went.</p>
-          <p>Our purpose is to give every household, student and small business in India a clear, private record of their money, as familiar as a traditional khata and as dependable as a modern app. We do not connect to your bank, we do not show advertising, and we never sell data.</p>
+          <p>Our purpose is to give every household, student and small business in India a clear record of their money, as familiar as a traditional khata and as dependable as a modern app.</p>
           <p>We build with care, read every piece of feedback, and improve ArthaLedger together with the people who use it. Thank you for trusting us with something so personal.</p>
         </div>
         <div className="mt-8 flex items-center gap-3.5">
@@ -520,7 +582,7 @@ const FAQ = [
   ['What exactly is ArthaLedger?', 'A money notebook on your phone. You create projects (like Personal or Business), add books inside them, and note down money you receive and spend. ArthaLedger keeps the totals, balances and summaries for you.'],
   ['What is the difference between a project and a book?', 'A project is a folder for one part of your life, such as Family. A book is one account inside it, such as Groceries or Rent. Each book has its own balance, and the project shows them together.'],
   ['Does it connect to my bank account or UPI?', 'No. ArthaLedger never asks for bank, card or UPI details and cannot move money. You type in what you want to keep track of.'],
-  ['Is it free?', 'Yes, ArthaLedger is free to use. Create an account and start right away.'],
+  ['Is it free?', 'Right now, yes. Our first 50 users get ArthaLedger free, and everyone can explore every feature at no cost for now. Paid plans (₹199 a month or ₹999 a year) are coming soon, and we will tell you well before anything changes.'],
   ['Is my data safe and private?', 'Yes. Your projects and books can only be opened by your own account, and they are encrypted while they travel and while they are stored. You can also lock any project or book with a PIN.'],
   ['Do I need internet?', 'Not to add entries. ArthaLedger works offline and saves your changes as soon as you are connected again.'],
   ['Can I use it on more than one phone?', 'Yes. Sign in with the same account on any phone or computer and your projects and books will be there.'],
@@ -561,7 +623,7 @@ function Faq() {
   return (
     <section id="faq" className="scroll-mt-20 px-4 py-16 sm:px-6 sm:py-24" style={{ background: 'color-mix(in srgb, var(--gold-primary) 5%, var(--bg-page))', borderBlock: '1px solid var(--border-subtle)' }}>
       <div className="mx-auto max-w-3xl">
-        <SectionTitle eyebrow="FAQ" title="Frequently asked questions" sub="Everything you need to know, in plain words." />
+        <SectionTitle eyebrow="FAQ" title="Frequently asked questions" />
         <Reveal className="mt-10 overflow-hidden rounded-3xl" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-card)', boxShadow: '0 24px 60px -40px rgba(0,0,0,0.25)' }}>
           {FAQ.map(([q, a], i) => <FaqItem key={q} id={`faq-${i}`} q={q} a={a} open={open === i} onToggle={() => setOpen(open === i ? -1 : i)} />)}
         </Reveal>
@@ -607,7 +669,7 @@ function FinalCta() {
         <div className="pointer-events-none absolute -top-24 left-1/2 -z-10 h-72 w-72 -translate-x-1/2 rounded-full blur-3xl" style={{ background: 'rgba(212,178,110,0.35)' }} aria-hidden="true" />
         <img src="/icons/maskable-192.png" alt="" className="mx-auto h-14 w-14 rounded-full" style={{ boxShadow: '0 0 0 4px rgba(212,178,110,0.2)' }} />
         <h2 className="font-serif-luxury mx-auto mt-6 max-w-xl text-[1.9rem] leading-tight font-semibold tracking-tight text-[#F6EFE2] [text-wrap:balance] sm:text-[2.6rem]">Start your money notebook today.</h2>
-        <p className="mx-auto mt-3 max-w-md text-[15px] text-[#F6EFE2]/70">Free, private, and ready in a minute.</p>
+        <p className="mx-auto mt-3 max-w-md text-[15px] text-[#F6EFE2]/70">Free for our first 50 users. Ready in a minute.</p>
         <div className="mx-auto mt-8 flex max-w-sm flex-col gap-3 sm:max-w-none sm:flex-row sm:justify-center">
           <PrimaryLink to="/register">Create free account</PrimaryLink>
           <a href={APK_URL} download className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full px-6 text-[15px] font-semibold text-[#F6EFE2] transition-colors hover:bg-white/10" style={{ border: '1px solid rgba(246,239,226,0.25)' }}>
@@ -651,6 +713,7 @@ function Footer() {
         <FooterCol title="Product">
           <FooterLink href="#how">How it works</FooterLink>
           <FooterLink href="#features">Features</FooterLink>
+          <FooterLink href="#pricing">Pricing</FooterLink>
           <FooterLink href="#faq">FAQ</FooterLink>
           <FooterLink href={APK_URL} download>Download for Android</FooterLink>
         </FooterCol>
@@ -695,6 +758,7 @@ export default function LandingPage() {
         <WhatIsIt />
         <HowItWorks />
         <Features />
+        <Pricing />
         <Testimonials />
         <Founder />
         <Faq />

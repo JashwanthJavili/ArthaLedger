@@ -535,7 +535,8 @@ export default function SettingsPage() {
               ))}
             </div>
           </div>
-          {(canTest || canDebug) && (
+          {/* Developer tools: only for the ArthaLedger team account */}
+          {isAdminUser(user) && (canTest || canDebug) && (
             <Row icon={Stethoscope} tint="neutral" label="Test & diagnostics" onClick={() => setSheet('diagnostics')} />
           )}
         </Group>
