@@ -7,6 +7,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import ConfirmDialog from './ConfirmDialog'
+import UserAvatar from './UserAvatar'
 
 const SHORTCUTS = [
   { to: '/analytics', label: 'Analytics', Icon: BarChart3 },
@@ -19,19 +20,6 @@ const ROWS = [
   { to: '/privacy', label: 'Privacy policy', hint: 'How your data is handled', Icon: ShieldQuestion },
   { href: 'mailto:jashwanthjavili7@gmail.com?subject=ArthaLedger%20feedback', label: 'Help & feedback', hint: 'Write to us, we reply', Icon: Mail },
 ]
-
-function Avatar({ user, initials, size = 'h-10 w-10 text-[12px]' }) {
-  const [broken, setBroken] = useState(false)
-  if (user?.photoURL && !broken) {
-    return <img src={user.photoURL} alt="" referrerPolicy="no-referrer" onError={() => setBroken(true)}
-      className={`${size} flex-shrink-0 rounded-full object-cover`} draggable="false" />
-  }
-  return (
-    <span className={`${size} flex flex-shrink-0 items-center justify-center rounded-full bg-[var(--gold-primary)] font-bold text-white`}>
-      {initials}
-    </span>
-  )
-}
 
 /**
  * Profile button for the dashboard header. Tapping it opens an account card
@@ -46,9 +34,6 @@ export default function AccountMenu() {
   const pushed = useRef(false)
 
   const name = user?.displayName || 'Your account'
-  const initials = user?.displayName
-    ? user.displayName.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()
-    : 'AL'
 
   useEffect(() => {
     if (!open) return
@@ -85,7 +70,7 @@ export default function AccountMenu() {
     <>
       <button type="button" onClick={() => setOpen(true)} aria-label="Account" aria-haspopup="dialog" aria-expanded={open}
         className="rounded-full ring-offset-2 ring-offset-[var(--bg-page)] transition-shadow focus-visible:ring-2 focus-visible:ring-[var(--gold-primary)] cursor-pointer">
-        <Avatar user={user} initials={initials} />
+        <UserAvatar user={user} />
       </button>
 
       {createPortal(
@@ -107,7 +92,7 @@ export default function AccountMenu() {
                 <div className="relative px-5 pb-5 pt-6">
                   <div className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-[var(--gold-light)] to-transparent opacity-70" />
                   <div className="relative flex items-center gap-3.5">
-                    <Avatar user={user} initials={initials} size="h-14 w-14 text-[17px]" />
+                    <UserAvatar user={user} className="h-14 w-14 text-[17px]" />
                     <div className="min-w-0 flex-1">
                       <p className="truncate font-serif-luxury text-[19px] font-semibold leading-tight text-[var(--text-main)]">{name}</p>
                       {user?.email && <p className="mt-0.5 truncate text-[12px] text-[var(--text-muted)]">{user.email}</p>}

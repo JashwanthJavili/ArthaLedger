@@ -39,19 +39,9 @@
         }
       } catch (e) {}
     </script>
-    <!-- Installed app: hold Android's launch frame (round logo, centre) until
-         the app takes over, so there is no blank flash in between -->
-    <link rel="preload" as="image" href="/icons/maskable-512.png" />
-    <style>
-      #presplash { display: none; }
-      @media (display-mode: standalone) {
-        #presplash { display: block; position: fixed; inset: 0; z-index: 10000; background: #FAF8F5; }
-        #presplash img { position: absolute; left: 50%; top: 50%; width: 160px; height: 160px; margin: -80px 0 0 -80px; border-radius: 50%; }
-      }
-    </style>
   </head>
   <body>
-    <div id="root"><div id="presplash"><img src="/icons/maskable-512.png" alt="" /></div></div>
+    <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

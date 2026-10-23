@@ -13,6 +13,7 @@ import { motion } from 'framer-motion'
 import LayoutShell from '../components/LayoutShell'
 import Toast from '../components/common/Toast'
 import ConfirmDialog from '../components/common/ConfirmDialog'
+import UserAvatar from '../components/common/UserAvatar'
 import DownloadModal from '../components/forms/DownloadModal'
 import { Group, Row, Switch } from '../components/settings/ui'
 import {
@@ -95,12 +96,6 @@ function toProfile(data, fallbackName) {
     dob: data?.dob || '',
     bio: data?.bio || '',
   }
-}
-
-function initialsOf(name, email) {
-  const parts = String(name || '').trim().split(/\s+/).filter(Boolean)
-  if (parts.length) return parts.slice(0, 2).map(p => p[0]).join('').toUpperCase()
-  return (email?.[0] || 'U').toUpperCase()
 }
 
 function formatTime12(t) {
@@ -448,9 +443,7 @@ export default function SettingsPage() {
           className="rounded-2xl border border-[var(--border-card)] bg-[var(--bg-card)]"
         >
           <div className="flex items-center gap-3.5 p-4">
-            <span className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-full bg-[var(--gold-light)] font-serif-luxury text-[20px] font-semibold text-[var(--gold-primary)]">
-              {initialsOf(displayName === 'User' ? '' : displayName, user?.email)}
-            </span>
+            <UserAvatar user={user} name={displayName === 'User' ? '' : displayName} className="h-14 w-14 text-[18px]" />
             <div className="min-w-0 flex-1">
               <p className="truncate text-[16px] font-semibold text-[var(--text-main)]">{displayName}</p>
               <p className="truncate text-[13px] text-[var(--text-muted)]">{user?.email}</p>
