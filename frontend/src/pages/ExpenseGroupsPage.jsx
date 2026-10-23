@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Plus, Trash2, ChevronRight, FolderHeart, X, Loader2 } from 'lucide-react'
+import { Plus, Trash2, ChevronRight, FolderHeart, X, Loader2, Info } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import LayoutShell from '../components/LayoutShell'
 import { useAppData } from '../context/AppDataContext'
@@ -9,6 +9,7 @@ import Toast from '../components/common/Toast'
 import ConfirmDialog from '../components/common/ConfirmDialog'
 import { formatAmount, getCurrencySymbol } from '../lib/format'
 import Loader from '../components/common/Loader'
+import GroupsHelpSheet from '../components/common/GroupsHelpSheet'
 
 const card = 'rounded-2xl border border-[var(--border-card)] bg-[var(--bg-card)]'
 const sectionTitle = 'text-[11px] font-semibold uppercase tracking-[0.1em] text-[var(--text-subtle)]'
@@ -18,6 +19,7 @@ const label = 'mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.08em
 export default function ExpenseGroupsPage() {
   const { loading, error, trips, entriesByBook, createTrip, deleteTrip } = useAppData()
   const [showCreateModal, setShowCreateModal] = useState(false)
+  const [showHelp, setShowHelp] = useState(false)
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [creating, setCreating] = useState(false)
@@ -147,7 +149,13 @@ export default function ExpenseGroupsPage() {
         {/* ── Header ── */}
         <motion.header initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} className="flex items-start justify-between gap-3 pt-1">
           <div className="min-w-0">
-            <h1 className="font-serif-luxury text-[28px] font-semibold leading-tight tracking-[-0.01em] text-[var(--text-main)]">Groups</h1>
+            <div className="flex items-center gap-2">
+              <h1 className="font-serif-luxury text-[28px] font-semibold leading-tight tracking-[-0.01em] text-[var(--text-main)]">Groups</h1>
+              <button type="button" onClick={() => setShowHelp(true)} aria-label="How groups work"
+                className="flex h-8 w-8 items-center justify-center rounded-full border border-[var(--border-card)] bg-[var(--bg-card)] text-[var(--text-muted)] hover:text-[var(--gold-primary)] transition-colors cursor-pointer">
+                <Info size={15} />
+              </button>
+            </div>
             <p className="font-serif-luxury mt-0.5 text-[14px] italic text-[var(--text-muted)]">Expenses gathered across books</p>
           </div>
           {groupsWithStats.length > 0 && (
@@ -173,13 +181,19 @@ export default function ExpenseGroupsPage() {
               <p className="mx-auto mt-1 max-w-xs text-xs text-[var(--text-subtle)]">
                 {loading
                   ? 'Connecting to database…'
-                  : 'Create a group, then select transactions in any book and add them here.'}
+                  : 'Collect spending from different books in one place, like everything for a trip or a wedding.'}
               </p>
             </div>
             {!loading && (
               <button onClick={() => setShowCreateModal(true)}
                 className="mt-1 inline-flex items-center gap-1.5 rounded-xl bg-[var(--gold-primary)] px-4 py-2.5 text-xs font-semibold text-white hover:bg-[var(--gold-hover)] transition-colors cursor-pointer">
                 <Plus size={14} /> Create group
+              </button>
+            )}
+            {!loading && (
+              <button type="button" onClick={() => setShowHelp(true)}
+                className="inline-flex min-h-10 items-center gap-1.5 text-[12.5px] font-semibold text-[var(--gold-primary)] hover:underline cursor-pointer">
+                <Info size={13} /> How groups work
               </button>
             )}
           </motion.div>
@@ -345,6 +359,7 @@ export default function ExpenseGroupsPage() {
       />
 
       <Toast message={toast.msg} type={toast.type} visible={toast.visible} />
+      <GroupsHelpSheet open={showHelp} onClose={() => setShowHelp(false)} />
     </LayoutShell>
   )
 }

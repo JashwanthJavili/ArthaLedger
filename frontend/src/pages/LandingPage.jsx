@@ -430,7 +430,7 @@ const FEATURES = [
   { Icon: Tags, title: 'Categories', text: 'Groceries, rent, fuel, salary… pick one so you can see where money goes.' },
   { Icon: Target, title: 'Monthly budgets', text: 'Set a limit for a category. We warn you when you get close.' },
   { Icon: PieChart, title: 'Clear summaries', text: 'See this month and this year, by category, in plain numbers.' },
-  { Icon: Users, title: 'Split with friends', text: 'Trips and shared flats: see who paid and who owes whom.' },
+  { Icon: Users, title: 'Groups', text: 'Gather spends from different books, like a trip or a wedding, and see the total in one place.' },
   { Icon: Lock, title: 'Lock private books', text: 'Add a PIN to any book or project you want to keep to yourself.' },
   { Icon: Bell, title: 'Gentle reminders', text: 'A friendly nudge, morning to night, so nothing is forgotten.' },
   { Icon: FileSpreadsheet, title: 'Download reports', text: 'Save any book as a PDF or Excel file to share or print.' },
@@ -587,7 +587,7 @@ const FAQ = [
   ['Do I need internet?', 'Not to add entries. ArthaLedger works offline and saves your changes as soon as you are connected again.'],
   ['Can I use it on more than one phone?', 'Yes. Sign in with the same account on any phone or computer and your projects and books will be there.'],
   ['How do I install it on Android?', 'Tap “Download for Android”, open the downloaded file and allow the install when Android asks. You can also open this website in Chrome and choose “Install app”.'],
-  ['Can I share expenses with friends?', 'Yes. Use Groups for trips or shared flats. Add what each person paid and ArthaLedger shows who owes whom.'],
+  ['What are Groups?', 'A group collects related transactions from different books in one place, such as everything spent on a trip or a wedding. Select transactions in any book, tap Add to group, and see the total and a category breakdown. Your transactions stay in their books.'],
   ['How do I delete my account?', 'Go to Settings, then Delete account. Your account and all your projects and books are removed for good.'],
 ]
 
