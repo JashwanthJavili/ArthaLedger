@@ -1,498 +1,755 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { motion, useScroll, useTransform, AnimatePresence, animate } from 'framer-motion'
-import { useInView } from 'react-intersection-observer'
-import { useState, useRef, useEffect } from 'react'
+import { motion, useReducedMotion } from 'framer-motion'
 import {
-  BookOpen, Shield, TrendingUp, FolderOpen,
-  ArrowRight, Lock, BarChart2, Download,
-  CheckCircle, Sparkles, Users, Star,
-  ArrowUpRight, Eye, RefreshCw, Menu, X,
+  ArrowRight, ArrowDownLeft, ArrowUpRight, BookOpen, Bell, Users, Lock,
+  FileText, FileSpreadsheet, Moon, Smartphone, WifiOff, ShieldCheck,
+  Tags, PieChart, Wallet, FolderOpen, CloudUpload, KeyRound, ChevronRight,
 } from 'lucide-react'
 
-/* ── Scroll-reveal wrapper ── */
-function Reveal({ children, delay = 0, className = '' }) {
-  const [ref, inView] = useInView({ triggerOnce: true, threshold: 0.1 })
+/* ─────────────────────────── shared bits ─────────────────────────── */
+
+const EASE = [0.22, 1, 0.36, 1]
+const IN = 'text-emerald-600 dark:text-emerald-400'
+const OUT = 'text-rose-600 dark:text-rose-400'
+const GOLD_TINT = 'color-mix(in srgb, var(--gold-primary) 14%, transparent)'
+const GOLD_SOFT = 'color-mix(in srgb, var(--gold-primary) 28%, transparent)'
+
+function Reveal({ children, delay = 0, className = '', style, as = 'div' }) {
+  const reduce = useReducedMotion()
+  const Tag = motion[as]
   return (
-    <motion.div
-      ref={ref}
-      initial={{ opacity: 0, y: 32 }}
-      animate={inView ? { opacity: 1, y: 0 } : {}}
-      transition={{ duration: 0.6, delay, ease: [0.22, 1, 0.36, 1] }}
+    <Tag
       className={className}
+      style={style}
+      initial={reduce ? { opacity: 0 } : { opacity: 0, y: 24 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: '-60px' }}
+      transition={{ duration: reduce ? 0.3 : 0.7, delay, ease: EASE }}
     >
       {children}
+    </Tag>
+  )
+}
+
+function Logo({ size = 36 }) {
+  return (
+    <img
+      src="/icons/maskable-192.png"
+      alt=""
+      width={size}
+      height={size}
+      className="rounded-full shrink-0"
+      style={{ width: size, height: size, boxShadow: '0 0 0 1px var(--border-card)' }}
+    />
+  )
+}
+
+function Eyebrow({ children }) {
+  return (
+    <p
+      className="text-[11px] font-semibold uppercase tracking-[0.22em]"
+      style={{ color: 'var(--gold-primary)' }}
+    >
+      {children}
+    </p>
+  )
+}
+
+function PrimaryButton({ to, children, className = '' }) {
+  return (
+    <Link
+      to={to}
+      className={`group inline-flex min-h-12 items-center justify-center gap-2 rounded-full px-6 text-[15px] font-semibold transition-all duration-200 active:scale-[0.98] hover:brightness-105 ${className}`}
+      style={{
+        background: 'linear-gradient(135deg, var(--gold-hover), var(--gold-primary))',
+        color: '#1F1A14',
+        boxShadow: '0 10px 30px -12px var(--gold-primary)',
+      }}
+    >
+      {children}
+      <ArrowRight size={17} className="transition-transform duration-200 group-hover:translate-x-0.5" />
+    </Link>
+  )
+}
+
+function GhostButton({ to, children, className = '' }) {
+  return (
+    <Link
+      to={to}
+      className={`inline-flex min-h-12 items-center justify-center rounded-full px-6 text-[15px] font-semibold transition-colors duration-200 active:scale-[0.98] ${className}`}
+      style={{ color: 'var(--text-main)', border: '1px solid var(--border-card)', background: 'var(--bg-card)' }}
+    >
+      {children}
+    </Link>
+  )
+}
+
+/* ─────────────────────────── top bar ─────────────────────────── */
+
+function TopBar() {
+  return (
+    <header
+      className="sticky top-0 z-40 backdrop-blur-xl"
+      style={{
+        background: 'color-mix(in srgb, var(--bg-page) 82%, transparent)',
+        borderBottom: '1px solid var(--border-subtle)',
+        paddingTop: 'env(safe-area-inset-top)',
+      }}
+    >
+      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-3 px-4 sm:px-6">
+        <Link to="/" className="flex min-h-11 items-center gap-2.5" aria-label="ArthaLedger home">
+          <Logo size={34} />
+          <span className="font-serif-luxury text-[19px] font-semibold tracking-tight" style={{ color: 'var(--text-main)' }}>
+            ArthaLedger
+          </span>
+        </Link>
+        <nav className="flex items-center gap-2">
+          <Link
+            to="/login"
+            className="inline-flex min-h-11 items-center rounded-full px-4 text-sm font-semibold transition-colors"
+            style={{ color: 'var(--text-main)', border: '1px solid var(--border-card)' }}
+          >
+            Sign in
+          </Link>
+          <Link
+            to="/register"
+            className="hidden min-h-11 items-center rounded-full px-5 text-sm font-semibold sm:inline-flex hover:brightness-105"
+            style={{ background: 'var(--gold-primary)', color: '#1F1A14' }}
+          >
+            Get started
+          </Link>
+        </nav>
+      </div>
+    </header>
+  )
+}
+
+/* ─────────────────────────── phone mockup ─────────────────────────── */
+
+const mockEntries = [
+  { title: 'Salary', cat: 'Income · Monthly', amount: '+ ₹62,000', type: 'in' },
+  { title: 'Vegetables', cat: 'Groceries · Market', amount: '− ₹480', type: 'out' },
+  { title: 'Electricity bill', cat: 'Utilities · Power', amount: '− ₹1,320', type: 'out' },
+  { title: 'Freelance design', cat: 'Income · Side work', amount: '+ ₹8,500', type: 'in' },
+]
+
+function PhoneMockup() {
+  const reduce = useReducedMotion()
+  return (
+    <motion.div
+      className="relative mx-auto w-full max-w-[300px]"
+      initial={reduce ? { opacity: 0 } : { opacity: 0, y: 40, rotate: -2 }}
+      animate={{ opacity: 1, y: 0, rotate: 0 }}
+      transition={{ duration: 1, delay: 0.25, ease: EASE }}
+    >
+      <motion.div
+        animate={reduce ? undefined : { y: [0, -10, 0] }}
+        transition={reduce ? undefined : { duration: 6, repeat: Infinity, ease: 'easeInOut' }}
+      >
+        {/* device frame */}
+        <div
+          className="relative rounded-[2.6rem] p-[9px]"
+          style={{
+            background: 'linear-gradient(160deg, #3A3530, #1B1815)',
+            boxShadow: '0 40px 80px -30px rgba(0,0,0,0.45), 0 0 0 1px rgba(255,255,255,0.06) inset',
+          }}
+        >
+          <div className="overflow-hidden rounded-[2.1rem]" style={{ background: 'var(--bg-page)' }}>
+            {/* status bar */}
+            <div className="flex items-center justify-between px-6 pt-3 pb-1 text-[10px] font-semibold" style={{ color: 'var(--text-main)' }}>
+              <span>9:41</span>
+              <span className="h-[18px] w-[70px] rounded-full bg-black/90" aria-hidden="true" />
+              <span className="flex items-center gap-1" aria-hidden="true">
+                <span className="h-1.5 w-3 rounded-sm" style={{ background: 'var(--text-main)' }} />
+                <span className="h-2 w-4 rounded-[3px] border" style={{ borderColor: 'var(--text-main)' }} />
+              </span>
+            </div>
+
+            {/* app header */}
+            <div className="flex items-center justify-between px-4 pt-2 pb-3">
+              <div>
+                <p className="text-[9px] uppercase tracking-[0.18em]" style={{ color: 'var(--text-subtle)' }}>Family · Book</p>
+                <p className="font-serif-luxury text-[15px] font-semibold" style={{ color: 'var(--text-main)' }}>Home Expenses</p>
+              </div>
+              <div className="flex h-8 w-8 items-center justify-center rounded-full" style={{ background: GOLD_TINT, color: 'var(--gold-primary)' }}>
+                <BookOpen size={14} />
+              </div>
+            </div>
+
+            {/* balance card */}
+            <div className="px-4">
+              <div
+                className="relative overflow-hidden rounded-2xl p-4"
+                style={{ background: 'linear-gradient(140deg, #2B2620, #17140F)', color: '#F6EFE2' }}
+              >
+                <div className="pointer-events-none absolute -right-8 -top-10 h-28 w-28 rounded-full" style={{ background: 'radial-gradient(circle, rgba(212,178,110,0.45), transparent 70%)' }} />
+                <p className="text-[9px] uppercase tracking-[0.2em] opacity-70">Net balance</p>
+                <p className="mt-1 font-serif-luxury text-[24px] font-semibold tracking-tight">₹ 68,700</p>
+                <div className="mt-3 grid grid-cols-2 gap-2 text-[10px]">
+                  <div className="rounded-xl bg-white/8 px-2.5 py-1.5">
+                    <p className="opacity-60">Cash in</p>
+                    <p className="font-semibold text-emerald-300">₹ 70,500</p>
+                  </div>
+                  <div className="rounded-xl bg-white/8 px-2.5 py-1.5">
+                    <p className="opacity-60">Cash out</p>
+                    <p className="font-semibold text-rose-300">₹ 1,800</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* budget */}
+            <div className="mx-4 mt-3 rounded-xl px-3 py-2.5" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-subtle)' }}>
+              <div className="flex items-center justify-between text-[10px]">
+                <span className="font-semibold" style={{ color: 'var(--text-main)' }}>Groceries budget</span>
+                <span style={{ color: 'var(--text-muted)' }}>₹4,800 / ₹6,000</span>
+              </div>
+              <div className="mt-1.5 h-1.5 overflow-hidden rounded-full" style={{ background: 'var(--border-subtle)' }}>
+                <motion.div
+                  className="h-full rounded-full"
+                  style={{ background: 'var(--gold-primary)' }}
+                  initial={{ width: reduce ? '80%' : '0%' }}
+                  animate={{ width: '80%' }}
+                  transition={{ duration: 1.4, delay: 0.9, ease: EASE }}
+                />
+              </div>
+            </div>
+
+            {/* entries */}
+            <div className="px-4 pt-3 pb-2">
+              <p className="mb-1.5 text-[9px] font-semibold uppercase tracking-[0.18em]" style={{ color: 'var(--text-subtle)' }}>Today</p>
+              <ul className="space-y-1.5">
+                {mockEntries.map((e) => (
+                  <li key={e.title} className="flex items-center gap-2.5 rounded-xl px-2.5 py-2" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-subtle)' }}>
+                    <span
+                      className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${e.type === 'in' ? 'bg-emerald-500/12' : 'bg-rose-500/12'} ${e.type === 'in' ? IN : OUT}`}
+                    >
+                      {e.type === 'in' ? <ArrowDownLeft size={13} /> : <ArrowUpRight size={13} />}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-[11px] font-semibold" style={{ color: 'var(--text-main)' }}>{e.title}</span>
+                      <span className="block truncate text-[9px]" style={{ color: 'var(--text-subtle)' }}>{e.cat}</span>
+                    </span>
+                    <span className={`text-[11px] font-semibold tabular-nums ${e.type === 'in' ? IN : OUT}`}>{e.amount}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* bottom buttons */}
+            <div className="grid grid-cols-2 gap-2 px-4 pt-1 pb-5 text-[10px] font-semibold">
+              <span className="rounded-full bg-emerald-600 py-2 text-center text-white">+ Cash In</span>
+              <span className="rounded-full bg-rose-600 py-2 text-center text-white">− Cash Out</span>
+            </div>
+          </div>
+        </div>
+      </motion.div>
+
+      {/* floating reminder chip */}
+      <motion.div
+        className="absolute -left-3 top-24 hidden items-center gap-2 rounded-2xl px-3 py-2 text-[11px] shadow-lg min-[400px]:flex"
+        style={{ background: 'var(--bg-card)', border: '1px solid var(--border-card)', color: 'var(--text-main)', backdropFilter: 'blur(10px)' }}
+        initial={reduce ? { opacity: 0 } : { opacity: 0, x: -16 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.7, delay: 1.2, ease: EASE }}
+      >
+        <Bell size={13} style={{ color: 'var(--gold-primary)' }} />
+        <span className="font-medium">Log today&rsquo;s spends</span>
+      </motion.div>
+      <motion.div
+        className="absolute -right-3 bottom-28 hidden items-center gap-2 rounded-2xl px-3 py-2 text-[11px] shadow-lg min-[400px]:flex"
+        style={{ background: 'var(--bg-card)', border: '1px solid var(--border-card)', color: 'var(--text-main)', backdropFilter: 'blur(10px)' }}
+        initial={reduce ? { opacity: 0 } : { opacity: 0, x: 16 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.7, delay: 1.4, ease: EASE }}
+      >
+        <CloudUpload size={13} className={IN} />
+        <span className="font-medium">Synced</span>
+      </motion.div>
     </motion.div>
   )
 }
 
-/* ── Animated stat counter ── */
-function StatCard({ end, suffix = '', label, delay = 0 }) {
-  const [ref, inView] = useInView({ triggerOnce: true, threshold: 0.3 })
-  const [display, setDisplay] = useState(0)
-  useEffect(() => {
-    if (!inView) return
-    const controls = animate(0, end, {
-      duration: 2.2, delay, ease: 'easeOut',
-      onUpdate: (v) => setDisplay(end % 1 === 0 ? Math.round(v) : parseFloat(v.toFixed(1))),
-    })
-    return controls.stop
-  }, [inView, end, delay])
+/* ─────────────────────────── hero ─────────────────────────── */
+
+function Hero() {
+  const reduce = useReducedMotion()
+  const fade = (d) => ({
+    initial: reduce ? { opacity: 0 } : { opacity: 0, y: 18 },
+    animate: { opacity: 1, y: 0 },
+    transition: { duration: 0.8, delay: d, ease: EASE },
+  })
   return (
-    <div ref={ref} className="text-center px-4 py-6">
-      <div className="font-serif text-3xl sm:text-4xl font-bold text-amber-700">
-        {display.toLocaleString('en-IN')}{suffix}
+    <section className="relative">
+      {/* gold glow */}
+      <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
+        <div
+          className="absolute left-1/2 top-[-120px] h-[520px] w-[520px] -translate-x-1/2 rounded-full blur-3xl lg:left-[70%]"
+          style={{ background: `radial-gradient(circle, ${GOLD_SOFT}, transparent 65%)` }}
+        />
       </div>
-      <p className="text-xs text-stone-400 mt-1.5 font-medium uppercase tracking-widest">{label}</p>
+
+      <div className="relative mx-auto grid max-w-6xl items-center gap-12 px-4 pt-12 pb-16 sm:px-6 sm:pt-16 lg:grid-cols-[1.1fr_1fr] lg:gap-8 lg:pt-24 lg:pb-24">
+        <div className="text-center lg:text-left">
+          <motion.div {...fade(0)} className="inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 text-xs font-medium" style={{ background: GOLD_TINT, color: 'var(--text-main)', border: '1px solid var(--border-card)' }}>
+            <span className="h-1.5 w-1.5 rounded-full" style={{ background: 'var(--gold-primary)' }} />
+            A calm cashbook for Indian households
+          </motion.div>
+
+          <motion.h1
+            {...fade(0.08)}
+            className="font-serif-luxury mt-6 text-[2.2rem] min-[400px]:text-[2.6rem] leading-[1.05] font-semibold tracking-tight sm:text-6xl lg:text-[4.4rem]"
+            style={{ color: 'var(--text-main)' }}
+          >
+            Where every rupee
+            <br />
+            has <em className="italic" style={{ color: 'var(--gold-primary)' }}>meaning.</em>
+          </motion.h1>
+
+          <motion.p {...fade(0.16)} className="mx-auto mt-5 max-w-md text-base leading-relaxed sm:text-lg lg:mx-0" style={{ color: 'var(--text-muted)' }}>
+            Keep your personal, family and business books in one quiet place. Record cash in and cash out,
+            set budgets, split trips with friends, and see where your money really goes.
+          </motion.p>
+
+          <motion.div {...fade(0.24)} className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center lg:justify-start">
+            <PrimaryButton to="/register">Create your ledger</PrimaryButton>
+            <GhostButton to="/login">I already have an account</GhostButton>
+          </motion.div>
+
+          <motion.ul {...fade(0.32)} className="mt-8 flex flex-wrap justify-center gap-x-5 gap-y-2 text-[13px] lg:justify-start" style={{ color: 'var(--text-subtle)' }}>
+            <li className="flex items-center gap-1.5"><ShieldCheck size={14} style={{ color: 'var(--gold-primary)' }} /> Private to your account</li>
+            <li className="flex items-center gap-1.5"><WifiOff size={14} style={{ color: 'var(--gold-primary)' }} /> Works offline</li>
+            <li className="flex items-center gap-1.5"><Smartphone size={14} style={{ color: 'var(--gold-primary)' }} /> Installs on Android</li>
+          </motion.ul>
+        </div>
+
+        <PhoneMockup />
+      </div>
+    </section>
+  )
+}
+
+/* ─────────────────────────── bento features ─────────────────────────── */
+
+function Tile({ icon: Icon, title, desc, children, className = '', delay = 0 }) {
+  return (
+    <Reveal
+      delay={delay}
+      className={`relative flex flex-col overflow-hidden rounded-3xl p-5 sm:p-6 ${className}`}
+      style={{ background: 'var(--bg-card)', border: '1px solid var(--border-card)' }}
+    >
+      <div className="flex items-center gap-3">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl" style={{ background: GOLD_TINT, color: 'var(--gold-primary)' }}>
+          <Icon size={18} />
+        </span>
+        <h3 className="font-serif-luxury text-lg font-semibold" style={{ color: 'var(--text-main)' }}>{title}</h3>
+      </div>
+      <p className="mt-3 text-sm leading-relaxed" style={{ color: 'var(--text-muted)' }}>{desc}</p>
+      {children && <div className="mt-5 flex-1">{children}</div>}
+    </Reveal>
+  )
+}
+
+const miniCard = { background: 'var(--bg-page)', border: '1px solid var(--border-subtle)' }
+
+function ProjectsArt() {
+  const books = [
+    { name: 'Personal', sub: '3 books', tone: '#C5A059' },
+    { name: 'Family', sub: '4 books', tone: '#8FA67A' },
+    { name: 'Business', sub: '2 books', tone: '#7C8DB5' },
+  ]
+  return (
+    <div className="grid grid-cols-3 gap-2 sm:gap-3">
+      {books.map((b) => (
+        <div key={b.name} className="relative overflow-hidden rounded-2xl p-3" style={miniCard}>
+          <span className="absolute left-0 top-0 h-full w-1" style={{ background: b.tone }} />
+          <FolderOpen size={16} style={{ color: b.tone }} />
+          <p className="mt-3 truncate text-[13px] font-semibold" style={{ color: 'var(--text-main)' }}>{b.name}</p>
+          <p className="text-[11px]" style={{ color: 'var(--text-subtle)' }}>{b.sub}</p>
+        </div>
+      ))}
     </div>
   )
 }
 
-/* ── Feature data ── */
-const features = [
-  { icon: FolderOpen, bg: 'bg-amber-50', fg: 'text-amber-700', title: 'Projects & Books', desc: 'Organise finances into projects — family, business, personal — each with multiple cashbooks.' },
-  { icon: TrendingUp, bg: 'bg-emerald-50', fg: 'text-emerald-700', title: 'Real-time Tracking', desc: 'Every rupee recorded instantly. Running balances, cash in/out summaries at a glance.' },
-  { icon: Lock, bg: 'bg-blue-50', fg: 'text-blue-700', title: 'PIN Protection', desc: 'Lock individual books or entire projects with a 4 or 6 digit PIN. Your data stays private.' },
-  { icon: BarChart2, bg: 'bg-purple-50', fg: 'text-purple-700', title: 'Analytics', desc: 'Visual charts showing spending patterns, income trends, and category breakdowns.' },
-  { icon: RefreshCw, bg: 'bg-teal-50', fg: 'text-teal-700', title: 'Book Transfers', desc: 'Move money between books within a project. Project totals stay accurate automatically.' },
-  { icon: Download, bg: 'bg-rose-50', fg: 'text-rose-700', title: 'Export to PDF', desc: 'Download any cashbook as a formatted PDF — ready to share or archive.' },
-]
-
-const trust = ['No ads, ever', 'Free forever', 'Data encrypted in transit', 'Only you can access your data', 'Works offline (PWA)', 'Installable on Android & iOS']
-
-const securityCards = [
-  { icon: Shield, title: 'Firebase Security Rules', desc: 'Strict database rules ensure only you can read or write your own data.' },
-  { icon: Lock, title: 'PIN Lock', desc: 'Add an extra layer of protection to individual books or entire projects.' },
-  { icon: Eye, title: 'Hide Balances', desc: 'Instantly hide all financial values with one tap — perfect for shared screens.' },
-  { icon: CheckCircle, title: 'bcrypt Passwords', desc: 'Firebase Authentication uses industry-standard hashing. We never see your password.' },
-  { icon: RefreshCw, title: 'HTTPS / TLS', desc: 'All data is encrypted in transit using TLS. No plain-text transmission.' },
-  { icon: Users, title: 'No Third-party Sharing', desc: 'Your data is never sold, shared, or used for advertising. Period.' },
-]
-
-const steps = [
-  { num: '01', title: 'Create a Project', desc: 'Start by creating a project — name it "Home", "Business", or anything that fits your life.' },
-  { num: '02', title: 'Add Cashbooks', desc: 'Inside each project, create cashbooks for different purposes: groceries, rent, salary, savings.' },
-  { num: '03', title: 'Track Every Entry', desc: 'Log cash in and cash out entries. Watch your balance update in real time, always accurate.' },
-]
-
-const testimonials = [
-  { name: 'Priya S.', role: 'Homemaker', text: 'Finally a cashbook app that feels calm and not overwhelming. I track all family expenses here.' },
-  { name: 'Ravi K.', role: 'Small Business Owner', text: 'The PIN lock for projects is brilliant. I can keep business and personal finances separate and secure.' },
-  { name: 'Ananya M.', role: 'Freelancer', text: 'The PDF export is so clean. I send it to my accountant every month. Saves so much time.' },
-]
-
-/* ── Floating app mockup ── */
-function MockupCard() {
+function CategoriesArt() {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 40 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.9, delay: 0.4, ease: [0.22, 1, 0.36, 1] }}
-      className="relative mx-auto w-full max-w-[290px]"
-    >
-      <div className="absolute inset-0 rounded-3xl bg-amber-300/25 blur-3xl scale-110 pointer-events-none" />
-      <motion.div
-        animate={{ y: [0, -10, 0] }}
-        transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
-        className="relative"
-      >
-        <div className="rounded-3xl border border-amber-200/70 bg-white/95 shadow-2xl overflow-hidden">
-          <div className="bg-gradient-to-r from-amber-50 to-orange-50 px-4 py-3 flex items-center justify-between border-b border-amber-100">
-            <div className="flex items-center gap-2">
-              <img src="/L.png" alt="ArthaLedger" className="h-6 w-6 rounded-lg object-contain" />
-              <span className="text-xs font-semibold text-stone-700 font-serif">ArthaLedger</span>
-            </div>
-            <span className="text-[10px] text-stone-400">Dashboard</span>
-          </div>
-          <div className="p-4 space-y-3">
-            <div>
-              <p className="text-[10px] text-stone-400">Good morning,</p>
-              <p className="text-sm font-serif font-semibold text-stone-800">Jashwanth 🙏</p>
-            </div>
-            <div className="rounded-xl bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-100 p-3">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[10px] text-stone-400 uppercase tracking-wider">Net Balance</span>
-                <span className="text-sm font-bold font-serif text-stone-800">₹1,24,500</span>
-              </div>
-              <div className="flex justify-between">
-                <div className="flex items-center gap-1">
-                  <TrendingUp size={9} className="text-emerald-500" />
-                  <span className="text-[9px] text-stone-400">In</span>
-                  <span className="text-[9px] font-semibold text-emerald-700 ml-1">₹2,10,000</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <TrendingUp size={9} className="text-red-400 rotate-180" />
-                  <span className="text-[9px] text-stone-400">Out</span>
-                  <span className="text-[9px] font-semibold text-red-600 ml-1">₹85,500</span>
-                </div>
-              </div>
-            </div>
-            {[{ name: 'Family Expenses', books: 3, net: '+₹45,200' }, { name: 'Business', books: 5, net: '+₹79,300' }].map((p) => (
-              <div key={p.name} className="rounded-xl border border-amber-100 bg-white p-2.5 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="rounded-lg bg-amber-100 p-1"><FolderOpen size={9} className="text-amber-700" /></div>
-                  <div>
-                    <p className="text-[10px] font-semibold text-stone-700">{p.name}</p>
-                    <p className="text-[9px] text-stone-400">{p.books} books</p>
-                  </div>
-                </div>
-                <span className="text-[10px] font-bold text-emerald-700">{p.net}</span>
-              </div>
-            ))}
-            <div className="rounded-xl border border-amber-100 bg-white p-2.5">
-              <p className="text-[9px] text-stone-400 mb-2 uppercase tracking-wider">This month</p>
-              <div className="flex items-end gap-0.5 h-8">
-                {[40, 65, 45, 80, 55, 70, 90, 60, 75, 50, 85, 95].map((h, i) => (
-                  <div key={i} className="flex-1 rounded-sm bg-amber-200" style={{ height: `${h}%` }} />
-                ))}
-              </div>
-            </div>
-          </div>
+    <div className="space-y-2">
+      {[['Groceries', 'Vegetables'], ['Transport', 'Auto & cab'], ['Home', 'Rent']].map(([c, s]) => (
+        <div key={c} className="flex items-center gap-1.5 text-[12px]">
+          <span className="rounded-full px-2.5 py-1 font-semibold" style={{ background: GOLD_TINT, color: 'var(--text-main)' }}>{c}</span>
+          <ChevronRight size={12} style={{ color: 'var(--text-subtle)' }} />
+          <span className="rounded-full px-2.5 py-1" style={{ ...miniCard, color: 'var(--text-muted)' }}>{s}</span>
         </div>
-      </motion.div>
-      <motion.div
-        initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }}
-        transition={{ delay: 1, duration: 0.4 }}
-        className="absolute -top-3 -right-3 rounded-xl bg-emerald-500 px-2.5 py-1.5 shadow-lg"
-      >
-        <p className="text-[10px] font-bold text-white">+₹12,400</p>
-        <p className="text-[8px] text-emerald-100">Today</p>
-      </motion.div>
-      <motion.div
-        initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }}
-        transition={{ delay: 1.2, duration: 0.4 }}
-        className="absolute -bottom-3 -left-3 rounded-xl bg-white border border-amber-100 px-2.5 py-1.5 shadow-lg"
-      >
-        <div className="flex items-center gap-1">
-          <Shield size={9} className="text-amber-600" />
-          <p className="text-[9px] font-semibold text-stone-700">PIN Protected</p>
-        </div>
-      </motion.div>
-    </motion.div>
+      ))}
+    </div>
   )
 }
 
-export default function LandingPage() {
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const heroRef = useRef(null)
-  const { scrollYProgress } = useScroll({ target: heroRef, offset: ['start start', 'end start'] })
-  const heroY = useTransform(scrollYProgress, [0, 1], ['0%', '20%'])
-  const heroOpacity = useTransform(scrollYProgress, [0, 0.8], [1, 0])
-
+function BudgetArt() {
+  const rows = [
+    { name: 'Dining out', pct: 92, warn: true },
+    { name: 'Groceries', pct: 64 },
+    { name: 'Fuel', pct: 38 },
+  ]
   return (
-    <div className="min-h-screen bg-[#fdf8f0] text-stone-800 overflow-x-hidden">
-      {/* ── Sticky Nav ── */}
-      <motion.nav
-        initial={{ y: -20, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ duration: 0.5 }}
-        className="fixed top-0 left-0 right-0 z-50 border-b border-amber-100/60 bg-white/80 backdrop-blur-md"
-      >
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 sm:px-6 py-3.5">
-          <div className="flex items-center gap-2.5">
-            <motion.div whileHover={{ rotate: 10, scale: 1.05 }}>
-              <img src="/L.png" alt="ArthaLedger" className="h-10 w-10 rounded-xl shadow-sm object-contain bg-amber-50 p-0.5" />
-            </motion.div>
-            <span className="font-serif text-lg font-semibold text-stone-800">ArthaLedger</span>
+    <div className="space-y-3">
+      {rows.map((r) => (
+        <div key={r.name}>
+          <div className="flex justify-between text-[12px]">
+            <span style={{ color: 'var(--text-main)' }}>{r.name}</span>
+            <span className={r.warn ? OUT : ''} style={r.warn ? undefined : { color: 'var(--text-subtle)' }}>{r.pct}%</span>
           </div>
-          <div className="hidden md:flex items-center gap-6 text-sm text-stone-500">
-            <a href="#features" className="hover:text-amber-700 transition-colors">Features</a>
-            <a href="#security" className="hover:text-amber-700 transition-colors">Security</a>
-            <a href="#about" className="hover:text-amber-700 transition-colors">About</a>
-          </div>
-          <div className="flex items-center gap-2">
-            <Link to="/login" className="hidden sm:block rounded-xl px-4 py-2 text-sm font-medium text-stone-600 hover:bg-amber-50 transition-colors">Sign In</Link>
-            <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
-              <Link to="/register" className="rounded-xl bg-amber-700 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-800 transition-colors shadow-sm inline-flex items-center gap-1.5">
-                Get Started <ArrowRight size={13} />
-              </Link>
-            </motion.div>
-            <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="md:hidden p-2 text-stone-600 hover:text-amber-700">
-              {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
-            </button>
+          <div className="mt-1 h-1.5 overflow-hidden rounded-full" style={{ background: 'var(--border-subtle)' }}>
+            <div className={`h-full rounded-full ${r.warn ? 'bg-rose-500' : ''}`} style={{ width: `${r.pct}%`, background: r.warn ? undefined : 'var(--gold-primary)' }} />
           </div>
         </div>
-        <AnimatePresence>
-          {mobileMenuOpen && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              className="md:hidden border-t border-amber-100 bg-white/95 backdrop-blur-md overflow-hidden"
+      ))}
+      <p className="flex items-center gap-1.5 text-[11px] font-medium" style={{ color: 'var(--text-muted)' }}>
+        <Bell size={12} className={OUT} /> Alert: Dining out is close to its limit
+      </p>
+    </div>
+  )
+}
+
+function AnalyticsArt() {
+  const months = [
+    ['Jun', 48], ['Jul', 62], ['Aug', 55], ['Sep', 74], ['Oct', 58], ['Nov', 40],
+  ]
+  const cats = [
+    ['Home', 42], ['Groceries', 26], ['Travel', 18], ['Other', 14],
+  ]
+  return (
+    <div className="grid gap-4 sm:grid-cols-[1.3fr_1fr]">
+      <div className="rounded-2xl p-4" style={miniCard}>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.16em]" style={{ color: 'var(--text-subtle)' }}>Spending by month</p>
+        <div className="mt-3 flex h-24 items-end gap-2">
+          {months.map(([m, h], i) => (
+            <div key={m} className="flex flex-1 flex-col items-center gap-1.5">
+              <div
+                className="w-full rounded-t-md"
+                style={{ height: `${h}%`, background: i === 3 ? 'var(--gold-primary)' : GOLD_SOFT }}
+              />
+              <span className="text-[10px]" style={{ color: 'var(--text-subtle)' }}>{m}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="rounded-2xl p-4" style={miniCard}>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.16em]" style={{ color: 'var(--text-subtle)' }}>By category</p>
+        <ul className="mt-3 space-y-2">
+          {cats.map(([c, p]) => (
+            <li key={c} className="flex items-center gap-2 text-[12px]">
+              <span className="w-16 shrink-0 truncate" style={{ color: 'var(--text-main)' }}>{c}</span>
+              <span className="h-1.5 flex-1 overflow-hidden rounded-full" style={{ background: 'var(--border-subtle)' }}>
+                <span className="block h-full rounded-full" style={{ width: `${p}%`, background: 'var(--gold-primary)' }} />
+              </span>
+              <span className="w-8 text-right tabular-nums" style={{ color: 'var(--text-subtle)' }}>{p}%</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  )
+}
+
+function GroupsArt() {
+  return (
+    <div className="rounded-2xl p-3.5" style={miniCard}>
+      <div className="flex items-center justify-between">
+        <span className="text-[12px] font-semibold" style={{ color: 'var(--text-main)' }}>Goa trip</span>
+        <div className="flex -space-x-2">
+          {['A', 'R', 'M', 'S'].map((l, i) => (
+            <span
+              key={l}
+              className="flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-semibold"
+              style={{ background: ['#E8D5B0', '#CFDCC2', '#C9D1E6', '#EBCFCB'][i], color: '#2A241D', boxShadow: '0 0 0 2px var(--bg-page)' }}
             >
-              <div className="px-4 py-4 space-y-3">
-                <a href="#features" onClick={() => setMobileMenuOpen(false)} className="block text-sm text-stone-600 hover:text-amber-700">Features</a>
-                <a href="#security" onClick={() => setMobileMenuOpen(false)} className="block text-sm text-stone-600 hover:text-amber-700">Security</a>
-                <a href="#about" onClick={() => setMobileMenuOpen(false)} className="block text-sm text-stone-600 hover:text-amber-700">About</a>
-                <Link to="/login" onClick={() => setMobileMenuOpen(false)} className="block text-sm text-stone-600 hover:text-amber-700">Sign In</Link>
+              {l}
+            </span>
+          ))}
+        </div>
+      </div>
+      <div className="mt-3 space-y-1.5 text-[12px]">
+        <p className="flex justify-between"><span style={{ color: 'var(--text-muted)' }}>Rahul owes you</span><span className={`font-semibold ${IN}`}>₹ 1,250</span></p>
+        <p className="flex justify-between"><span style={{ color: 'var(--text-muted)' }}>You owe Meera</span><span className={`font-semibold ${OUT}`}>₹ 430</span></p>
+      </div>
+    </div>
+  )
+}
+
+function VaultArt() {
+  return (
+    <div className="flex items-center justify-center gap-4 rounded-2xl py-5" style={miniCard}>
+      <span className="flex h-11 w-11 items-center justify-center rounded-full" style={{ background: GOLD_TINT, color: 'var(--gold-primary)' }}>
+        <KeyRound size={18} />
+      </span>
+      <div className="flex gap-2.5" aria-hidden="true">
+        {[1, 1, 1, 0].map((f, i) => (
+          <span key={i} className="h-3 w-3 rounded-full" style={f ? { background: 'var(--gold-primary)' } : { border: '1.5px solid var(--text-subtle)' }} />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function ReminderArt() {
+  return (
+    <div className="rounded-2xl p-3.5" style={miniCard}>
+      <div className="flex items-start gap-2.5">
+        <img src="/icons/icon-192.png" alt="" className="h-7 w-7 rounded-lg" />
+        <div className="min-w-0 flex-1">
+          <p className="flex justify-between text-[11px]" style={{ color: 'var(--text-subtle)' }}><span>ArthaLedger</span><span>8:00 pm</span></p>
+          <p className="text-[12px] font-semibold" style={{ color: 'var(--text-main)' }}>Any spends to note today?</p>
+        </div>
+      </div>
+      <div className="mt-3 flex gap-2 text-[11px] font-semibold">
+        <span className="rounded-full px-3 py-1" style={{ background: GOLD_TINT, color: 'var(--text-main)' }}>Add entry</span>
+        <span className="rounded-full px-3 py-1" style={{ border: '1px solid var(--border-card)', color: 'var(--text-muted)' }}>Snooze</span>
+      </div>
+    </div>
+  )
+}
+
+function ExportArt() {
+  return (
+    <div className="grid grid-cols-2 gap-2.5">
+      <div className="flex items-center gap-2 rounded-2xl p-3" style={miniCard}>
+        <FileText size={18} className={OUT} />
+        <span className="text-[12px] font-semibold" style={{ color: 'var(--text-main)' }}>PDF</span>
+      </div>
+      <div className="flex items-center gap-2 rounded-2xl p-3" style={miniCard}>
+        <FileSpreadsheet size={18} className={IN} />
+        <span className="text-[12px] font-semibold" style={{ color: 'var(--text-main)' }}>Excel</span>
+      </div>
+    </div>
+  )
+}
+
+function AppFeelArt() {
+  const items = [
+    { icon: Smartphone, label: 'Install on Android', note: 'Opens from your home screen like any app' },
+    { icon: WifiOff, label: 'Offline first', note: 'Entries save instantly, sync when online' },
+    { icon: Moon, label: 'Dark mode', note: 'Soft charcoal for late-night bookkeeping' },
+  ]
+  return (
+    <div className="grid gap-2.5 sm:grid-cols-3">
+      {items.map(({ icon: I, label, note }) => (
+        <div key={label} className="rounded-2xl p-3.5" style={miniCard}>
+          <I size={17} style={{ color: 'var(--gold-primary)' }} />
+          <p className="mt-2 text-[13px] font-semibold" style={{ color: 'var(--text-main)' }}>{label}</p>
+          <p className="mt-0.5 text-[12px] leading-snug" style={{ color: 'var(--text-subtle)' }}>{note}</p>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function SectionHeading({ eyebrow, title, sub }) {
+  return (
+    <Reveal className="mx-auto max-w-2xl text-center">
+      <Eyebrow>{eyebrow}</Eyebrow>
+      <h2 className="font-serif-luxury mt-3 text-3xl leading-tight font-semibold tracking-tight sm:text-[2.6rem]" style={{ color: 'var(--text-main)' }}>
+        {title}
+      </h2>
+      {sub && <p className="mt-4 text-base leading-relaxed" style={{ color: 'var(--text-muted)' }}>{sub}</p>}
+    </Reveal>
+  )
+}
+
+function Features() {
+  return (
+    <section id="features" className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-24">
+      <SectionHeading
+        eyebrow="Everything in its place"
+        title="A ledger that understands how you live"
+        sub="Built around the way money actually moves in an Indian home: shared, seasonal and personal."
+      />
+      <div className="mt-12 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <Tile icon={FolderOpen} title="Projects and books" className="sm:col-span-2" desc="Create a project for each part of life, then keep as many books inside it as you need. Personal, family and business stay neatly apart.">
+          <ProjectsArt />
+        </Tile>
+        <Tile icon={Tags} title="Cash In, Cash Out" delay={0.05} desc="Every entry gets a category and subcategory, so a quick note becomes a clear record.">
+          <CategoriesArt />
+        </Tile>
+        <Tile icon={Wallet} title="Monthly budgets" desc="Set a limit per category and get an alert before you cross it.">
+          <BudgetArt />
+        </Tile>
+        <Tile icon={PieChart} title="Analytics summary" delay={0.05} className="sm:col-span-2" desc="See spending by category, by month and by year. Patterns you never noticed become obvious.">
+          <AnalyticsArt />
+        </Tile>
+        <Tile icon={Users} title="Groups" desc="Split trips and flat expenses with friends. ArthaLedger works out who owes whom.">
+          <GroupsArt />
+        </Tile>
+        <Tile icon={Lock} title="Private Vault" delay={0.05} desc="Keep sensitive records behind a PIN, separate from everyday books.">
+          <VaultArt />
+        </Tile>
+        <Tile icon={Bell} title="Gentle reminders" delay={0.1} desc="Four nudges a day by default, so nothing slips. Snooze any of them.">
+          <ReminderArt />
+        </Tile>
+        <Tile icon={FileText} title="Export anytime" desc="Download your books as PDF or Excel to share, file or archive.">
+          <ExportArt />
+        </Tile>
+        <Tile icon={Smartphone} title="Feels like a native app" delay={0.05} className="sm:col-span-2" desc="Fast, installable and comfortable to use one-handed on your phone.">
+          <AppFeelArt />
+        </Tile>
+      </div>
+    </section>
+  )
+}
+
+/* ─────────────────────────── how it works ─────────────────────────── */
+
+const steps = [
+  { title: 'Create a project', desc: 'Name it Home, Shop or anything that fits. Add books inside for each purpose.' },
+  { title: 'Record as you go', desc: 'Tap Cash In or Cash Out, pick a category, done. It saves even without internet.' },
+  { title: 'Understand and plan', desc: 'Watch budgets, read the monthly summary and export when you need a copy.' },
+]
+
+function HowItWorks() {
+  return (
+    <section className="relative py-16 sm:py-24" style={{ background: 'color-mix(in srgb, var(--gold-primary) 5%, var(--bg-page))', borderBlock: '1px solid var(--border-subtle)' }}>
+      <div className="mx-auto max-w-6xl px-4 sm:px-6">
+        <SectionHeading eyebrow="How it works" title="Three steps to a clearer month" />
+        <div className="relative mt-12">
+          <div className="pointer-events-none absolute left-[16%] right-[16%] top-9 hidden h-px md:block" style={{ background: 'linear-gradient(90deg, transparent, var(--gold-primary), transparent)', opacity: 0.4 }} aria-hidden="true" />
+        <ol className="relative grid gap-4 md:grid-cols-3 md:gap-6">
+          {steps.map((s, i) => (
+            <Reveal as="li" key={s.title} delay={i * 0.1} className="relative flex gap-4 rounded-3xl p-5 md:flex-col md:items-center md:bg-transparent md:p-2 md:text-center">
+              <span
+                className="font-serif-luxury relative flex h-14 w-14 shrink-0 items-center justify-center rounded-full text-xl font-semibold"
+                style={{ background: 'var(--bg-card)', border: '1px solid var(--border-card)', color: 'var(--gold-primary)' }}
+              >
+                {i + 1}
+              </span>
+              <div>
+                <h3 className="font-serif-luxury text-lg font-semibold" style={{ color: 'var(--text-main)' }}>{s.title}</h3>
+                <p className="mt-1.5 max-w-xs text-sm leading-relaxed" style={{ color: 'var(--text-muted)' }}>{s.desc}</p>
               </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </motion.nav>
-
-      {/* ── Hero ── */}
-      <section ref={heroRef} className="relative min-h-screen flex items-center pt-20 overflow-hidden">
-        <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute top-20 left-1/4 w-96 h-96 rounded-full bg-amber-200/30 blur-3xl" />
-          <div className="absolute bottom-20 right-1/4 w-80 h-80 rounded-full bg-orange-200/20 blur-3xl" />
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full bg-amber-100/20 blur-3xl" />
+            </Reveal>
+          ))}
+        </ol>
         </div>
-        <motion.div style={{ y: heroY, opacity: heroOpacity }} className="relative w-full">
-          <div className="mx-auto max-w-6xl px-4 sm:px-6 grid lg:grid-cols-2 gap-12 items-center py-16">
-            <div>
-              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.1 }}>
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-3.5 py-1 text-xs font-medium text-amber-700 mb-6">
-                  <Sparkles size={11} /> Mindful Financial Tracking
-                </span>
-              </motion.div>
-              <motion.h1 className="font-serif text-4xl sm:text-5xl lg:text-6xl font-semibold text-stone-800 leading-[1.15] mb-5">
-                {['Where', 'every', 'rupee', 'has', 'meaning'].map((word, i) => (
-                  <motion.span
-                    key={i}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.5, delay: 0.2 + i * 0.08 }}
-                    className={word === 'rupee' ? 'text-amber-700' : ''}
-                  >
-                    {word}{' '}
-                  </motion.span>
-                ))}
-              </motion.h1>
-              <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.6 }} className="text-base sm:text-lg text-stone-500 leading-relaxed max-w-md mb-8">
-                A peaceful, private cashbook app for individuals, families, and small businesses. Track income, expenses, and transfers — all in one place.
-              </motion.p>
-              <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.7 }} className="flex items-center gap-3 flex-wrap mb-10">
-                <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
-                  <Link to="/register" className="inline-flex items-center gap-2 rounded-2xl bg-amber-700 px-6 py-3.5 text-sm font-semibold text-white hover:bg-amber-800 transition-colors shadow-lg shadow-amber-200">
-                    Start for free <ArrowRight size={15} />
-                  </Link>
-                </motion.div>
-                <Link to="/login" className="inline-flex items-center gap-2 rounded-2xl border border-stone-200 bg-white px-6 py-3.5 text-sm font-medium text-stone-700 hover:bg-stone-50 transition-colors">
-                  Sign in <ArrowUpRight size={13} />
-                </Link>
-              </motion.div>
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5, delay: 0.8 }} className="flex flex-wrap gap-3">
-                {['Free forever', 'No ads', 'Private & secure'].map(t => (
-                  <span key={t} className="inline-flex items-center gap-1.5 text-xs text-stone-500">
-                    <CheckCircle size={12} className="text-emerald-500" /> {t}
-                  </span>
-                ))}
-              </motion.div>
-            </div>
-            <div className="flex justify-center lg:justify-end">
-              <MockupCard />
-            </div>
-          </div>
-        </motion.div>
-      </section>
+      </div>
+    </section>
+  )
+}
 
-      {/* ── Stats ── */}
-      <section className="py-16 border-y border-amber-100/60 bg-white/60">
-        <div className="mx-auto max-w-5xl px-4 sm:px-6">
-          <Reveal>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-8 divide-x-0 sm:divide-x divide-amber-100">
-              <StatCard end={10000} suffix="+" label="Entries Tracked" delay={0} />
-              <StatCard end={500} suffix="+" label="Active Users" delay={0.1} />
-              <StatCard end={99} suffix="%" label="Uptime" delay={0.2} />
-              <StatCard end={4.9} suffix="★" label="User Rating" delay={0.3} />
-            </div>
-          </Reveal>
-        </div>
-      </section>
+/* ─────────────────────────── privacy ─────────────────────────── */
 
-      {/* ── Features ── */}
-      <section id="features" className="py-20 mx-auto max-w-6xl px-4 sm:px-6">
-        <Reveal className="text-center mb-12">
-          <span className="inline-block rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700 mb-3">Features</span>
-          <h2 className="font-serif text-3xl sm:text-4xl font-semibold text-stone-800 mb-3">Everything you need</h2>
-          <p className="text-stone-400 text-sm max-w-md mx-auto">Simple, focused tools that help you understand your money without overwhelming you.</p>
+const privacyPoints = [
+  { icon: ShieldCheck, title: 'Yours alone', desc: 'Your books are tied to your account. Nobody else can read them.' },
+  { icon: Lock, title: 'Vault with PIN', desc: 'An extra lock for the records you want kept out of sight.' },
+  { icon: CloudUpload, title: 'Safely synced', desc: 'Saved on your phone first, then synced to your account through Firebase.' },
+]
+
+function Privacy() {
+  return (
+    <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-24">
+      <div className="grid items-center gap-10 lg:grid-cols-2 lg:gap-16">
+        <Reveal>
+          <Eyebrow>Privacy</Eyebrow>
+          <h2 className="font-serif-luxury mt-3 text-3xl leading-tight font-semibold tracking-tight sm:text-[2.6rem]" style={{ color: 'var(--text-main)' }}>
+            Your money is personal. <span style={{ color: 'var(--gold-primary)' }}>So is your ledger.</span>
+          </h2>
+          <p className="mt-4 max-w-md text-base leading-relaxed" style={{ color: 'var(--text-muted)' }}>
+            ArthaLedger is a private notebook, not a social feed. What you write stays with your account.
+          </p>
+          <Link to="/privacy" className="mt-6 inline-flex min-h-11 items-center gap-1.5 text-sm font-semibold underline-offset-4 hover:underline" style={{ color: 'var(--gold-primary)' }}>
+            Read the privacy policy <ArrowRight size={15} />
+          </Link>
         </Reveal>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {features.map((f, i) => (
-            <Reveal key={f.title} delay={i * 0.08}>
-              <motion.div whileHover={{ y: -4, boxShadow: '0 12px 40px rgba(185,147,78,0.12)' }} transition={{ duration: 0.2 }} className="rounded-2xl border border-amber-100/80 bg-white p-5 h-full">
-                <div className={`rounded-xl p-2.5 w-fit mb-3 ${f.bg}`}>
-                  <f.icon size={16} className={f.fg} />
-                </div>
-                <h3 className="text-sm font-semibold text-stone-800 mb-1.5">{f.title}</h3>
-                <p className="text-xs text-stone-400 leading-relaxed">{f.desc}</p>
-              </motion.div>
+        <div className="space-y-3">
+          {privacyPoints.map(({ icon: I, title, desc }, i) => (
+            <Reveal
+              key={title}
+              delay={i * 0.08}
+              className="flex items-start gap-4 rounded-3xl p-5"
+              style={{ background: 'var(--bg-card)', border: '1px solid var(--border-card)' }}
+            >
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl" style={{ background: GOLD_TINT, color: 'var(--gold-primary)' }}>
+                <I size={19} />
+              </span>
+              <div>
+                <h3 className="text-[15px] font-semibold" style={{ color: 'var(--text-main)' }}>{title}</h3>
+                <p className="mt-1 text-sm leading-relaxed" style={{ color: 'var(--text-muted)' }}>{desc}</p>
+              </div>
             </Reveal>
           ))}
         </div>
-      </section>
+      </div>
+    </section>
+  )
+}
 
-      {/* ── How It Works ── */}
-      <section className="py-20 bg-gradient-to-b from-amber-50/50 to-white border-y border-amber-100">
-        <div className="mx-auto max-w-5xl px-4 sm:px-6">
-          <Reveal className="text-center mb-16">
-            <span className="inline-block rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700 mb-3">How It Works</span>
-            <h2 className="font-serif text-3xl sm:text-4xl font-semibold text-stone-800 mb-3">Three simple steps</h2>
-            <p className="text-stone-400 text-sm max-w-md mx-auto">Start tracking your finances in under 2 minutes</p>
-          </Reveal>
-          <div className="space-y-12 md:space-y-0 md:grid md:grid-cols-3 md:gap-8">
-            {steps.map((step, i) => (
-              <Reveal key={step.num} delay={i * 0.12}>
-                <div className="relative">
-                  <div className="flex flex-col items-center text-center">
-                    <div className="rounded-2xl bg-gradient-to-br from-amber-100 to-amber-200 w-16 h-16 flex items-center justify-center mb-4 shadow-lg">
-                      <span className="font-serif text-xl font-bold text-amber-800">{step.num}</span>
-                    </div>
-                    <h3 className="font-serif text-lg font-semibold text-stone-800 mb-2">{step.title}</h3>
-                    <p className="text-xs text-stone-500 leading-relaxed max-w-xs">{step.desc}</p>
-                  </div>
-                  {i < steps.length - 1 && (
-                    <div className="hidden md:block absolute top-8 left-[calc(50%+2rem)] w-[calc(100%-4rem)] h-0.5 bg-gradient-to-r from-amber-200 to-transparent" />
-                  )}
-                </div>
-              </Reveal>
-            ))}
-          </div>
-        </div>
-      </section>
+/* ─────────────────────────── CTA + footer ─────────────────────────── */
 
-      {/* ── Security ── */}
-      <section id="security" className="py-20 bg-gradient-to-br from-stone-900 to-stone-800 text-white relative overflow-hidden">
-        <div className="absolute inset-0 opacity-5">
-          {[...Array(50)].map((_, i) => (
-            <div key={i} className="absolute w-1 h-1 bg-white rounded-full" style={{ top: `${Math.random() * 100}%`, left: `${Math.random() * 100}%` }} />
-          ))}
+function FinalCta() {
+  return (
+    <section className="px-4 pb-16 sm:px-6 sm:pb-24">
+      <Reveal
+        className="relative isolate mx-auto max-w-5xl overflow-hidden rounded-[2rem] px-6 py-12 text-center sm:px-12 sm:py-16"
+        style={{ background: 'linear-gradient(140deg, #2B2620, #15120E)' }}
+      >
+        <div className="pointer-events-none absolute -top-24 left-1/2 -z-10 h-72 w-72 -translate-x-1/2 rounded-full blur-3xl" style={{ background: 'rgba(212,178,110,0.35)' }} aria-hidden="true" />
+        <img src="/icons/maskable-192.png" alt="" className="mx-auto h-14 w-14 rounded-full" style={{ boxShadow: '0 0 0 4px rgba(212,178,110,0.2)' }} />
+        <h2 className="font-serif-luxury mx-auto mt-6 max-w-xl text-3xl leading-tight font-semibold tracking-tight text-[#F6EFE2] sm:text-[2.6rem]">
+          Start your first book tonight.
+        </h2>
+        <p className="mx-auto mt-3 max-w-md text-base text-[#F6EFE2]/70">
+          It takes a minute to set up. Your future self will thank you every month.
+        </p>
+        <div className="mt-8 flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:items-center">
+          <PrimaryButton to="/register">Create account</PrimaryButton>
+          <Link
+            to="/login"
+            className="inline-flex min-h-12 items-center justify-center rounded-full px-6 text-[15px] font-semibold text-[#F6EFE2] transition-colors hover:bg-white/10"
+            style={{ border: '1px solid rgba(246,239,226,0.25)' }}
+          >
+            Sign in
+          </Link>
         </div>
-        <div className="relative mx-auto max-w-5xl px-4 sm:px-6">
-          <Reveal className="text-center mb-12">
-            <span className="inline-block rounded-full border border-stone-600 bg-stone-700/50 px-3 py-1 text-xs font-medium text-stone-300 mb-3">Security & Privacy</span>
-            <h2 className="font-serif text-3xl sm:text-4xl font-semibold text-white mb-3">Your data is yours. Always.</h2>
-            <p className="text-stone-400 text-sm max-w-md mx-auto">Built with privacy-first principles. We never see your financial data.</p>
-          </Reveal>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-12">
-            {securityCards.map((item, i) => (
-              <Reveal key={item.title} delay={i * 0.06}>
-                <div className="rounded-2xl border border-stone-700 bg-stone-800/50 p-5">
-                  <div className="rounded-xl bg-stone-700/50 p-2.5 w-fit mb-3">
-                    <item.icon size={15} className="text-amber-400" />
-                  </div>
-                  <h3 className="text-sm font-semibold text-white mb-1">{item.title}</h3>
-                  <p className="text-xs text-stone-400 leading-relaxed">{item.desc}</p>
-                </div>
-              </Reveal>
-            ))}
-          </div>
-          <Reveal>
-            <div className="rounded-2xl border border-stone-700 bg-stone-800/30 p-6">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {trust.map(t => (
-                  <div key={t} className="flex items-center gap-2">
-                    <CheckCircle size={13} className="text-emerald-400 flex-shrink-0" />
-                    <span className="text-xs text-stone-300">{t}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </Reveal>
-        </div>
-      </section>
+      </Reveal>
+    </section>
+  )
+}
 
-      {/* ── Philosophy ── */}
-      <section id="about" className="py-20 mx-auto max-w-4xl px-4 sm:px-6">
-        <div className="grid sm:grid-cols-2 gap-10 items-center">
-          <Reveal>
-            <div className="rounded-3xl bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-100 p-8 text-center">
-              <p className="font-serif text-5xl sm:text-6xl text-amber-700 mb-4">अर्थ</p>
-              <p className="text-2xl font-serif text-amber-600 mb-3">"Artha"</p>
-              <p className="text-xs text-stone-500 leading-relaxed">Wealth · Purpose · Meaning</p>
-            </div>
-          </Reveal>
-          <Reveal delay={0.15}>
-            <div>
-              <span className="inline-block rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700 mb-4">Our Philosophy</span>
-              <h2 className="font-serif text-2xl sm:text-3xl font-semibold text-stone-800 mb-4 leading-snug">Money tracked with intention creates peace of mind</h2>
-              <p className="text-sm text-stone-500 leading-relaxed mb-4">
-                In ancient Indian philosophy, <span className="font-semibold text-stone-700">Artha</span> is one of the four goals of a fulfilling life — the pursuit of material well-being with wisdom and intention.
-              </p>
-              <p className="text-sm text-stone-500 leading-relaxed">
-                ArthaLedger is built on the belief that when you track every rupee mindfully, you gain clarity, reduce anxiety about money, and move toward true abundance.
-              </p>
-            </div>
-          </Reveal>
+function Footer() {
+  const [year] = useState(() => new Date().getFullYear())
+  return (
+    <footer style={{ borderTop: '1px solid var(--border-subtle)', paddingBottom: 'env(safe-area-inset-bottom)' }}>
+      <div className="mx-auto flex max-w-6xl flex-col items-center gap-4 px-4 py-8 text-sm sm:flex-row sm:justify-between sm:px-6">
+        <div className="flex items-center gap-2.5">
+          <Logo size={28} />
+          <span className="font-serif-luxury font-semibold" style={{ color: 'var(--text-main)' }}>ArthaLedger</span>
+          <span className="hidden sm:inline" style={{ color: 'var(--text-subtle)' }}>· Where every rupee has meaning</span>
         </div>
-      </section>
-
-      {/* ── Testimonials ── */}
-      <section className="py-16 bg-amber-50/50 border-y border-amber-100">
-        <div className="mx-auto max-w-5xl px-4 sm:px-6">
-          <Reveal className="text-center mb-10">
-            <h2 className="font-serif text-2xl sm:text-3xl font-semibold text-stone-800 mb-2">Loved by users</h2>
-            <p className="text-xs text-stone-400">Real feedback from real people</p>
-          </Reveal>
-          <div className="grid sm:grid-cols-3 gap-4 overflow-x-auto sm:overflow-visible snap-x snap-mandatory sm:snap-none">
-            {testimonials.map((t, i) => (
-              <Reveal key={t.name} delay={i * 0.1}>
-                <motion.div whileHover={{ y: -3 }} className="rounded-2xl border border-amber-100 bg-white p-5 shadow-sm min-w-[280px] sm:min-w-0 snap-center">
-                  <div className="flex gap-0.5 mb-3">
-                    {[...Array(5)].map((_, j) => (
-                      <Star key={j} size={12} className="text-amber-400 fill-amber-400" />
-                    ))}
-                  </div>
-                  <p className="text-xs text-stone-500 leading-relaxed mb-4 italic">"{t.text}"</p>
-                  <div>
-                    <p className="text-xs font-semibold text-stone-700">{t.name}</p>
-                    <p className="text-[10px] text-stone-400">{t.role}</p>
-                  </div>
-                </motion.div>
-              </Reveal>
-            ))}
-          </div>
+        <div className="flex items-center gap-5" style={{ color: 'var(--text-subtle)' }}>
+          <Link to="/privacy" className="inline-flex min-h-11 items-center hover:underline underline-offset-4" style={{ color: 'var(--text-muted)' }}>
+            Privacy policy
+          </Link>
+          <span>© {year} ArthaLedger</span>
         </div>
-      </section>
+      </div>
+    </footer>
+  )
+}
 
-      {/* ── CTA Banner ── */}
-      <section className="py-20 mx-auto max-w-3xl px-4 sm:px-6">
-        <Reveal>
-          <div className="rounded-3xl bg-gradient-to-br from-amber-700 via-amber-700 to-amber-800 px-8 py-12 text-center shadow-2xl shadow-amber-200 relative overflow-hidden">
-            <div className="absolute inset-0 opacity-10">
-              <div className="absolute top-4 right-8 w-32 h-32 rounded-full border-2 border-white" />
-              <div className="absolute bottom-4 left-8 w-20 h-20 rounded-full border border-white" />
-            </div>
-            <div className="relative">
-              <Sparkles size={24} className="text-amber-300 mx-auto mb-4" />
-              <h2 className="font-serif text-2xl sm:text-3xl font-semibold text-white mb-3">Ready to track mindfully?</h2>
-              <p className="text-sm text-amber-200 mb-7 leading-relaxed max-w-sm mx-auto">Free forever. No ads. No subscriptions.<br />Just your finances, clearly.</p>
-              <motion.div whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }} className="inline-block">
-                <Link to="/register" className="inline-flex items-center gap-2 rounded-2xl bg-white px-7 py-3.5 text-sm font-semibold text-amber-800 hover:bg-amber-50 transition-colors shadow-lg">
-                  Create your free account <ArrowRight size={15} />
-                </Link>
-              </motion.div>
-              <p className="mt-4 text-xs text-amber-300">
-                Already have an account?{' '}
-                <Link to="/login" className="underline hover:text-white transition-colors">Sign in</Link>
-              </p>
-            </div>
-          </div>
-        </Reveal>
-      </section>
+/* ─────────────────────────── page ─────────────────────────── */
 
-      {/* ── Footer ── */}
-      <footer className="border-t border-amber-100 bg-white/70 py-8">
-        <div className="mx-auto max-w-5xl px-4 sm:px-6">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-5">
-            <div className="flex items-center gap-2">
-              <img src="/L.png" alt="ArthaLedger" className="h-8 w-8 rounded-lg object-contain bg-amber-50 p-0.5" />
-              <span className="font-serif text-sm font-semibold text-stone-700">ArthaLedger</span>
-            </div>
-            <div className="flex items-center gap-5 text-xs text-stone-400">
-              <Link to="/login" className="hover:text-amber-700 transition-colors">Sign In</Link>
-              <Link to="/register" className="hover:text-amber-700 transition-colors">Register</Link>
-              <a href="#features" className="hover:text-amber-700 transition-colors">Features</a>
-              <a href="#security" className="hover:text-amber-700 transition-colors">Security</a>
-            </div>
-          </div>
-          <div className="pt-5 border-t border-amber-50 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-stone-400">
-            <p>© {new Date().getFullYear()} ArthaLedger · Designed & developed by <span className="text-amber-700 font-medium">Javili Jashwanth</span></p>
-            <p className="italic text-stone-300">"Mindful spending creates peaceful living."</p>
-          </div>
-        </div>
-      </footer>
+export default function LandingPage() {
+  return (
+    <div className="min-h-screen overflow-x-clip" style={{ background: 'var(--bg-page)', color: 'var(--text-main)' }}>
+      <TopBar />
+      <main>
+        <Hero />
+        <Features />
+        <HowItWorks />
+        <Privacy />
+        <FinalCta />
+      </main>
+      <Footer />
     </div>
   )
 }
