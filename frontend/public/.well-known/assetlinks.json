@@ -8,5 +8,15 @@
         "91:92:E4:C6:C9:8C:1E:4C:42:60:38:06:0B:5E:A6:4D:A1:A6:52:55:7C:99:E4:4C:B7:6D:78:36:42:57:AF:56"
       ]
     }
+  },
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "app.vercel.artha_ledger.twa",
+      "sha256_cert_fingerprints": [
+        "91:92:E4:C6:C9:8C:1E:4C:42:60:38:06:0B:5E:A6:4D:A1:A6:52:55:7C:99:E4:4C:B7:6D:78:36:42:57:AF:56"
+      ]
+    }
   }
 ]
