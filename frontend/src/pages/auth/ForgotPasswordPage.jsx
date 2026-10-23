@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Mail, CheckCircle } from 'lucide-react'
-import AuthLayout from './AuthLayout'
+import { Mail, MailCheck } from 'lucide-react'
+import AuthLayout, { AuthLink, Field, FormError, PrimaryButton } from './AuthLayout'
 import { useAuth } from '../../context/AuthContext'
 
 export default function ForgotPasswordPage() {
@@ -15,6 +15,7 @@ export default function ForgotPasswordPage() {
   const onSubmit = async (e) => {
     e.preventDefault()
     setError('')
+    if (!email.trim()) { setError('Please enter your email.'); return }
     setLoading(true)
     try {
       await resetPassword(email)
@@ -27,63 +28,40 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <AuthLayout footer={<span><Link to="/login" className="text-amber-700 font-medium hover:underline">Back to sign in</Link></span>}>
-      <div className="space-y-4">
-        <div className="text-center mb-5">
-          <h2 className="font-serif text-xl font-semibold text-stone-800">Reset Password</h2>
-          <p className="mt-1 text-xs text-stone-400">Restore access gently and continue with clarity</p>
-        </div>
-
-        {sent ? (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="flex flex-col items-center gap-3 py-4 text-center"
-          >
-            <div className="rounded-full bg-emerald-100 p-3">
-              <CheckCircle size={24} className="text-emerald-600" />
-            </div>
-            <p className="text-sm font-medium text-stone-700">Reset email sent!</p>
-            <p className="text-xs text-stone-400">Check your inbox and follow the instructions to reset your password.</p>
-          </motion.div>
-        ) : (
-          <form onSubmit={onSubmit} className="space-y-3">
-            <div>
-              <label className="block text-xs font-medium text-stone-600 mb-1">Email Address</label>
-              <div className="relative">
-                <Mail size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" />
-                <input
-                  className="w-full rounded-xl border border-amber-100 bg-amber-50/40 pl-9 pr-3 py-2.5 text-sm placeholder-stone-400 focus:border-amber-300 focus:bg-white transition-colors"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  type="email"
-                  placeholder="you@example.com"
-                  required
-                  autoFocus
-                />
-              </div>
-            </div>
-
-            {error && (
-              <motion.p
-                initial={{ opacity: 0, y: -4 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="rounded-xl bg-red-50 border border-red-100 px-3 py-2 text-xs text-red-600"
-              >
-                {error}
-              </motion.p>
-            )}
-
-            <button
-              className="w-full rounded-xl bg-amber-700 py-2.5 text-sm font-medium text-white hover:bg-amber-800 transition-colors shadow-sm disabled:opacity-60"
-              type="submit"
-              disabled={loading}
-            >
-              {loading ? 'Sending...' : 'Send Reset Link'}
-            </button>
-          </form>
-        )}
-      </div>
+    <AuthLayout
+      title={sent ? 'Check your inbox' : 'Forgot password?'}
+      subtitle={sent
+        ? <>We sent a reset link to <span className="font-semibold text-[var(--text-main)]">{email}</span>. Open it to choose a new password.</>
+        : 'No worries. Enter your email and we’ll send you a link to reset it.'}
+      back="/login"
+      footer={<>Remembered it? <AuthLink to="/login">Back to sign in</AuthLink></>}
+    >
+      {sent ? (
+        <motion.div initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+          className="flex flex-col items-center text-center">
+          <div className="flex h-20 w-20 items-center justify-center rounded-full bg-[var(--gold-light)]">
+            <MailCheck size={34} className="text-[var(--gold-primary)]" />
+          </div>
+          <p className="mt-5 text-[13px] leading-relaxed text-[var(--text-muted)]">
+            Can’t find it? Check your spam folder, or try again in a minute.
+          </p>
+          <Link to="/login"
+            className="mt-6 flex h-[52px] w-full items-center justify-center rounded-2xl bg-[var(--gold-primary)] text-[15px] font-semibold text-white hover:bg-[var(--gold-hover)] transition-colors">
+            Back to sign in
+          </Link>
+          <button type="button" onClick={() => setSent(false)}
+            className="mt-3 h-11 text-[13.5px] font-medium text-[var(--text-muted)] hover:text-[var(--text-main)] cursor-pointer">
+            Use a different email
+          </button>
+        </motion.div>
+      ) : (
+        <form onSubmit={onSubmit} className="space-y-4" noValidate>
+          <Field icon={Mail} label="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)}
+            placeholder="you@example.com" autoComplete="email" inputMode="email" enterKeyHint="send" />
+          <FormError>{error}</FormError>
+          <PrimaryButton loading={loading} loadingText="Sending…">Send reset link</PrimaryButton>
+        </form>
+      )}
     </AuthLayout>
   )
 }
