@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { motion, animate, useInView, useMotionValue, useMotionValueEvent, useReducedMotion, useTransform } from 'framer-motion'
+import { motion, AnimatePresence, animate, useInView, useMotionValue, useMotionValueEvent, useReducedMotion, useTransform } from 'framer-motion'
 import { ChevronsLeftRight, Smartphone, Receipt, StickyNote, Wallet, ArrowDownLeft, ArrowUpRight, Check } from 'lucide-react'
 import { Donut } from './Charts'
 import { EASE } from './constants'
@@ -22,6 +22,7 @@ function Scrap({ children, className = '', rotate = 0, style }) {
 function BeforeScene() {
   return (
     <div className="absolute inset-0 overflow-hidden" style={{ background: '#EFE9DF' }}>
+      <span className="absolute left-4 top-4 z-10 rounded-full bg-[#3A2F22]/85 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#F6EFE2]">Before</span>
       {/* ruled paper */}
       <div className="absolute inset-0 opacity-60" style={{ backgroundImage: 'repeating-linear-gradient(to bottom, transparent 0 27px, rgba(120,100,70,0.16) 27px 28px)' }} aria-hidden="true" />
       <div className="relative grid h-full grid-cols-2 content-start gap-3 p-4 pt-14 sm:grid-cols-3 sm:gap-5 sm:p-8 sm:pt-16">
@@ -63,6 +64,7 @@ function BeforeScene() {
 function AfterScene() {
   return (
     <div className="absolute inset-0 overflow-hidden" style={{ background: 'var(--bg-page)' }}>
+      <span className="absolute right-4 top-4 z-10 rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em]" style={{ background: 'var(--gold-primary)', color: '#1F1A14' }}>With ArthaLedger</span>
       <div className="absolute inset-0 opacity-40" style={{ backgroundImage: 'radial-gradient(var(--border-card) 1px, transparent 1px)', backgroundSize: '20px 20px' }} aria-hidden="true" />
       <div className="relative flex h-full flex-col gap-3 p-4 pt-14 sm:flex-row sm:items-center sm:gap-6 sm:p-8 sm:pt-16">
         <div className="flex-1 space-y-3">
@@ -108,13 +110,29 @@ export default function BeforeAfter() {
   const left = useTransform(pos, v => `${v}%`)
   const dragging = useRef(false)
 
-  // Sweep across once so people see that it moves
+  const [touched, setTouched] = useState(false)
+  const [introDone, setIntroDone] = useState(false)
+
+  // Swing left and right a few times, like someone testing it, so people see it moves
   useEffect(() => {
     if (!inView) return undefined
     if (reduce) { pos.set(50); return undefined }
-    const c = animate(pos, [100, 22, 50], { duration: 2.4, times: [0, 0.6, 1], ease: EASE, delay: 0.2 })
+    const c = animate(pos, [100, 18, 78, 30, 64, 42, 50], {
+      duration: 4.2, times: [0, 0.22, 0.42, 0.6, 0.75, 0.88, 1], ease: 'easeInOut', delay: 0.3,
+      onComplete: () => setIntroDone(true),
+    })
     return () => c.stop()
   }, [inView, reduce, pos])
+
+  // Until someone tries it, give it a small nudge every few seconds
+  useEffect(() => {
+    if (!introDone || touched || reduce) return undefined
+    const id = setInterval(() => {
+      const v = pos.get()
+      animate(pos, [v, v - 7, v + 7, v], { duration: 1.1, ease: 'easeInOut' })
+    }, 4200)
+    return () => clearInterval(id)
+  }, [introDone, touched, reduce, pos])
 
   const setFromX = (clientX, smooth) => {
     const r = ref.current.getBoundingClientRect()
@@ -126,30 +144,41 @@ export default function BeforeAfter() {
   return (
     <div ref={ref} className="relative h-[440px] select-none overflow-hidden rounded-[1.75rem] sm:h-[400px]"
       style={{ border: '1px solid var(--border-card)', boxShadow: '0 40px 90px -50px rgba(0,0,0,0.45)' }}
-      onClick={(e) => { if (!dragging.current) setFromX(e.clientX, true) }}>
+      onClick={(e) => { setTouched(true); if (!dragging.current) setFromX(e.clientX, true) }}>
       <BeforeScene />
       <motion.div className="absolute inset-0" style={{ clipPath: clip, WebkitClipPath: clip }}>
         <AfterScene />
       </motion.div>
 
-      <span className="absolute left-4 top-4 z-10 rounded-full bg-[#3A2F22]/85 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#F6EFE2]">Before</span>
-      <span className="absolute right-4 top-4 z-10 rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em]" style={{ background: 'var(--gold-primary)', color: '#1F1A14' }}>With ArthaLedger</span>
 
       <motion.div className="absolute bottom-0 top-0 z-20 w-0" style={{ left }}>
         <span className="absolute bottom-0 top-0 -left-px w-[2px] bg-white shadow-[0_0_0_1px_rgba(0,0,0,0.08)]" aria-hidden="true" />
         <button type="button" role="slider" aria-label="Compare before and after" aria-valuemin={0} aria-valuemax={100} aria-valuenow={ariaPos}
           onKeyDown={(e) => {
+            setTouched(true)
             if (e.key === 'ArrowLeft') { e.preventDefault(); animate(pos, Math.max(0, pos.get() - 10), { duration: 0.25 }) }
             if (e.key === 'ArrowRight') { e.preventDefault(); animate(pos, Math.min(100, pos.get() + 10), { duration: 0.25 }) }
           }}
-          onPointerDown={(e) => { e.stopPropagation(); dragging.current = true; e.currentTarget.setPointerCapture(e.pointerId) }}
+          onPointerDown={(e) => { e.stopPropagation(); setTouched(true); pos.stop(); dragging.current = true; e.currentTarget.setPointerCapture(e.pointerId) }}
           onPointerMove={(e) => { if (dragging.current) setFromX(e.clientX, false) }}
           onPointerUp={(e) => { e.currentTarget.releasePointerCapture(e.pointerId); setTimeout(() => { dragging.current = false }, 0) }}
           onClick={(e) => e.stopPropagation()}
           className="absolute left-1/2 top-1/2 flex h-12 w-12 -translate-x-1/2 -translate-y-1/2 cursor-ew-resize items-center justify-center rounded-full bg-white text-[#1F1A14] shadow-[0_10px_30px_-8px_rgba(0,0,0,0.45)] outline-none ring-[var(--gold-primary)] focus-visible:ring-2"
           style={{ touchAction: 'none' }}>
+          {!touched && introDone && !reduce && (
+            <motion.span className="absolute inset-0 rounded-full" style={{ border: '2px solid var(--gold-primary)' }} aria-hidden="true"
+              animate={{ scale: [1, 1.6], opacity: [0.7, 0] }} transition={{ duration: 1.4, repeat: Infinity, ease: 'easeOut' }} />
+          )}
           <ChevronsLeftRight size={20} />
         </button>
+        <AnimatePresence>
+          {!touched && introDone && (
+            <motion.span initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 6 }} transition={{ duration: 0.3 }}
+              className="pointer-events-none absolute left-1/2 top-[calc(50%+34px)] -translate-x-1/2 whitespace-nowrap rounded-full bg-[#1F1A14]/85 px-3 py-1 text-[11.5px] font-semibold text-white">
+              Drag to compare
+            </motion.span>
+          )}
+        </AnimatePresence>
       </motion.div>
     </div>
   )

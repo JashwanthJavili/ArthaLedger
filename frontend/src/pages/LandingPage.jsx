@@ -2,18 +2,19 @@ import { useEffect, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { motion, useReducedMotion } from 'framer-motion'
 import {
-  Check, ArrowDownLeft, ArrowUpRight, BookOpen, Bell, Users, Lock, FileSpreadsheet, WifiOff, ShieldCheck,
-  Tags, PieChart, CloudUpload, Download, Plus, Minus, NotebookPen, Calculator, Landmark, Star, Mail,
-  Handshake, GraduationCap, Home as HomeIcon, Store, Laptop, Plane, Target, Quote, FolderOpen,
-  User, Briefcase, ShoppingBasket, ArrowLeftRight, AlertTriangle, TrendingUp, Sparkles, Gift,
+  Check, ArrowDownLeft, ArrowUpRight, BookOpen, Bell, Users, WifiOff, ShieldCheck,
+  CloudUpload, Download, Plus, Minus, NotebookPen, Calculator, Landmark, Star, Mail,
+  Handshake, GraduationCap, Home as HomeIcon, Store, Laptop, Plane, Quote,
+  User, Briefcase, ShoppingBasket, AlertTriangle, TrendingUp, Sparkles, Gift,
 } from 'lucide-react'
 import { forceLightTheme, restoreTheme } from '../lib/theme'
 import { api } from '../lib/api'
 import SiteHeader from '../components/marketing/SiteHeader'
 import SiteFooter from '../components/marketing/SiteFooter'
 import BeforeAfter from '../components/marketing/BeforeAfter'
+import FeatureBento from '../components/marketing/FeatureBento'
 import { Counter, Donut, InOutBars, BudgetBar, Sparkline } from '../components/marketing/Charts'
-import { Reveal, Eyebrow, SectionTitle, PrimaryLink, GhostLink, FaqItem, ApkNote } from '../components/marketing/ui'
+import { Reveal, Eyebrow, SectionTitle, PrimaryLink, GhostLink, FaqItem } from '../components/marketing/ui'
 import { EASE, APK_URL, CONTACT, GOLD_TINT, GOLD_SOFT, BAND_BG, goldBtn, card } from '../components/marketing/constants'
 
 /* ─────────────────────────── shared bits ─────────────────────────── */
@@ -146,15 +147,13 @@ function Hero() {
           </motion.h1>
 
           <motion.p {...fade(0.16)} className="mx-auto mt-5 max-w-lg text-[15.5px] leading-relaxed sm:text-lg lg:mx-0" style={{ color: 'var(--text-muted)' }}>
-            ArthaLedger is a simple notebook for your money. Each time money comes in or goes out, add it in a few taps.
-            ArthaLedger does the maths, so you always know what came in, what went out, and what is left.
+            Add money in and out in a few taps. ArthaLedger does the maths.
           </motion.p>
 
           <motion.div {...fade(0.24)} className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center lg:justify-start">
             <PrimaryLink to="/register">Start for free</PrimaryLink>
             <GhostLink href={APK_URL} download icon={Download}>Download for Android</GhostLink>
           </motion.div>
-          <motion.div {...fade(0.28)}><ApkNote className="lg:mx-0 lg:text-left" /></motion.div>
 
           <motion.ul {...fade(0.32)} className="mt-7 flex flex-wrap justify-center gap-x-5 gap-y-2 text-[13px] lg:justify-start" style={{ color: 'var(--text-subtle)' }}>
             <li className="flex items-center gap-1.5"><Landmark size={14} style={{ color: 'var(--gold-primary)' }} /> No bank login needed</li>
@@ -286,37 +285,12 @@ function HowItWorks() {
 
 /* ─────────────────────────── features ─────────────────────────── */
 
-const FEATURES = [
-  { Icon: FolderOpen, title: 'Projects', text: 'Group your money by life area: Personal, Family, Business, a trip. Pick an icon for each.' },
-  { Icon: BookOpen, title: 'Books inside projects', text: 'Split a project into books like Groceries or Rent, each with its own balance.' },
-  { Icon: Tags, title: 'Categories', text: 'Groceries, rent, fuel, salary… pick one so you can see where money goes.' },
-  { Icon: Target, title: 'Monthly budgets', text: 'Set a limit for a category. We warn you when you get close.' },
-  { Icon: PieChart, title: 'Clear summaries', text: 'See this month and this year, by category, in plain numbers.' },
-  { Icon: Users, title: 'Groups', text: 'Gather spends from different books, like a trip or a wedding, and see the total in one place.' },
-  { Icon: Lock, title: 'Lock private books', text: 'Add a PIN to any book or project you want to keep to yourself.' },
-  { Icon: Bell, title: 'Gentle reminders', text: 'A friendly nudge, morning to night, so nothing is forgotten.' },
-  { Icon: FileSpreadsheet, title: 'Download reports', text: 'Save any book as a PDF or Excel file to share or print.' },
-  { Icon: WifiOff, title: 'Works offline', text: 'Add entries without internet. They are saved when you are back online.' },
-  { Icon: ArrowLeftRight, title: 'Move money between books', text: 'Transfer from one book to another and both balances stay right.' },
-]
-
 function Features() {
   return (
     <section id="features" className="scroll-mt-20 px-4 py-16 sm:px-6 sm:py-24" style={{ background: BAND_BG, borderBlock: '1px solid var(--border-subtle)' }}>
       <div className="mx-auto max-w-6xl">
-        <SectionTitle eyebrow="Features" title="Small habits. Big clarity." sub="Each tool is built to save you a few minutes today and a lot of worry by the end of the month." />
-        <div className="mt-12 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {FEATURES.map((f, i) => (
-            <Reveal key={f.title} delay={(i % 3) * 0.06} className="group flex gap-4 rounded-2xl p-5 transition-colors hover:bg-[var(--bg-card-hover)]" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-card)' }}>
-              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl transition-transform duration-300 group-hover:scale-105" style={{ background: GOLD_TINT, color: 'var(--gold-primary)' }}><f.Icon size={20} /></span>
-              <div className="min-w-0">
-                <h3 className="text-[15.5px] font-semibold" style={{ color: 'var(--text-main)' }}>{f.title}</h3>
-                <p className="mt-1 text-[14px] leading-relaxed" style={{ color: 'var(--text-muted)' }}>{f.text}</p>
-              </div>
-            </Reveal>
-          ))}
-        </div>
-
+        <SectionTitle eyebrow="Features" title="Small habits. Big clarity." />
+        <FeatureBento />
       </div>
     </section>
   )
@@ -467,7 +441,7 @@ function PricingTeaser() {
           <Eyebrow>Pricing</Eyebrow>
           <h2 className="font-serif-luxury mt-3 text-[1.8rem] font-semibold leading-tight [text-wrap:balance] sm:text-[2.3rem]" style={{ color: 'var(--text-main)' }}>Free for our first 50 users</h2>
           <p className="mt-3 max-w-md text-[15px] leading-relaxed" style={{ color: 'var(--text-muted)' }}>
-            Everyone else can also try every feature free until paid plans launch. Paid plans of ₹129 a month or ₹999 a year are coming soon.
+            Everyone else can also try every feature free until paid plans launch.
           </p>
           <div className="mt-6 flex flex-col gap-3 sm:flex-row">
             <PrimaryLink to="/register">Claim your spot</PrimaryLink>
@@ -478,9 +452,9 @@ function PricingTeaser() {
           <motion.div className="absolute inset-0 rounded-full" style={{ border: '1.5px dashed var(--border-card)' }}
             animate={reduce ? undefined : { rotate: 360 }} transition={{ duration: 40, repeat: Infinity, ease: 'linear' }} aria-hidden="true" />
           <div className="text-center">
-            <p className="text-[13px] font-semibold tabular-nums line-through decoration-rose-400" style={{ color: 'var(--text-subtle)' }}>₹129 / month</p>
-            <p className="font-serif-luxury text-[4.2rem] font-semibold leading-none tracking-tight" style={{ color: 'var(--text-main)' }}>₹0</p>
-            <p className="mt-1 text-[12.5px] font-semibold" style={{ color: 'var(--gold-primary)' }}>during early access</p>
+            <p className="text-[12px] font-semibold uppercase tracking-[0.2em]" style={{ color: 'var(--text-subtle)' }}>Early access</p>
+            <p className="font-serif-luxury text-[3.6rem] font-semibold leading-none tracking-tight" style={{ color: 'var(--text-main)' }}>Free</p>
+            <p className="mt-1 text-[12.5px] font-semibold" style={{ color: 'var(--gold-primary)' }}>every feature included</p>
           </div>
           <motion.span className="absolute right-0 top-4 flex h-11 w-11 items-center justify-center rounded-2xl shadow-lg" style={goldBtn} aria-hidden="true"
             animate={reduce ? undefined : { y: [0, -6, 0], rotate: [0, -6, 0] }} transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}>
@@ -562,11 +536,12 @@ const FAQ = [
   ['What exactly is ArthaLedger?', 'A money notebook on your phone. You create projects (like Personal or Business), add books inside them, and note down money you receive and spend. ArthaLedger keeps the totals, balances and summaries for you.'],
   ['What is the difference between a project and a book?', 'A project is a folder for one part of your life, such as Family. A book is one account inside it, such as Groceries or Rent. Each book has its own balance, and the project shows them together.'],
   ['Does it connect to my bank account or UPI?', 'No. ArthaLedger never asks for bank, card or UPI details and cannot move money. You type in what you want to keep track of.'],
-  ['Is it free?', 'Right now, yes. Early access is free for our first 50 users. Everyone else can also try every feature free until paid plans launch. Paid plans (₹129 a month or ₹999 a year) are coming soon, and we will tell you well before anything changes.'],
+  ['Is it free?', 'Right now, yes. Early access is free for our first 50 users. Everyone else can also try every feature free until paid plans launch. Paid plans are coming soon, and we will tell you well before anything changes.'],
   ['Is my data safe and private?', 'Yes. Your projects and books can only be opened by your own account, and they are encrypted while they travel and while they are stored. You can also lock any project or book with a PIN.'],
   ['Do I need internet?', 'Not to add entries. ArthaLedger works offline and saves your changes as soon as you are connected again.'],
   ['Can I use it on more than one phone?', 'Yes. Sign in with the same account on any phone or computer and your projects and books will be there.'],
   ['How do I install it on Android?', 'ArthaLedger is not on the Play Store yet, so Android asks you to allow the install. Tap “Download for Android”, open the downloaded file, allow installs from your browser when Android asks, then tap Install. Prefer not to download? Open this website in Chrome and choose “Install app”, or simply use ArthaLedger in your browser.'],
+  ['Can I use it on an iPhone or iPad?', 'Yes. ArthaLedger is not on the App Store yet, but it works in Safari. Open this website in Safari, tap the Share button, then choose “Add to Home Screen”. ArthaLedger then opens from your home screen like any other app. To get reminders, open it from the home screen and allow notifications (this needs iOS 16.4 or later).'],
   ['What are Groups?', 'A group collects related transactions from different books in one place, such as everything spent on a trip or a wedding. Select transactions in any book, tap Add to group, and see the total and a category breakdown. Your transactions stay in their books.'],
   ['How do I delete my account?', 'Go to Settings, then Delete account. Your account and all your projects and books are removed for good.'],
 ]
@@ -629,7 +604,6 @@ function FinalCta() {
             <Download size={17} /> Download for Android
           </a>
         </div>
-        <ApkNote dark />
       </Reveal>
     </section>
   )

@@ -1,20 +1,17 @@
 import { useEffect, useRef, useState } from 'react'
-import { motion, AnimatePresence, useInView, useReducedMotion } from 'framer-motion'
+import { motion, useInView, useReducedMotion } from 'framer-motion'
 import {
-  Check, Minus, Gift, Sparkles, CalendarClock, BellRing, BadgeCheck, Download, Mail, FolderOpen, BookOpen, Tags,
-  Target, PieChart, Users, Lock, Bell, FileSpreadsheet, WifiOff, ArrowLeftRight, CloudUpload, Coffee, UserPlus, Compass,
+  Check, Minus, Gift, Sparkles, CalendarClock, BellRing, Download, Mail, FolderOpen, BookOpen, Tags,
+  Target, PieChart, Users, Lock, Bell, FileSpreadsheet, WifiOff, ArrowLeftRight, CloudUpload, UserPlus, Compass,
 } from 'lucide-react'
 import SiteHeader from '../components/marketing/SiteHeader'
 import SiteFooter from '../components/marketing/SiteFooter'
-import { Reveal, SectionTitle, PrimaryLink, FaqItem, ApkNote } from '../components/marketing/ui'
+import { Reveal, SectionTitle, PrimaryLink, FaqItem } from '../components/marketing/ui'
 import { EASE, APK_URL, CONTACT, GOLD_TINT, GOLD_SOFT, BAND_BG, goldBtn, card } from '../components/marketing/constants'
 import { forceLightTheme, restoreTheme } from '../lib/theme'
 
-const MONTHLY = 129
-const YEARLY = 999
-const SAVING = MONTHLY * 12 - YEARLY                          // ₹549
-const SAVING_PCT = Math.round((SAVING / (MONTHLY * 12)) * 100) // 35%
-const inr = (n) => n.toLocaleString('en-IN')
+
+const EARLY = 'Early access is free for our first 50 users. Everyone else can also try every feature free until paid plans launch.'
 
 const INCLUDED = [
   [FolderOpen, 'Unlimited projects'], [BookOpen, 'Unlimited books'], [Tags, 'Categories'], [Target, 'Monthly budgets'],
@@ -23,25 +20,6 @@ const INCLUDED = [
 ]
 
 /* ─────────────────────────── hero + plans ─────────────────────────── */
-
-function BillingToggle({ yearly, onChange }) {
-  return (
-    <div className="inline-flex items-center gap-1 rounded-full p-1" style={card} role="radiogroup" aria-label="Billing period">
-      {[[false, 'Monthly'], [true, 'Yearly']].map(([val, label]) => {
-        const on = yearly === val
-        return (
-          <button key={label} type="button" role="radio" aria-checked={on} onClick={() => onChange(val)}
-            className="relative flex min-h-10 items-center gap-2 rounded-full px-5 text-[14px] font-semibold transition-colors"
-            style={{ color: on ? '#1F1A14' : 'var(--text-muted)' }}>
-            {on && <motion.span layoutId="billing-pill" className="absolute inset-0 -z-10 rounded-full" style={goldBtn} transition={{ type: 'spring', stiffness: 420, damping: 34 }} />}
-            {label}
-            {val && <span className="rounded-full px-2 py-0.5 text-[10.5px] font-bold" style={{ background: on ? 'rgba(31,26,20,0.12)' : 'color-mix(in srgb, #059669 14%, transparent)', color: on ? '#1F1A14' : '#059669' }}>Save {SAVING_PCT}%</span>}
-          </button>
-        )
-      })}
-    </div>
-  )
-}
 
 function Spots() {
   const reduce = useReducedMotion()
@@ -73,7 +51,6 @@ function FeatureList({ dark }) {
 }
 
 function Plans() {
-  const [yearly, setYearly] = useState(true)
   const reduce = useReducedMotion()
   const fade = (d) => ({ initial: reduce ? { opacity: 0 } : { opacity: 0, y: 18 }, animate: { opacity: 1, y: 0 }, transition: { duration: 0.8, delay: d, ease: EASE } })
 
@@ -96,110 +73,48 @@ function Plans() {
           Simple pricing. <em className="italic" style={{ color: 'var(--gold-primary)' }}>Free</em> while we grow.
         </motion.h1>
         <motion.p {...fade(0.16)} className="mx-auto mt-4 max-w-xl text-[15.5px] leading-relaxed sm:text-lg" style={{ color: 'var(--text-muted)' }}>
-          Early access is free for our first 50 users. Everyone else can also try every feature free until paid plans launch. Paid plans are coming soon.
+          {EARLY}
         </motion.p>
-        <motion.div {...fade(0.24)} className="mt-8"><BillingToggle yearly={yearly} onChange={setYearly} /></motion.div>
 
         <div className="mx-auto mt-10 grid max-w-4xl gap-4 text-left md:grid-cols-2">
           {/* Early access */}
-          <motion.div {...fade(0.3)} className="relative isolate flex flex-col overflow-hidden rounded-[1.75rem] p-6 sm:p-8"
+          <motion.div {...fade(0.24)} className="relative isolate flex flex-col overflow-hidden rounded-[1.75rem] p-6 sm:p-8"
             style={{ background: 'linear-gradient(160deg, #2B2620, #15120E)', color: '#F6EFE2', boxShadow: '0 40px 80px -40px rgba(43,38,32,0.85)' }}>
             <div className="pointer-events-none absolute -right-16 -top-16 -z-10 h-56 w-56 rounded-full blur-3xl" style={{ background: 'rgba(212,178,110,0.35)' }} />
             <div className="flex items-center justify-between">
               <p className="text-[13px] font-semibold uppercase tracking-[0.16em] text-[#D4B26E]">Early access</p>
               <span className="flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-bold" style={{ background: '#D4B26E', color: '#1F1A14' }}><Gift size={12} /> Available now</span>
             </div>
-            <p className="mt-5 flex items-baseline gap-2">
-              <span className="font-serif-luxury text-[3.4rem] font-semibold leading-none tracking-tight">₹0</span>
-              <span className="text-[14px] opacity-70">for our first 50 users</span>
-            </p>
-            <p className="mt-2 text-[14px] leading-relaxed opacity-75">Every feature, no card needed. Sign up in a minute.</p>
+            <p className="font-serif-luxury mt-5 text-[3.2rem] font-semibold leading-none tracking-tight">Free</p>
+            <p className="mt-2 text-[14px] leading-relaxed opacity-75">For our first 50 users. Every feature, no card needed.</p>
             <Spots />
             <div className="mt-6 flex-1"><FeatureList dark /></div>
             <PrimaryLink to="/register" className="mt-8 w-full">Claim your spot</PrimaryLink>
           </motion.div>
 
-          {/* Paid plan, monthly or yearly */}
-          <motion.div {...fade(0.38)} className="relative flex flex-col rounded-[1.75rem] p-6 sm:p-8" style={{ ...card, color: 'var(--text-main)' }}>
+          {/* Paid plans, not priced yet */}
+          <motion.div {...fade(0.32)} className="relative flex flex-col overflow-hidden rounded-[1.75rem] p-6 sm:p-8" style={{ ...card, color: 'var(--text-main)' }}>
             <div className="flex items-center justify-between">
-              <AnimatePresence mode="wait" initial={false}>
-                <motion.p key={yearly ? 'y' : 'm'} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.2 }}
-                  className="text-[13px] font-semibold uppercase tracking-[0.16em]" style={{ color: 'var(--gold-primary)' }}>
-                  {yearly ? 'Yearly' : 'Monthly'}
-                </motion.p>
-              </AnimatePresence>
+              <p className="text-[13px] font-semibold uppercase tracking-[0.16em]" style={{ color: 'var(--gold-primary)' }}>Monthly and yearly</p>
               <span className="rounded-full px-3 py-1 text-[11px] font-bold" style={{ background: GOLD_TINT, color: 'var(--text-main)' }}>Coming soon</span>
             </div>
-            <div className="mt-5 h-[3.4rem] overflow-hidden">
-              <AnimatePresence mode="wait" initial={false}>
-                <motion.p key={yearly ? 'y' : 'm'} className="flex items-baseline gap-2"
-                  initial={{ y: 40, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: -40, opacity: 0 }} transition={{ duration: 0.35, ease: EASE }}>
-                  <span className="font-serif-luxury text-[3.4rem] font-semibold leading-none tracking-tight">₹{inr(yearly ? YEARLY : MONTHLY)}</span>
-                  <span className="text-[14px]" style={{ color: 'var(--text-muted)' }}>/ {yearly ? 'year' : 'month'}</span>
-                </motion.p>
-              </AnimatePresence>
-            </div>
-            <p className="mt-2 text-[14px] leading-relaxed" style={{ color: 'var(--text-muted)' }}>
-              {yearly ? <>Just ₹{Math.round(YEARLY / 12)} a month. You save ₹{inr(SAVING)} a year.</> : <>Pay month to month. Cancel any time.</>}
-            </p>
-            <div className="mt-6 rounded-2xl px-4 py-3.5" style={{ background: BAND_BG, border: '1px solid var(--border-subtle)' }}>
-              <p className="flex items-center gap-2 text-[13px] font-semibold"><Coffee size={15} style={{ color: 'var(--gold-primary)' }} />
-                {yearly ? <>About ₹{(YEARLY / 365).toFixed(2)} a day</> : <>About ₹{(MONTHLY / 30).toFixed(2)} a day</>}
-              </p>
-              <p className="mt-0.5 text-[12.5px]" style={{ color: 'var(--text-muted)' }}>Less than a cup of tea.</p>
+            <p className="font-serif-luxury mt-5 text-[2.6rem] font-semibold leading-none tracking-tight">Coming soon</p>
+            <p className="mt-2 text-[14px] leading-relaxed" style={{ color: 'var(--text-muted)' }}>Paid plans are on the way. We will share the details well before they launch.</p>
+            <div className="mt-6 grid grid-cols-2 gap-2">
+              {[[CalendarClock, 'Monthly', 'Pay as you go'], [Sparkles, 'Yearly', 'Best value']].map(([I, t, l], i) => (
+                <motion.div key={t} className="rounded-2xl px-3.5 py-3" style={{ background: BAND_BG, border: '1px solid var(--border-subtle)' }}
+                  animate={reduce ? undefined : { y: [0, -3, 0] }} transition={{ duration: 3.2, repeat: Infinity, ease: 'easeInOut', delay: i * 0.6 }}>
+                  <I size={16} style={{ color: 'var(--gold-primary)' }} />
+                  <p className="mt-2 text-[13.5px] font-semibold">{t}</p>
+                  <p className="text-[12px]" style={{ color: 'var(--text-subtle)' }}>{l}</p>
+                </motion.div>
+              ))}
             </div>
             <div className="mt-6 flex-1"><FeatureList /></div>
             <span className="mt-8 flex min-h-12 w-full items-center justify-center gap-2 rounded-full text-[14.5px] font-semibold"
-              style={{ border: '1px dashed var(--border-card)', color: 'var(--text-subtle)' }}><CalendarClock size={16} /> Coming soon</span>
+              style={{ border: '1px dashed var(--border-card)', color: 'var(--text-subtle)' }}><BellRing size={16} /> We will let you know</span>
           </motion.div>
         </div>
-        <motion.p {...fade(0.46)} className="mt-6 text-[13px]" style={{ color: 'var(--text-subtle)' }}>
-          Prices in Indian rupees. We will let you know well before paid plans begin.
-        </motion.p>
-      </div>
-    </section>
-  )
-}
-
-/* ─────────────────────────── yearly vs monthly chart ─────────────────────────── */
-
-function CompareBar({ label, amount, max, color, note, delay, inView }) {
-  return (
-    <div>
-      <div className="flex items-baseline justify-between gap-3">
-        <p className="text-[14px] font-semibold" style={{ color: 'var(--text-main)' }}>{label}</p>
-        <p className="font-serif-luxury text-[1.35rem] font-semibold tabular-nums" style={{ color: 'var(--text-main)' }}>₹{inr(amount)}</p>
-      </div>
-      <div className="mt-2 h-11 overflow-hidden rounded-2xl" style={{ background: 'var(--border-subtle)' }}>
-        <motion.div className="flex h-full items-center justify-end rounded-2xl px-4" style={{ background: color }}
-          initial={{ width: 0 }} animate={inView ? { width: `${(amount / max) * 100}%` } : undefined} transition={{ duration: 1.3, delay, ease: EASE }}>
-          <span className="whitespace-nowrap text-[12px] font-semibold text-white/90">{note}</span>
-        </motion.div>
-      </div>
-    </div>
-  )
-}
-
-function YearlyMath() {
-  const ref = useRef(null)
-  const inView = useInView(ref, { once: true, margin: '-80px' })
-  const max = MONTHLY * 12
-  return (
-    <section className="px-4 py-16 sm:px-6 sm:py-24" style={{ background: BAND_BG, borderBlock: '1px solid var(--border-subtle)' }}>
-      <div className="mx-auto grid max-w-5xl items-center gap-10 lg:grid-cols-[1fr_1.2fr]">
-        <SectionTitle center={false} eyebrow="The maths" title={`Yearly saves you ${SAVING_PCT}%.`}
-          sub="When paid plans arrive, the yearly plan costs less than eight months of the monthly one. Same features, one payment a year." />
-        <Reveal className="rounded-[1.75rem] p-6 sm:p-8" style={{ ...card, boxShadow: '0 30px 70px -45px rgba(0,0,0,0.35)' }}>
-          <div ref={ref} className="space-y-6">
-            <CompareBar label="Monthly, for 12 months" amount={max} max={max} color="#94A3B8" note={`12 × ₹${MONTHLY}`} delay={0.1} inView={inView} />
-            <CompareBar label="Yearly plan" amount={YEARLY} max={max} color="linear-gradient(90deg, var(--gold-hover), var(--gold-primary))" note="1 payment" delay={0.35} inView={inView} />
-          </div>
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={inView ? { opacity: 1, y: 0 } : undefined} transition={{ delay: 1.4, duration: 0.5, ease: EASE }}
-            className="mt-7 flex items-center gap-3 rounded-2xl px-4 py-3.5" style={{ background: 'color-mix(in srgb, #059669 10%, var(--bg-card))' }}>
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-white"><BadgeCheck size={19} /></span>
-            <p className="text-[14px]" style={{ color: 'var(--text-main)' }}>You keep <b className="text-emerald-700">₹{inr(SAVING)}</b> every year with the yearly plan.</p>
-          </motion.div>
-        </Reveal>
       </div>
     </section>
   )
@@ -228,7 +143,7 @@ function Included() {
 }
 
 const ROWS = [
-  ['Price', '₹0', `₹${MONTHLY} a month`, `₹${inr(YEARLY)} a year`],
+  ['Price', 'Free', 'Coming soon', 'Coming soon'],
   ['Every feature', true, true, true],
   ['Unlimited projects and books', true, true, true],
   ['Sync across devices', true, true, true],
@@ -318,11 +233,11 @@ function Timeline() {
 /* ─────────────────────────── pricing FAQ ─────────────────────────── */
 
 const FAQ = [
-  ['Is ArthaLedger really free right now?', 'Yes. Early access is free for our first 50 users. Everyone else can also try every feature free until paid plans launch.'],
+  ['Is ArthaLedger really free right now?', 'Yes. ' + EARLY],
   ['What if I am not one of the first 50?', 'You can still sign up and use every feature free until paid plans launch. We will let you know well before that happens.'],
   ['Do I need a card to sign up?', 'No. You only need an email address or a Google account. We never ask for card, bank or UPI details to use ArthaLedger.'],
   ['When do paid plans start?', 'There is no date yet. We will let you know well before paid plans begin, so you have plenty of time to decide.'],
-  ['What is the difference between monthly and yearly?', `Nothing in features. Both include everything. The yearly plan is ₹${inr(YEARLY)} once a year, about ₹${Math.round(YEARLY / 12)} a month, which saves ${SAVING_PCT}% compared with paying ₹${MONTHLY} every month.`],
+  ['What will paid plans include?', 'Every feature, just like today. Monthly and yearly options are planned, and we will share the details well before they launch.'],
   ['Can I cancel a monthly plan?', 'Yes. When paid plans arrive, you will be able to cancel a monthly plan at any time.'],
   ['What happens to my data?', 'Your data stays yours on every plan. You can download any book as a PDF or Excel file, and you can delete your account from Settings whenever you want.'],
 ]
@@ -363,7 +278,6 @@ function FinalCta() {
             <Download size={17} /> Download for Android
           </a>
         </div>
-        <ApkNote dark />
       </Reveal>
     </section>
   )
@@ -385,7 +299,6 @@ export default function PricingPage() {
       <SiteHeader />
       <main>
         <Plans />
-        <YearlyMath />
         <Included />
         <Timeline />
         <PricingFaq />

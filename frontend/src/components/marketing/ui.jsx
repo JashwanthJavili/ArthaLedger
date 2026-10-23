@@ -1,4 +1,4 @@
-import { Link, useLocation } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion'
 import { ArrowRight, ChevronDown } from 'lucide-react'
 import { EASE, GOLD_TINT, goldBtn } from './constants'
@@ -64,12 +64,12 @@ export function FaqItem({ q, a, open, onToggle, id }) {
     <div className="border-b last:border-b-0" style={{ borderColor: 'var(--border-subtle)' }}>
       <h3>
         <button type="button" onClick={onToggle} aria-expanded={open} aria-controls={`${id}-a`} id={`${id}-q`}
-          className="group flex w-full items-center gap-4 px-5 py-5 text-left transition-colors hover:bg-[var(--bg-card-hover)] sm:px-7">
-          <span className="flex-1 text-[15.5px] font-semibold leading-snug sm:text-[16.5px]" style={{ color: 'var(--text-main)' }}>{q}</span>
+          className="group flex w-full items-center gap-3 px-5 py-3.5 text-left transition-colors hover:bg-[var(--bg-card-hover)] sm:px-7">
+          <span className="flex-1 text-[15px] font-semibold leading-snug sm:text-[16px]" style={{ color: 'var(--text-main)' }}>{q}</span>
           <motion.span animate={{ rotate: open ? 180 : 0 }} transition={{ duration: 0.3, ease: EASE }}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-colors"
             style={{ background: open ? 'var(--gold-primary)' : GOLD_TINT, color: open ? '#1F1A14' : 'var(--gold-primary)' }}>
-            <ChevronDown size={17} />
+            <ChevronDown size={16} />
           </motion.span>
         </button>
       </h3>
@@ -78,7 +78,7 @@ export function FaqItem({ q, a, open, onToggle, id }) {
           <motion.div id={`${id}-a`} role="region" aria-labelledby={`${id}-q`}
             initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.32, ease: EASE }} className="overflow-hidden">
-            <p className="max-w-2xl px-5 pb-6 text-[15px] leading-relaxed sm:px-7" style={{ color: 'var(--text-muted)' }}>{a}</p>
+            <p className="max-w-2xl px-5 pb-4 text-[14.5px] leading-relaxed sm:px-7" style={{ color: 'var(--text-muted)' }}>{a}</p>
           </motion.div>
         )}
       </AnimatePresence>
@@ -86,20 +86,3 @@ export function FaqItem({ q, a, open, onToggle, id }) {
   )
 }
 
-/** Shown under "Download for Android" until the app is on the Play Store. */
-export function ApkNote({ dark = false, className = '' }) {
-  const onHome = useLocation().pathname === '/'
-  const muted = dark ? 'rgba(246,239,226,0.6)' : 'var(--text-subtle)'
-  const strong = dark ? '#F6EFE2' : 'var(--text-main)'
-  const lk = 'font-semibold underline decoration-1 underline-offset-2 hover:opacity-80'
-  return (
-    <div className={`mx-auto mt-4 max-w-md text-center text-[12.5px] leading-relaxed ${className}`} style={{ color: muted }}>
-      <p>Android app · 1.4 MB · Not on the Play Store yet, so Android will ask you to allow the install.{' '}
-        {onHome
-          ? <a href="#faq" className={lk} style={{ color: strong }}>How to install</a>
-          : <Link to="/#faq" className={lk} style={{ color: strong }}>How to install</Link>}
-      </p>
-      <p className="mt-0.5">Or <Link to="/register" className={lk} style={{ color: strong }}>use it in your browser</Link>, no download needed.</p>
-    </div>
-  )
-}
