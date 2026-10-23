@@ -11,7 +11,7 @@ import { useAuth } from '../context/AuthContext'
 export default function PublicRoute({ children }) {
   const { user, loading, isEmailVerified, needsEmailVerification } = useAuth()
 
-  if (loading) return <Loader text="Preparing your space..." />
+  if (loading) return <Loader />
   if (needsEmailVerification) return <Navigate to="/verify-email" replace />
   if (user && isEmailVerified) return <Navigate to="/dashboard" replace />
 

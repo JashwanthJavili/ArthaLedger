@@ -13,7 +13,7 @@ import { useAuth } from '../context/AuthContext'
 export default function ProtectedRoute({ children }) {
   const { user, loading, isEmailVerified, needsEmailVerification } = useAuth()
 
-  if (loading) return <Loader text="Preparing your space..." />
+  if (loading) return <Loader />
   if (needsEmailVerification) return <Navigate to="/verify-email" replace />
   if (!user) return <Navigate to="/login" replace />
   if (!isEmailVerified) return <Navigate to="/verify-email" replace />

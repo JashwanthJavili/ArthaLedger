@@ -9,6 +9,7 @@ import LayoutShell from '../components/LayoutShell'
 import Loader from '../components/common/Loader'
 import QuoteCard from '../components/common/QuoteCard'
 import ReminderPrompt from '../components/common/ReminderPrompt'
+import AccountMenu from '../components/common/AccountMenu'
 import ProjectModal from '../components/forms/ProjectModal'
 import DeleteDialog from '../components/common/DeleteDialog'
 import Toast from '../components/common/Toast'
@@ -75,9 +76,9 @@ export default function DashboardPage() {
   const [toast, setToast] = useState({ msg: '', type: 'success', visible: false })
 
   useEffect(() => {
-    let t = null
-    if (loading) t = setTimeout(() => setStalled(true), 3500)
-    else setStalled(false)
+    // `stalled` is only read while loading, so it never needs resetting here
+    if (!loading) return
+    const t = setTimeout(() => setStalled(true), 3500)
     return () => clearTimeout(t)
   }, [loading])
 
@@ -124,12 +125,9 @@ export default function DashboardPage() {
     )
   }
 
-  if (loading && !stalled) return <Loader text="Preparing your dashboard..." />
+  if (loading && !stalled) return <Loader />
 
   const firstName = user?.displayName?.split(' ')[0] || 'there'
-  const initials = user?.displayName
-    ? user.displayName.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()
-    : 'AL'
   const iconBtn = 'flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border border-[var(--border-card)] bg-[var(--bg-card)] text-[var(--text-muted)] hover:text-[var(--text-main)] hover:border-[var(--text-subtle)] transition-colors cursor-pointer'
 
   return (
@@ -158,10 +156,7 @@ export default function DashboardPage() {
           <button onClick={toggleTheme} className={iconBtn} aria-label={dark ? 'Switch to light mode' : 'Switch to dark mode'}>
             {dark ? <Sun size={17} className="text-[var(--gold-primary)]" /> : <Moon size={17} />}
           </button>
-          <Link to="/settings" aria-label="Profile and settings"
-            className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-[var(--gold-primary)] text-[12px] font-bold text-white">
-            {initials}
-          </Link>
+          <AccountMenu />
         </motion.header>
 
         {/* ── Quote of the day ── */}

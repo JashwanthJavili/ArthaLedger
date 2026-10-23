@@ -1,6 +1,6 @@
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { applyUpdateIfReady } from './lib/appUpdate'
-import { useState, useEffect } from 'react'
+import { useEffect } from 'react'
 import { AuthProvider } from './context/AuthContext'
 import { AppDataProvider } from './context/AppDataContext'
 import ProtectedRoute from './components/ProtectedRoute'
@@ -20,14 +20,13 @@ import SettingsPage from './pages/SettingsPage'
 import VaultPage from './pages/VaultPage'
 import ExpenseGroupsPage from './pages/ExpenseGroupsPage'
 import ExpenseGroupDetailPage from './pages/ExpenseGroupDetailPage'
-import SplashScreen from './components/common/SplashScreen'
 import { useAuth } from './context/AuthContext'
 import Loader from './components/common/Loader'
 import { ensurePushRegistration, syncReminderFromFirebase } from './lib/notifications'
 
 function VerifyEmailRoute({ children }) {
   const { user, loading, isEmailVerified, needsEmailVerification } = useAuth()
-  if (loading) return <Loader text="Preparing your space..." />
+  if (loading) return <Loader />
   if (user && isEmailVerified) return <Navigate to="/dashboard" replace />
   if (needsEmailVerification) return children
   return <Navigate to="/login" replace />
@@ -35,7 +34,7 @@ function VerifyEmailRoute({ children }) {
 
 function HomeRoute() {
   const { user, loading, isEmailVerified } = useAuth()
-  if (loading) return <Loader text="Preparing your space..." />
+  if (loading) return <Loader />
   if (user && isEmailVerified) return <Navigate to="/dashboard" replace />
   return <LandingPage />
 }
@@ -64,20 +63,6 @@ function PushSync() {
 }
 
 export default function App() {
-  const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone
-
-  // Show full splash only on the very first visit in a PWA session.
-  // sessionStorage is cleared on tab close but persists across refreshes,
-  // so a page refresh skips the full animation and goes straight to the app.
-  const isFirstVisit = !sessionStorage.getItem('al_visited')
-  const [splashDone, setSplashDone] = useState(!isStandalone || !isFirstVisit)
-
-  const handleSplashDone = () => {
-    sessionStorage.setItem('al_visited', '1')
-    setSplashDone(true)
-  }
-
-
   // Lock all PIN-protected items when app comes back from background after 5 min
   useEffect(() => {
     let hiddenAt = null
@@ -101,7 +86,6 @@ export default function App() {
       <PushSync />
       <UpdateOnNavigate />
       <AppDataProvider>
-        {!splashDone && <SplashScreen onDone={handleSplashDone} />}
         <Routes>
           <Route path="/" element={<HomeRoute />} />
           <Route path="/privacy" element={<PrivacyPage />} />
