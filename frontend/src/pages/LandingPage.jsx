@@ -4,7 +4,8 @@ import { motion, AnimatePresence, useReducedMotion, useScroll, useMotionValueEve
 import {
   ArrowRight, ArrowDownLeft, ArrowUpRight, BookOpen, Bell, Users, Lock, FileSpreadsheet, WifiOff, ShieldCheck,
   Tags, PieChart, CloudUpload, Download, Menu, X, Plus, Minus, NotebookPen, Calculator, Landmark, Star, Mail,
-  Handshake, GraduationCap, Home as HomeIcon, Store, Laptop, Plane, Target, Quote,
+  Handshake, GraduationCap, Home as HomeIcon, Store, Laptop, Plane, Target, Quote, ChevronDown, FolderOpen,
+  User, Briefcase, ShoppingBasket, ArrowLeftRight,
 } from 'lucide-react'
 import { forceLightTheme, restoreTheme } from '../lib/theme'
 import { api } from '../lib/api'
@@ -190,7 +191,7 @@ function PhoneMockup() {
             </div>
             <div className="flex items-center justify-between px-4 pt-2 pb-3">
               <div>
-                <p className="text-[9px] uppercase tracking-[0.18em]" style={{ color: 'var(--text-subtle)' }}>Family · Book</p>
+                <p className="text-[9px] uppercase tracking-[0.18em]" style={{ color: 'var(--text-subtle)' }}>Family project · Book</p>
                 <p className="font-serif-luxury text-[15px] font-semibold" style={{ color: 'var(--text-main)' }}>Home Expenses</p>
               </div>
               <div className="flex h-8 w-8 items-center justify-center rounded-full" style={{ background: GOLD_TINT, color: 'var(--gold-primary)' }}><BookOpen size={14} /></div>
@@ -309,7 +310,7 @@ function Hero() {
 /* ─────────────────────────── what is it ─────────────────────────── */
 
 const BASICS = [
-  { Icon: NotebookPen, title: 'Like a khata, but on your phone', text: 'The same idea as the notebook many families use for household accounts. Write down money in and money out. That is all.' },
+  { Icon: NotebookPen, title: 'Like a khata, but on your phone', text: 'The same idea as the notebook many families use for household accounts, neatly organised into projects and books.' },
   { Icon: Calculator, title: 'You add, it adds up', text: 'Totals, balances and monthly summaries are worked out for you. No spreadsheets, no formulas.' },
   { Icon: Landmark, title: 'Never touches your bank', text: 'ArthaLedger does not connect to your bank, cards or UPI. You decide what to write. Nothing moves your money.' },
 ]
@@ -336,16 +337,30 @@ function WhatIsIt() {
 /* ─────────────────────────── how it works ─────────────────────────── */
 
 const STEPS = [
-  { n: '1', title: 'Make a book', text: 'A book is one place for one purpose, like “Home”, “My shop” or “Goa trip”. Keep as many as you like.', demo: 'book' },
-  { n: '2', title: 'Add money in and out', text: 'Tap Cash In when you receive money and Cash Out when you spend. Type the amount and pick what it was for.', demo: 'entry' },
-  { n: '3', title: 'See the full picture', text: 'Your balance updates instantly. Check where the money went this month and get a heads-up before a budget runs out.', demo: 'chart' },
+  { n: '1', title: 'Create a project', text: 'A project is a folder for one part of your life, like Personal, Family or Business. It keeps related money together.', demo: 'project' },
+  { n: '2', title: 'Add books inside it', text: 'Each project holds books, one for each purpose. A Family project might have “Groceries”, “Rent” and “School fees”.', demo: 'book' },
+  { n: '3', title: 'Record money in and out', text: 'Tap Cash In when you receive money and Cash Out when you spend. Type the amount and pick what it was for.', demo: 'entry' },
+  { n: '4', title: 'See the full picture', text: 'Balances update instantly. See where the money went this month and get a heads-up before a budget runs out.', demo: 'chart' },
 ]
 
 function StepDemo({ kind }) {
+  if (kind === 'project') {
+    return (
+      <div className="space-y-1.5">
+        {[['Personal', User, '3 books'], ['Family', Users, '4 books'], ['Business', Briefcase, '2 books']].map(([l, I, c]) => (
+          <div key={l} className="flex items-center gap-2.5 rounded-xl px-3 py-2" style={{ background: 'var(--bg-page)', border: '1px solid var(--border-card)' }}>
+            <span className="flex h-7 w-7 items-center justify-center rounded-lg" style={{ background: GOLD_TINT, color: 'var(--gold-primary)' }}><I size={14} /></span>
+            <span className="flex-1 text-[12.5px] font-semibold" style={{ color: 'var(--text-main)' }}>{l}</span>
+            <span className="text-[11px]" style={{ color: 'var(--text-subtle)' }}>{c}</span>
+          </div>
+        ))}
+      </div>
+    )
+  }
   if (kind === 'book') {
     return (
       <div className="flex flex-wrap gap-2">
-        {[['Home', HomeIcon], ['My shop', Store], ['Goa trip', Plane]].map(([l, I]) => (
+        {[['Groceries', ShoppingBasket], ['Rent', HomeIcon], ['School fees', GraduationCap]].map(([l, I]) => (
           <span key={l} className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-medium" style={{ background: 'var(--bg-page)', border: '1px solid var(--border-card)', color: 'var(--text-main)' }}>
             <I size={13} style={{ color: 'var(--gold-primary)' }} /> {l}
           </span>
@@ -375,10 +390,10 @@ function HowItWorks() {
   return (
     <section id="how" className="scroll-mt-20 px-4 py-16 sm:px-6 sm:py-24" style={{ background: 'color-mix(in srgb, var(--gold-primary) 5%, var(--bg-page))', borderBlock: '1px solid var(--border-subtle)' }}>
       <div className="mx-auto max-w-6xl">
-        <SectionTitle eyebrow="How it works" title="Three steps. That is the whole app." sub="You can start in under a minute. Nothing to set up, nothing to learn." />
-        <div className="mt-12 grid gap-4 md:grid-cols-3">
+        <SectionTitle eyebrow="How it works" title="Projects hold books. Books hold your money." sub="Four simple steps. You can start in under a minute, with nothing to set up." />
+        <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {STEPS.map((s, i) => (
-            <Reveal key={s.n} delay={i * 0.1} className="flex flex-col rounded-3xl p-6 sm:p-7" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-card)' }}>
+            <Reveal key={s.n} delay={i * 0.08} className="flex flex-col rounded-3xl p-6" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-card)' }}>
               <span className="font-serif-luxury text-[2.6rem] font-semibold leading-none" style={{ color: 'var(--gold-primary)' }}>{s.n}</span>
               <h3 className="mt-4 text-[17px] font-semibold" style={{ color: 'var(--text-main)' }}>{s.title}</h3>
               <p className="mt-2 flex-1 text-[14.5px] leading-relaxed" style={{ color: 'var(--text-muted)' }}>{s.text}</p>
@@ -394,7 +409,8 @@ function HowItWorks() {
 /* ─────────────────────────── features ─────────────────────────── */
 
 const FEATURES = [
-  { Icon: BookOpen, title: 'Separate books', text: 'Keep home, work, shop and trips apart, each with its own balance.' },
+  { Icon: FolderOpen, title: 'Projects', text: 'Group your money by life area: Personal, Family, Business, a trip. Pick an icon for each.' },
+  { Icon: BookOpen, title: 'Books inside projects', text: 'Split a project into books like Groceries or Rent, each with its own balance.' },
   { Icon: Tags, title: 'Categories', text: 'Groceries, rent, fuel, salary… pick one so you can see where money goes.' },
   { Icon: Target, title: 'Monthly budgets', text: 'Set a limit for a category. We warn you when you get close.' },
   { Icon: PieChart, title: 'Clear summaries', text: 'See this month and this year, by category, in plain numbers.' },
@@ -403,6 +419,7 @@ const FEATURES = [
   { Icon: Bell, title: 'Gentle reminders', text: 'A friendly nudge, morning to night, so nothing is forgotten.' },
   { Icon: FileSpreadsheet, title: 'Download reports', text: 'Save any book as a PDF or Excel file to share or print.' },
   { Icon: WifiOff, title: 'Works offline', text: 'Add entries without internet. They are saved when you are back online.' },
+  { Icon: ArrowLeftRight, title: 'Move money between books', text: 'Transfer from one book to another and both balances stay right.' },
 ]
 
 function Features() {
@@ -479,11 +496,11 @@ function Founder() {
     <section className="px-4 pb-16 sm:px-6 sm:pb-24">
       <Reveal className="relative mx-auto max-w-4xl overflow-hidden rounded-[2rem] px-6 py-10 sm:px-12 sm:py-14" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-card)' }}>
         <Quote size={64} className="pointer-events-none absolute -top-2 right-6 opacity-[0.08]" style={{ color: 'var(--gold-primary)' }} aria-hidden="true" />
-        <Eyebrow>A note from the founder</Eyebrow>
-        <div className="font-serif-luxury mt-5 space-y-4 text-[1.15rem] leading-[1.65] sm:text-[1.35rem]" style={{ color: 'var(--text-main)' }}>
-          <p>I built ArthaLedger because I kept losing track of small spends. A chai here, an auto there. By the end of the month the money was gone and I could not say where.</p>
-          <p>I wanted something as simple as the notebook our families used for household accounts, but always in my pocket. No bank logins, no ads, nothing complicated. Just a calm place to write down money and understand it.</p>
-          <p>I hope it gives you the same peace of mind it gives me.</p>
+        <Eyebrow>A note from our founder</Eyebrow>
+        <div className="font-serif-luxury mt-5 space-y-4 text-[1.1rem] leading-[1.7] sm:text-[1.3rem]" style={{ color: 'var(--text-main)' }}>
+          <p>ArthaLedger began with a simple observation: most of us do not lack income as much as we lack clarity. Small everyday expenses add up quietly, and by the end of the month it is hard to say where the money went.</p>
+          <p>Our purpose is to give every household, student and small business in India a clear, private record of their money, as familiar as a traditional khata and as dependable as a modern app. We do not connect to your bank, we do not show advertising, and we never sell data.</p>
+          <p>We build with care, read every piece of feedback, and improve ArthaLedger together with the people who use it. Thank you for trusting us with something so personal.</p>
         </div>
         <div className="mt-8 flex items-center gap-3.5">
           <span className="flex h-12 w-12 items-center justify-center rounded-full font-serif-luxury text-[17px] font-semibold" style={{ background: GOLD_TINT, color: 'var(--gold-primary)' }}>JJ</span>
@@ -500,32 +517,38 @@ function Founder() {
 /* ─────────────────────────── FAQ ─────────────────────────── */
 
 const FAQ = [
-  ['What exactly is ArthaLedger?', 'A money notebook on your phone. You note down money you receive and money you spend, and ArthaLedger keeps the totals, balances and monthly summaries for you.'],
+  ['What exactly is ArthaLedger?', 'A money notebook on your phone. You create projects (like Personal or Business), add books inside them, and note down money you receive and spend. ArthaLedger keeps the totals, balances and summaries for you.'],
+  ['What is the difference between a project and a book?', 'A project is a folder for one part of your life, such as Family. A book is one account inside it, such as Groceries or Rent. Each book has its own balance, and the project shows them together.'],
   ['Does it connect to my bank account or UPI?', 'No. ArthaLedger never asks for bank, card or UPI details and cannot move money. You type in what you want to keep track of.'],
   ['Is it free?', 'Yes, ArthaLedger is free to use. Create an account and start right away.'],
-  ['Is my data safe?', 'Your books are private to your account and protected with encryption while they travel and while they are stored. You can also lock any book or project with a PIN.'],
+  ['Is my data safe and private?', 'Yes. Your projects and books can only be opened by your own account, and they are encrypted while they travel and while they are stored. You can also lock any project or book with a PIN.'],
   ['Do I need internet?', 'Not to add entries. ArthaLedger works offline and saves your changes as soon as you are connected again.'],
-  ['Can I use it on more than one phone?', 'Yes. Sign in with the same account on any phone or computer and your books will be there.'],
+  ['Can I use it on more than one phone?', 'Yes. Sign in with the same account on any phone or computer and your projects and books will be there.'],
   ['How do I install it on Android?', 'Tap “Download for Android”, open the downloaded file and allow the install when Android asks. You can also open this website in Chrome and choose “Install app”.'],
   ['Can I share expenses with friends?', 'Yes. Use Groups for trips or shared flats. Add what each person paid and ArthaLedger shows who owes whom.'],
-  ['How do I delete my account?', 'Go to Settings, then Delete account. Your account and all your books are removed for good.'],
-  ['I have an idea or found a problem.', `We would love to hear it. In the app, open Settings and tap Send feedback, or write to ${CONTACT}.`],
+  ['How do I delete my account?', 'Go to Settings, then Delete account. Your account and all your projects and books are removed for good.'],
 ]
 
-function FaqItem({ q, a, open, onToggle }) {
+function FaqItem({ q, a, open, onToggle, id }) {
   return (
-    <div className="rounded-2xl transition-colors" style={{ background: open ? 'var(--bg-card)' : 'transparent', border: `1px solid ${open ? 'var(--border-card)' : 'var(--border-subtle)'}` }}>
-      <button type="button" onClick={onToggle} aria-expanded={open} className="flex w-full items-center gap-4 px-5 py-4 text-left">
-        <span className="flex-1 text-[15px] font-semibold" style={{ color: 'var(--text-main)' }}>{q}</span>
-        <motion.span animate={{ rotate: open ? 45 : 0 }} transition={{ duration: 0.25, ease: EASE }}
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full" style={{ background: GOLD_TINT, color: 'var(--gold-primary)' }}>
-          <Plus size={16} />
-        </motion.span>
-      </button>
+    <div className="border-b last:border-b-0" style={{ borderColor: 'var(--border-subtle)' }}>
+      <h3>
+        <button type="button" onClick={onToggle} aria-expanded={open} aria-controls={`${id}-a`} id={`${id}-q`}
+          className="group flex w-full items-center gap-4 px-5 py-5 text-left transition-colors hover:bg-[var(--bg-card-hover)] sm:px-7">
+          <span className="flex-1 text-[15.5px] font-semibold leading-snug sm:text-[16.5px]" style={{ color: 'var(--text-main)' }}>{q}</span>
+          <motion.span animate={{ rotate: open ? 180 : 0 }} transition={{ duration: 0.3, ease: EASE }}
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors"
+            style={{ background: open ? 'var(--gold-primary)' : GOLD_TINT, color: open ? '#1F1A14' : 'var(--gold-primary)' }}>
+            <ChevronDown size={17} />
+          </motion.span>
+        </button>
+      </h3>
       <AnimatePresence initial={false}>
         {open && (
-          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.3, ease: EASE }} className="overflow-hidden">
-            <p className="px-5 pb-5 text-[14.5px] leading-relaxed" style={{ color: 'var(--text-muted)' }}>{a}</p>
+          <motion.div id={`${id}-a`} role="region" aria-labelledby={`${id}-q`}
+            initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.32, ease: EASE }} className="overflow-hidden">
+            <p className="max-w-2xl px-5 pb-6 text-[15px] leading-relaxed sm:px-7" style={{ color: 'var(--text-muted)' }}>{a}</p>
           </motion.div>
         )}
       </AnimatePresence>
@@ -534,20 +557,21 @@ function FaqItem({ q, a, open, onToggle }) {
 }
 
 function Faq() {
-  const [open, setOpen] = useState(0)
+  const [open, setOpen] = useState(-1)
   return (
     <section id="faq" className="scroll-mt-20 px-4 py-16 sm:px-6 sm:py-24" style={{ background: 'color-mix(in srgb, var(--gold-primary) 5%, var(--bg-page))', borderBlock: '1px solid var(--border-subtle)' }}>
-      <div className="mx-auto grid max-w-6xl gap-10 lg:grid-cols-[1fr_1.4fr] lg:gap-16">
-        <div>
-          <SectionTitle center={false} eyebrow="FAQ" title="Questions people ask" sub="Short answers in plain words. Still curious? Just write to us." />
-          <Reveal delay={0.1} className="mt-6">
-            <a href={`mailto:${CONTACT}`} className="inline-flex min-h-11 items-center gap-2 text-[14px] font-semibold" style={{ color: 'var(--gold-primary)' }}>
-              <Mail size={16} /> {CONTACT}
-            </a>
-          </Reveal>
-        </div>
-        <Reveal className="space-y-2.5">
-          {FAQ.map(([q, a], i) => <FaqItem key={q} q={q} a={a} open={open === i} onToggle={() => setOpen(open === i ? -1 : i)} />)}
+      <div className="mx-auto max-w-3xl">
+        <SectionTitle eyebrow="FAQ" title="Frequently asked questions" sub="Everything you need to know, in plain words." />
+        <Reveal className="mt-10 overflow-hidden rounded-3xl" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-card)', boxShadow: '0 24px 60px -40px rgba(0,0,0,0.25)' }}>
+          {FAQ.map(([q, a], i) => <FaqItem key={q} id={`faq-${i}`} q={q} a={a} open={open === i} onToggle={() => setOpen(open === i ? -1 : i)} />)}
+        </Reveal>
+        <Reveal delay={0.05} className="mt-6 flex flex-col items-center gap-3 rounded-3xl px-6 py-6 text-center sm:flex-row sm:text-left" style={{ border: '1px dashed var(--border-card)' }}>
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl" style={{ background: GOLD_TINT, color: 'var(--gold-primary)' }}><Mail size={19} /></span>
+          <div className="flex-1">
+            <p className="text-[15px] font-semibold" style={{ color: 'var(--text-main)' }}>Still have a question?</p>
+            <p className="text-[13.5px]" style={{ color: 'var(--text-muted)' }}>Write to us and we will get back to you.</p>
+          </div>
+          <a href={`mailto:${CONTACT}`} className="inline-flex min-h-11 items-center rounded-full px-5 text-[14px] font-semibold" style={goldBtn}>Contact us</a>
         </Reveal>
       </div>
     </section>

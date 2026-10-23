@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Bell, Check, Loader2, AlertTriangle, Target, Sunrise, Sun, Sunset, Moon } from 'lucide-react'
-import { enableDailyReminder, getDailyReminderSettings, setBudgetAlertsEnabled, DEFAULT_REMINDER_TIMES } from '../../lib/notifications'
+import { enableDailyReminder, setBudgetAlertsEnabled, DEFAULT_REMINDER_TIMES } from '../../lib/notifications'
 
 const STORE_KEY = 'al_reminder_prompt'
 const SESSION_KEY = 'al_reminder_prompt_shown'
@@ -34,20 +34,20 @@ function shownThisOpen() {
 }
 
 /**
- * Ask each time the app is opened while notifications are off on this
- * device (not allowed yet, or reminders switched off), until they are on or
- * the user says "Don't ask again". Android can't show its permission dialog
- * once it has been blocked, so a blocked device isn't asked.
+ * Ask only while this device has never answered the notification question
+ * (permission is still "default"). Once notifications are allowed (or
+ * blocked), the phone remembers, so this never shows again. Also hidden for
+ * the rest of this app session after it is shown, and for good after
+ * "Don't ask again".
  */
 function shouldAsk() {
   if (typeof window === 'undefined' || !('Notification' in window) || !('serviceWorker' in navigator)) return false
-  if (Notification.permission === 'denied') return false
-  if (Notification.permission === 'granted' && getDailyReminderSettings().enabled) return false
+  if (Notification.permission !== 'default') return false
   return !neverAsk() && !shownThisOpen()
 }
 
 /**
- * Native-style ask on Home, once per app open while notifications are off: pick a reminder time and turn it on.
+ * Native-style ask on Home, only until notifications are allowed on this device: pick a reminder time and turn it on.
  * Tapping "Turn on" shows Android's own permission dialog, saves the
  * reminder, registers the device and confirms with the server.
  */
