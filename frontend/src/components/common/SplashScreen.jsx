@@ -5,7 +5,7 @@ const SHOW_MS = 1300
 
 /**
  * Launch screen for the installed app: logo, name and tagline together.
- * The Android app shows /icons/splash-1024.png while it starts, index.html
+ * The Android app shows /icons/launch-1024.png while it starts, index.html
  * paints the identical picture before any JS loads (#boot-splash), and this
  * takes over without a flicker: the gold line fills, then the screen fades
  * into the app. Uses the theme colours, so it matches
@@ -33,7 +33,7 @@ export default function SplashScreen({ onDone }) {
         >
           {/* The same picture Android shows while the app starts, then a gold line fills under it */}
           <div className="relative h-[300px] w-[300px]">
-            <img src={dark ? '/icons/splash-dark-1024.png' : '/icons/splash-1024.png'} alt="" draggable="false" className="h-full w-full" />
+            <img src={dark ? '/icons/launch-dark-1024.png' : '/icons/launch-1024.png'} alt="" draggable="false" className="h-full w-full" />
             <div className="absolute left-1/2 top-[250px] h-[2px] w-16 -translate-x-1/2 overflow-hidden rounded-full bg-[var(--border-subtle)]">
               <motion.div
                 initial={{ scaleX: 0 }}
