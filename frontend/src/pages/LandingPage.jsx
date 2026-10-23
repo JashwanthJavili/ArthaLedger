@@ -2,10 +2,10 @@ import { useEffect, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { motion, useReducedMotion, useScroll, useTransform, useMotionValueEvent } from 'framer-motion'
 import {
-  Check, ArrowDownLeft, ArrowUpRight, BookOpen, Bell, Users, WifiOff, ShieldCheck,
-  CloudUpload, Download, Plus, Minus, NotebookPen, Calculator, Landmark, Star, Mail,
+  Check, ArrowDownLeft, ArrowUpRight, BookOpen, Bell, WifiOff, ShieldCheck,
+  CloudUpload, Download, NotebookPen, Calculator, Landmark, Star, Mail,
   Handshake, GraduationCap, Home as HomeIcon, Store, Laptop, Plane, Quote,
-  User, Briefcase, ShoppingBasket, Sparkles, Gift, ChevronDown,
+  Briefcase, Sparkles, Gift, ChevronDown,
 } from 'lucide-react'
 import { forceLightTheme, restoreTheme } from '../lib/theme'
 import { api } from '../lib/api'
@@ -13,6 +13,7 @@ import SiteHeader from '../components/marketing/SiteHeader'
 import SiteFooter from '../components/marketing/SiteFooter'
 import BeforeAfter from '../components/marketing/BeforeAfter'
 import FeatureBento from '../components/marketing/FeatureBento'
+import HowItWorksTour from '../components/marketing/HowItWorksTour'
 import { Counter, Donut, InOutBars, Sparkline } from '../components/marketing/Charts'
 import { Reveal, Eyebrow, SectionTitle, PrimaryLink, GhostLink, FaqItem } from '../components/marketing/ui'
 import { EASE, APK_URL, CONTACT, GOLD_TINT, GOLD_SOFT, BAND_BG, goldBtn, card } from '../components/marketing/constants'
@@ -243,71 +244,12 @@ function WhatIsIt() {
 
 /* ─────────────────────────── how it works ─────────────────────────── */
 
-const STEPS = [
-  { n: '1', title: 'Create a project', text: 'A project is a folder for one part of your life, like Personal, Family or Business. It keeps related money together.', demo: 'project' },
-  { n: '2', title: 'Add books inside it', text: 'Each project holds books, one for each purpose. A Family project might have “Groceries”, “Rent” and “School fees”.', demo: 'book' },
-  { n: '3', title: 'Record money in and out', text: 'Tap Cash In when you receive money and Cash Out when you spend. Type the amount and pick what it was for.', demo: 'entry' },
-  { n: '4', title: 'See the full picture', text: 'Balances update instantly. See where the money went this month and get a heads-up before a budget runs out.', demo: 'chart' },
-]
-
-function StepDemo({ kind }) {
-  if (kind === 'project') {
-    return (
-      <div className="space-y-1.5">
-        {[['Personal', User, '3 books'], ['Family', Users, '4 books'], ['Business', Briefcase, '2 books']].map(([l, I, c]) => (
-          <div key={l} className="flex items-center gap-2.5 rounded-xl px-3 py-2" style={{ background: 'var(--bg-page)', border: '1px solid var(--border-card)' }}>
-            <span className="flex h-7 w-7 items-center justify-center rounded-lg" style={{ background: GOLD_TINT, color: 'var(--gold-primary)' }}><I size={14} /></span>
-            <span className="flex-1 text-[12.5px] font-semibold" style={{ color: 'var(--text-main)' }}>{l}</span>
-            <span className="text-[11px]" style={{ color: 'var(--text-subtle)' }}>{c}</span>
-          </div>
-        ))}
-      </div>
-    )
-  }
-  if (kind === 'book') {
-    return (
-      <div className="flex flex-wrap gap-2">
-        {[['Groceries', ShoppingBasket], ['Rent', HomeIcon], ['School fees', GraduationCap]].map(([l, I]) => (
-          <span key={l} className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-medium" style={{ background: 'var(--bg-page)', border: '1px solid var(--border-card)', color: 'var(--text-main)' }}>
-            <I size={13} style={{ color: 'var(--gold-primary)' }} /> {l}
-          </span>
-        ))}
-      </div>
-    )
-  }
-  if (kind === 'entry') {
-    return (
-      <div className="grid grid-cols-2 gap-2 text-[12px] font-semibold">
-        <span className="flex items-center justify-center gap-1 rounded-full bg-emerald-600 py-2 text-white"><Plus size={13} /> Cash In</span>
-        <span className="flex items-center justify-center gap-1 rounded-full bg-rose-600 py-2 text-white"><Minus size={13} /> Cash Out</span>
-      </div>
-    )
-  }
-  return (
-    <div className="flex h-12 items-end gap-1.5" aria-hidden="true">
-      {[40, 65, 50, 85, 60, 95, 70].map((h, i) => (
-        <motion.span key={i} className="flex-1 rounded-t-md" style={{ background: i === 5 ? 'var(--gold-primary)' : GOLD_SOFT }}
-          initial={{ height: 0 }} whileInView={{ height: `${h}%` }} viewport={{ once: true }} transition={{ duration: 0.7, delay: 0.2 + i * 0.06, ease: EASE }} />
-      ))}
-    </div>
-  )
-}
-
 function HowItWorks() {
   return (
-    <section id="how" className="scroll-mt-20 px-4 py-16 sm:px-6 sm:py-24" style={{ background: BAND_BG, borderBlock: '1px solid var(--border-subtle)' }}>
+    <section id="how" className="scroll-mt-20 overflow-hidden px-4 py-16 sm:px-6 sm:py-24" style={{ background: BAND_BG, borderBlock: '1px solid var(--border-subtle)' }}>
       <div className="mx-auto max-w-6xl">
-        <SectionTitle eyebrow="How it works" title="Projects hold books. Books hold your money." sub="Four simple steps. You can start in under a minute, with nothing to set up." />
-        <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {STEPS.map((s, i) => (
-            <Reveal key={s.n} delay={i * 0.08} className="flex flex-col rounded-3xl p-6" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-card)' }}>
-              <span className="font-serif-luxury text-[2.6rem] font-semibold leading-none" style={{ color: 'var(--gold-primary)' }}>{s.n}</span>
-              <h3 className="mt-4 text-[17px] font-semibold" style={{ color: 'var(--text-main)' }}>{s.title}</h3>
-              <p className="mt-2 flex-1 text-[14.5px] leading-relaxed" style={{ color: 'var(--text-muted)' }}>{s.text}</p>
-              <div className="mt-6"><StepDemo kind={s.demo} /></div>
-            </Reveal>
-          ))}
-        </div>
+        <SectionTitle eyebrow="How it works" title="Projects hold books. Books hold your money." sub="Four steps, under a minute. Watch it play, or tap a step." />
+        <HowItWorksTour />
       </div>
     </section>
   )
