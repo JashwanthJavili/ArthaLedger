@@ -38,10 +38,37 @@
           document.documentElement.classList.remove('dark');
         }
       } catch (e) {}
+      // Installed app, first open this session: paint the branded splash
+      // straight from the HTML so it is the very first thing on screen.
+      try {
+        var installed = window.matchMedia('(display-mode: standalone)').matches ||
+          window.navigator.standalone === true || document.referrer.indexOf('android-app://') === 0;
+        if (installed && !sessionStorage.getItem('al_visited')) document.documentElement.classList.add('boot-splash');
+      } catch (e) {}
     </script>
+    <link rel="preload" as="image" href="/icons/maskable-192.png" />
+    <style>
+      /* Same layout as components/common/SplashScreen.jsx so React takes over seamlessly */
+      #boot-splash { display: none; }
+      html.boot-splash #boot-splash {
+        position: fixed; inset: 0; z-index: 10000; display: flex; align-items: center; justify-content: center;
+        background: var(--bg-page, #FAF8F5);
+      }
+      html.dark.boot-splash #boot-splash { background: var(--bg-page, #26282E); }
+      #boot-splash .bs { display: flex; flex-direction: column; align-items: center; }
+      #boot-splash img { width: 84px; height: 84px; border-radius: 9999px; box-shadow: 0 14px 34px -16px rgba(0,0,0,0.4); }
+      #boot-splash .t { margin-top: 20px; font-family: var(--font-serif, Georgia, serif); font-size: 27px; font-weight: 600; letter-spacing: -0.01em; line-height: 1.5; color: var(--text-main, #231E1A); }
+      #boot-splash .s { margin-top: 4px; font-family: var(--font-serif, Georgia, serif); font-size: 13.5px; font-style: italic; line-height: 1.5; color: var(--text-muted, #736960); }
+      #boot-splash .b { margin-top: 24px; width: 64px; height: 2px; border-radius: 9999px; background: var(--border-subtle, rgba(0,0,0,0.05)); }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root"><div id="boot-splash" aria-hidden="true"><div class="bs">
+      <img src="/icons/maskable-192.png" alt="" />
+      <div class="t">ArthaLedger</div>
+      <div class="s">Where every rupee has meaning</div>
+      <div class="b"></div>
+    </div></div></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
