@@ -1,6 +1,7 @@
 """
 Firebase Admin SDK service.
-Handles token verification and Realtime Database access.
+Handles token verification and database access.
+Firestore is the main database; the Realtime Database is only read to move old data across.
 """
 import threading
 from typing import Optional
@@ -50,8 +51,15 @@ def verify_token(token: str) -> dict:
         raise HTTPException(status_code=401, detail='Invalid or expired token') from exc
 
 
+def get_firestore():
+    """The Firestore client (the app's main database)."""
+    _get_app()
+    from firebase_admin import firestore
+    return firestore.client()
+
+
 def get_db_ref(path: str) -> db.Reference:
-    """Return a Firebase Realtime Database reference at the given path."""
+    """A Realtime Database reference. Only used to copy old data into Firestore."""
     _get_app()
     return db.reference(path)
 

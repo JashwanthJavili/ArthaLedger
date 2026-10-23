@@ -1,7 +1,7 @@
 import logging
 from typing import Any, Dict, List, Optional
 
-from app.services.firebase_service import get_db_ref, _get_app
+from app.services.firebase_service import _get_app, get_firestore
 
 logger = logging.getLogger('arthaledger.push_service')
 
@@ -9,9 +9,15 @@ logger = logging.getLogger('arthaledger.push_service')
 _DEAD_TOKEN_CODES = ('unregistered', 'invalid-argument', 'invalid-registration', 'not-found', 'sender-id-mismatch')
 
 
+def _token_docs(uid: str) -> Dict[str, dict]:
+  """users/{uid}/pushTokens, as {doc id: data}."""
+  coll = get_firestore().collection('users').document(uid).collection('pushTokens')
+  return {d.id: d.to_dict() or {} for d in coll.stream()}
+
+
 def get_user_devices(uid: str) -> List[Dict[str, Any]]:
   """Registered devices (no full tokens): short id, kind, installed app or not, last seen."""
-  data = get_db_ref(f'users/{uid}/pushTokens').get() or {}
+  data = _token_docs(uid)
   out = []
   if isinstance(data, dict):
     for obj in data.values():
@@ -31,7 +37,7 @@ def get_user_devices(uid: str) -> List[Dict[str, Any]]:
 
 def get_user_tokens(uid: str) -> List[str]:
   """All push tokens registered for a user (one per device/browser)."""
-  data = get_db_ref(f'users/{uid}/pushTokens').get() or {}
+  data = _token_docs(uid)
   tokens: List[str] = []
   if isinstance(data, dict):
     for obj in data.values():
@@ -108,13 +114,10 @@ def send_fcm_multicast(
 
 def _prune_tokens(uid: str, dead: List[str]) -> None:
   try:
-    ref = get_db_ref(f'users/{uid}/pushTokens')
-    all_tokens = ref.get() or {}
-    if isinstance(all_tokens, dict):
-      for key, obj in all_tokens.items():
-        tok = obj.get('token') if isinstance(obj, dict) else obj
-        if tok in dead:
-          get_db_ref(f'users/{uid}/pushTokens/{key}').delete()
+    coll = get_firestore().collection('users').document(uid).collection('pushTokens')
+    for key, obj in _token_docs(uid).items():
+      if obj.get('token') in dead:
+        coll.document(key).delete()
   except Exception as err:  # pruning is best-effort
     logger.error('Failed to prune dead tokens for %s: %s', uid, err)
 

@@ -17,12 +17,14 @@ from collections import defaultdict, deque
 from typing import Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
+from google.cloud.firestore_v1.base_query import FieldFilter
 from firebase_admin import auth as fb_auth
 from pydantic import BaseModel, Field
 
 from app.api.deps import get_current_user
 from app.core.config import settings
-from app.services.firebase_service import _get_app, get_db_ref
+from app.services import reminder_store
+from app.services.firebase_service import _get_app, get_firestore
 
 router = APIRouter(prefix='/v1', tags=['Community'])
 
@@ -40,10 +42,13 @@ def _first_name(name: Optional[str]) -> str:
   return name.split()[0][:24] if name else 'An ArthaLedger user'
 
 
+def _feedback():
+  return get_firestore().collection(FEEDBACK_PATH)
+
+
 def _all_feedback() -> dict:
-  # Read whole and filter here: no database index needed, and the list is small
-  data = get_db_ref(FEEDBACK_PATH).get() or {}
-  return {k: v for k, v in data.items() if isinstance(v, dict)} if isinstance(data, dict) else {}
+  # Read whole and filter here: no extra indexes needed, and the list is small
+  return {d.id: d.to_dict() or {} for d in _feedback().stream()}
 
 
 def _is_admin(user: dict) -> bool:
@@ -91,20 +96,20 @@ def send_feedback(body: FeedbackIn, user: dict = Depends(get_current_user)):
     'featured': False,
     'createdAt': _now_ms(),
   }
-  ref = get_db_ref(FEEDBACK_PATH).push(item)
-  return {'id': ref.key, 'ok': True}
+  _, ref = _feedback().add(item)
+  return {'id': ref.id, 'ok': True}
 
 
 @router.get('/feedback/mine')
 def my_feedback(user: dict = Depends(get_current_user)):
-  data = _all_feedback()
+  mine = {d.id: d.to_dict() or {} for d in _feedback().where(filter=FieldFilter('uid', '==', user['uid'])).stream()}
   items = [
     {
       'id': k, 'kind': v.get('kind'), 'message': v.get('message'), 'rating': v.get('rating'),
       'status': v.get('status', 'new'), 'reply': v.get('reply'), 'repliedAt': v.get('repliedAt'),
       'createdAt': v.get('createdAt', 0),
     }
-    for k, v in data.items() if v.get('uid') == user['uid']
+    for k, v in mine.items()
   ]
   items.sort(key=lambda x: x['createdAt'], reverse=True)
   return {'items': items[:30]}
@@ -156,10 +161,11 @@ class FeedbackPatch(BaseModel):
 
 @router.patch('/admin/feedback/{item_id}')
 def admin_update_feedback(item_id: str, body: FeedbackPatch, _: dict = Depends(require_admin)):
-  ref = get_db_ref(f'{FEEDBACK_PATH}/{item_id}')
-  current = ref.get()
-  if not isinstance(current, dict):
+  ref = _feedback().document(item_id)
+  snap = ref.get()
+  if not snap.exists:
     raise HTTPException(status_code=404, detail='Not found')
+  current = snap.to_dict() or {}
   changes = {}
   if body.status is not None:
     changes['status'] = body.status
@@ -181,36 +187,27 @@ def admin_update_feedback(item_id: str, body: FeedbackPatch, _: dict = Depends(r
 
 @router.delete('/admin/feedback/{item_id}')
 def admin_delete_feedback(item_id: str, _: dict = Depends(require_admin)):
-  get_db_ref(f'{FEEDBACK_PATH}/{item_id}').delete()
+  _feedback().document(item_id).delete()
   _testimonial_cache['at'] = 0
   return {'ok': True}
 
 
-def _usage(uid: str) -> dict:
+def _usage(uid: str, reminders: dict) -> dict:
   """Counts only: projects, books and entries. Never amounts or contents."""
-  projects = get_db_ref(f'users/{uid}/projects').get() or {}
+  user_doc = get_firestore().collection('users').document(uid)
   p = b = e = 0
   last_entry = 0
-  if isinstance(projects, dict):
-    for proj in projects.values():
-      if not isinstance(proj, dict):
-        continue
-      p += 1
-      books = proj.get('books') or {}
-      if not isinstance(books, dict):
-        continue
-      for book in books.values():
-        if not isinstance(book, dict):
-          continue
-        b += 1
-        entries = book.get('entries') or {}
-        if isinstance(entries, dict):
-          e += len(entries)
-          for en in entries.values():
-            if isinstance(en, dict):
-              last_entry = max(last_entry, int(en.get('createdAt') or en.get('timestamp') or 0))
-  reminders = get_db_ref(f'users/{uid}/reminderSettings/enabled').get()
-  return {'projects': p, 'books': b, 'entries': e, 'lastEntryAt': last_entry or None, 'reminders': bool(reminders)}
+  for proj in user_doc.collection('projects').select([]).stream():
+    p += 1
+    for book in proj.reference.collection('books').select(['updatedAt']).stream():
+      b += 1
+      last_entry = max(last_entry, int((book.to_dict() or {}).get('updatedAt') or 0))
+      # Aggregation count: about one read per thousand entries, no documents downloaded
+      e += int(book.reference.collection('entries').count().get()[0][0].value)
+  return {
+    'projects': p, 'books': b, 'entries': e, 'lastEntryAt': last_entry or None,
+    'reminders': (reminders.get(uid) or {}).get('enabled') is True,
+  }
 
 
 _users_cache = {'at': 0.0, 'data': None}
@@ -222,13 +219,14 @@ def admin_users(fresh: bool = False, _: dict = Depends(require_admin)):
     return _users_cache['data']
   _get_app()
   users = []
+  reminders = reminder_store.all_settings()
   page = fb_auth.list_users()
   while page and len(users) < 1000:
     for u in page.users:
       meta = u.user_metadata
       providers = sorted({p.provider_id for p in (u.provider_data or [])})
       try:
-        usage = _usage(u.uid)
+        usage = _usage(u.uid, reminders)
       except Exception:
         usage = {}
       users.append({

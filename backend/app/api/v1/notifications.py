@@ -9,7 +9,7 @@ from app.api.deps import get_current_user
 from app.core.config import settings
 from pydantic import BaseModel
 
-from app.services.firebase_service import get_db_ref
+from app.services import reminder_store
 from app.services.push_service import get_user_tokens, send_fcm_multicast
 from app.services.reminder_content import build_reminder, verify_snooze
 from app.services.scheduler import backend_config_summary, check_and_send_scheduled_reminders, reminder_status
@@ -55,7 +55,7 @@ def _set_one_off(uid: str, minutes: int) -> int:
   minutes = max(1, min(int(minutes), 24 * 60))
   at = int((datetime.datetime.now(datetime.timezone.utc).timestamp() + minutes * 60) * 1000)
   at -= at % 60000  # whole minute, matched by the every-minute scheduler
-  get_db_ref(f'users/{uid}/reminderSettings/oneOffAt').set(at)
+  reminder_store.merge(uid, {'oneOffAt': at})
   return at
 
 

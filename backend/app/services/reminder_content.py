@@ -13,7 +13,9 @@ from urllib.parse import urlencode
 from zoneinfo import ZoneInfo
 
 from app.core.config import settings
-from app.services.firebase_service import get_db_ref
+from google.cloud.firestore_v1.base_query import FieldFilter
+
+from app.services.firebase_service import get_firestore
 
 DEFAULT_TZ = 'Asia/Kolkata'
 PUBLIC_API_URL = os.getenv('PUBLIC_API_URL', 'https://arthaledger-api.onrender.com').rstrip('/')
@@ -104,28 +106,22 @@ def _scan(uid: str, tz: ZoneInfo, now: datetime.datetime) -> dict:
   t0 = start_today.timestamp() * 1000
   week0 = (start_today - datetime.timedelta(days=6)).timestamp() * 1000
   out = {'count': 0, 'spent': 0.0, 'week': 0.0, 'days': set(), 'latest': None}
-  projects = get_db_ref(f'users/{uid}/projects').get() or {}
-  if not isinstance(projects, dict):
-    return out
-  for pid, project in projects.items():
-    books = project.get('books') if isinstance(project, dict) else None
-    if not isinstance(books, dict):
-      continue
-    for bid, book in books.items():
-      if not isinstance(book, dict):
-        continue
+  since = week0 - 60 * 86400000  # streak looks back up to ~2 months
+  user_doc = get_firestore().collection('users').document(uid)
+  for project in user_doc.collection('projects').select([]).stream():
+    pid = project.id
+    for book_snap in project.reference.collection('books').select(['name', 'updatedAt', 'createdAt']).stream():
+      book = book_snap.to_dict() or {}
+      bid = book_snap.id
       updated = book.get('updatedAt') or book.get('createdAt') or 0
       if out['latest'] is None or updated > out['latest'][0]:
         out['latest'] = (updated, pid, bid, book.get('name') or 'book')
-      entries = book.get('entries') or {}
-      if not isinstance(entries, dict):
-        continue
-      for e in entries.values():
-        if not isinstance(e, dict):
-          continue
+      # Only recent entries, so a long history costs nothing extra
+      recent = book_snap.reference.collection('entries').where(filter=FieldFilter('timestamp', '>=', since))         .select(['timestamp', 'type', 'amount']).stream()
+      for doc in recent:
+        e = doc.to_dict() or {}
         ts = e.get('timestamp') or 0
-        if ts >= week0 - 60 * 86400000:  # streak looks back up to ~2 months
-          out['days'].add(datetime.datetime.fromtimestamp(ts / 1000, tz).date())
+        out['days'].add(datetime.datetime.fromtimestamp(ts / 1000, tz).date())
         is_spend = e.get('type') == 'expense'
         if ts >= t0:
           out['count'] += 1

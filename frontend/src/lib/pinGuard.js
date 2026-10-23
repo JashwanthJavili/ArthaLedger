@@ -1,5 +1,5 @@
-import { get, ref, remove, set } from 'firebase/database'
-import { db } from './firebase'
+import { deleteDoc, getDoc, setDoc } from 'firebase/firestore'
+import { pinGuardDoc } from './userData'
 
 /**
  * Wrong-PIN attempt guard, keyed by the locked item's id.
@@ -20,7 +20,6 @@ export function lockoutMsFor(failures) {
 
 const EMPTY = { failures: 0, lockedUntil: 0 }
 const localKey = (id) => `al_pin_guard_${id}`
-const remotePath = (uid, id) => `users/${uid}/pinGuards/${id}`
 
 function readLocal(id) {
   try { return { ...EMPTY, ...(JSON.parse(localStorage.getItem(localKey(id)) || 'null') || {}) } } catch { return { ...EMPTY } }
@@ -33,7 +32,10 @@ export async function readGuard(uid, id) {
   const local = readLocal(id)
   let remote = { ...EMPTY }
   if (uid && id) {
-    try { remote = { ...EMPTY, ...((await get(ref(db, remotePath(uid, id)))).val() || {}) } } catch { /* offline: use local */ }
+    try {
+      const snap = await getDoc(pinGuardDoc(uid, id))
+      remote = { ...EMPTY, ...(snap.exists() ? snap.data() : {}) }
+    } catch { /* offline: use local */ }
   }
   return {
     failures: Math.max(Number(local.failures) || 0, Number(remote.failures) || 0),
@@ -48,7 +50,7 @@ export async function recordFailure(uid, id) {
   const next = { failures, lockedUntil: ms ? Date.now() + ms : 0 }
   writeLocal(id, next)
   if (uid && id) {
-    try { await set(ref(db, remotePath(uid, id)), next) } catch { /* local copy still applies */ }
+    try { await setDoc(pinGuardDoc(uid, id), next) } catch { /* local copy still applies */ }
   }
   return next
 }
@@ -56,6 +58,6 @@ export async function recordFailure(uid, id) {
 export async function clearGuard(uid, id) {
   try { localStorage.removeItem(localKey(id)) } catch { /* ignore */ }
   if (uid && id) {
-    try { await remove(ref(db, remotePath(uid, id))) } catch { /* ignore */ }
+    try { await deleteDoc(pinGuardDoc(uid, id)) } catch { /* ignore */ }
   }
 }

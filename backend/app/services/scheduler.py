@@ -6,7 +6,7 @@ from zoneinfo import ZoneInfo
 
 from apscheduler.schedulers.background import BackgroundScheduler
 
-from app.services.firebase_service import get_db_ref
+from app.services import reminder_store
 from app.services.push_service import send_to_user
 from app.services.reminder_content import build_reminder
 
@@ -89,19 +89,17 @@ def check_and_send_scheduled_reminders() -> dict:
   try:
     now_utc = datetime.datetime.now(datetime.timezone.utc)
     now_ms = now_utc.timestamp() * 1000
-    # Shallow read: only user IDs, not every user's whole ledger
-    uids = get_db_ref('users').get(shallow=True) or {}
-    for uid in (uids.keys() if isinstance(uids, dict) else []):
+    # From the live listener's memory: no database reads per check
+    for uid, settings in reminder_store.all_settings().items():
       scanned += 1
-      settings = get_db_ref(f'users/{uid}/reminderSettings').get()
       if not isinstance(settings, dict):
         continue
       tz_name = settings.get('timezone')
 
       # One-off "remind me in N minutes" / snooze
-      one_off = settings.get('oneOffAt')
-      if isinstance(one_off, (int, float)) and one_off <= now_ms:
-        get_db_ref(f'users/{uid}/reminderSettings/oneOffAt').delete()
+      one_off = reminder_store.one_off_at(settings)
+      if one_off is not None and one_off <= now_ms:
+        reminder_store.clear_field(uid, 'oneOffAt')
         if now_ms - one_off <= SEND_WINDOW_MINUTES * 60000:
           checked += 1
           try:
@@ -114,7 +112,7 @@ def check_and_send_scheduled_reminders() -> dict:
       checked += 1
       for key, today in _due_times(settings, now_utc):
         # Mark first so overlapping runs (cron + scheduler) never double-send
-        get_db_ref(f'users/{uid}/reminderSettings/lastSentMap/{key}').set(today)
+        reminder_store.merge(uid, {'lastSentMap': {key: today}})
         try:
           sent += _send_reminder(uid, tz_name)
         except Exception as err:
@@ -137,7 +135,8 @@ def backend_config_summary() -> dict:
   info = {
     'credentials_path_set': bool(cfg.firebase_credentials_path),
     'credentials_file_exists': bool(cfg.firebase_credentials_path) and os.path.exists(cfg.firebase_credentials_path),
-    'database_url': cfg.firebase_database_url or None,
+    'database': 'firestore',
+    'reminder_users_cached': len(reminder_store._cache),
   }
   try:
     import json as _json
@@ -151,9 +150,7 @@ def backend_config_summary() -> dict:
 def reminder_status(uid: str) -> dict:
   """What the server sees for this user; shown in the app's diagnostics."""
   from app.services.push_service import get_user_devices
-  settings = get_db_ref(f'users/{uid}/reminderSettings').get() or {}
-  if not isinstance(settings, dict):
-    settings = {}
+  settings = reminder_store.get_settings(uid)
   tz = _zone(settings.get('timezone'))
   now = datetime.datetime.now(tz)
   times = settings.get('times') if isinstance(settings.get('times'), list) else [settings.get('time') or '19:00']

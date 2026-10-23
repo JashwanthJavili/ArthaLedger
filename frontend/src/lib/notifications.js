@@ -1,5 +1,6 @@
-import { ref, set, get } from 'firebase/database'
-import { auth, db, requestFCMToken } from './firebase'
+import { getDoc, setDoc } from 'firebase/firestore'
+import { auth, requestFCMToken } from './firebase'
+import { remindersDoc } from './userData'
 
 // LocalStorage Keys for persistent multi-time reminder config
 const REMINDER_KEY_ENABLED = 'al_reminder_enabled'
@@ -155,10 +156,10 @@ export function syncReminderWithServiceWorker() {}
 export async function syncReminderFromFirebase() {
   if (!auth.currentUser?.uid) return null
   try {
-    const path = `users/${auth.currentUser.uid}/reminderSettings`
-    const snap = await get(ref(db, path))
+    const settingsRef = remindersDoc(auth.currentUser.uid)
+    const snap = await getDoc(settingsRef)
     if (snap.exists()) {
-      const data = snap.val()
+      const data = snap.data()
       if (typeof data.enabled === 'boolean') {
         localStorage.setItem(REMINDER_KEY_ENABLED, String(data.enabled))
       }
@@ -166,17 +167,13 @@ export async function syncReminderFromFirebase() {
       // One-time upgrade to the four-a-day schedule
       if (Number(data.scheduleVersion || 1) < SCHEDULE_VERSION) {
         times = [...DEFAULT_REMINDER_TIMES]
-        Promise.all([
-          set(ref(db, `${path}/times`), times),
-          set(ref(db, `${path}/time`), times[0]),
-          set(ref(db, `${path}/scheduleVersion`), SCHEDULE_VERSION),
-        ]).catch(() => {})
+        setDoc(settingsRef, { times, time: times[0], scheduleVersion: SCHEDULE_VERSION }, { merge: true }).catch(() => {})
       }
       localStorage.setItem(REMINDER_KEY_TIMES, JSON.stringify(times))
       localStorage.setItem(REMINDER_KEY_TIME, times[0])
       // Keep the server's idea of "7 PM" in this device's time zone
       const tz = userTimeZone()
-      if (data.timezone !== tz) set(ref(db, `${path}/timezone`), tz).catch(() => {})
+      if (data.timezone !== tz) setDoc(settingsRef, { timezone: tz }, { merge: true }).catch(() => {})
       return { enabled: Boolean(data.enabled), times, time: times[0] }
     }
   } catch (e) {
@@ -192,15 +189,14 @@ export function saveDailyReminderSettings({ enabled, times = DEFAULT_REMINDER_TI
   localStorage.setItem(REMINDER_KEY_TIME, finalTimes[0])
 
   if (!auth.currentUser?.uid) return Promise.resolve()
-  const path = `users/${auth.currentUser.uid}/reminderSettings`
-  return Promise.all([
-    set(ref(db, `${path}/enabled`), Boolean(enabled)),
-    set(ref(db, `${path}/times`), finalTimes),
-    set(ref(db, `${path}/time`), finalTimes[0]),
-    set(ref(db, `${path}/timezone`), userTimeZone()),
-    set(ref(db, `${path}/scheduleVersion`), SCHEDULE_VERSION),
-    set(ref(db, `${path}/updatedAt`), Date.now()),
-  ]).then(() => (enabled ? ensurePushRegistration() : null))
+  return setDoc(remindersDoc(auth.currentUser.uid), {
+    enabled: Boolean(enabled),
+    times: finalTimes,
+    time: finalTimes[0],
+    timezone: userTimeZone(),
+    scheduleVersion: SCHEDULE_VERSION,
+    updatedAt: Date.now(),
+  }, { merge: true }).then(() => (enabled ? ensurePushRegistration() : null))
 }
 
 /** Reminder state as the server sees it: { enabled, times, timezone, devices, next_reminder }. */

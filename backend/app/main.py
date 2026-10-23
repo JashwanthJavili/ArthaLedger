@@ -26,6 +26,12 @@ def on_startup():
         start_scheduler()
     except Exception as e:
         logger.error("Failed to start background scheduler: %s", e)
+    try:
+        # Copies feedback and reminder settings from the old database (creates missing docs only)
+        from app.services.migration import start_background_migration
+        start_background_migration()
+    except Exception as e:
+        logger.error("Failed to start Firestore migration: %s", e)
 
 # ── CORS ──────────────────────────────────────────────────────────────────────
 app.add_middleware(

@@ -1,17 +1,16 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
-import { get, onValue, push, ref, remove, set, update } from 'firebase/database'
+import { FieldPath, deleteField, doc, getDoc, getDocs, onSnapshot, setDoc, updateDoc, writeBatch } from 'firebase/firestore'
 import { db } from '../lib/firebase'
 import { useAuth } from './AuthContext'
 import { compareNewestFirst, compareOldestFirst } from '../lib/entryOrder'
+import {
+  bookDoc, booksCol, commitAll, docsOf, entriesCol, entryDoc, forCreate, forUpdate, migrateFromRealtimeDb,
+  projectDoc, projectsCol, setUserField, templateDoc, templatesCol, tripDoc, tripsCol, userDoc,
+} from '../lib/userData'
 
 const AppDataContext = createContext(null)
 
-function toArray(obj) {
-  if (!obj) return []
-  return Object.entries(obj).map(([id, value]) => ({ id, ...value }))
-}
-
-/** Strip keys that must not be written to Firebase */
+/** Strip keys that must not be written to the database */
 function sanitiseEntry(entry) {
   // eslint-disable-next-line no-unused-vars
   const { id, _localCategories, ...clean } = entry
@@ -29,123 +28,170 @@ export function AppDataProvider({ children }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
-  // All active Firebase listeners — keyed so we can tear them down cleanly
-  const unsubsRef = useRef(new Map()) // key → unsub fn
-
-  // Live copy of every book's entries (kept current by the listener above),
-  // so saves and deletes can compute balances locally instead of
-  // downloading the book from the server first.
+  // Live copies, so saves and deletes can work from memory (and offline)
+  // instead of downloading a book from the server first.
   const entriesNowRef = useRef({})
+  const booksNowRef = useRef({})
+  const templatesNowRef = useRef({})
   useEffect(() => { entriesNowRef.current = entriesByBook }, [entriesByBook])
+  useEffect(() => { booksNowRef.current = booksByProject }, [booksByProject])
+  useEffect(() => { templatesNowRef.current = templatesByBook }, [templatesByBook])
 
   useEffect(() => {
-    // Tear down every listener from the previous uid
-    unsubsRef.current.forEach((fn) => fn())
-    unsubsRef.current.clear()
-
     if (!user?.uid) {
       setProjects([])
       setBooksByProject({})
       setEntriesByBook({})
       setTemplatesByBook({})
       setTrips([])
+      setCategories([])
       setLoading(false)
       setError(null)
-      return
+      return undefined
     }
 
     setLoading(true)
     setError(null)
     const uid = user.uid
+    let cancelled = false
+    const subs = new Map() // key → unsubscribe
 
-    const tripsRef = ref(db, `users/${uid}/trips`)
-    const unsubTrips = onValue(tripsRef, (snapshot) => {
-      const loadedTrips = toArray(snapshot.val())
-      setTrips(loadedTrips)
-      setError(null)
-    }, (err) => {
-      console.error('[Firebase trips] Error:', err)
-      setError(friendlyDbError(err))
-      setLoading(false)
-    })
-    unsubsRef.current.set('trips', unsubTrips)
+    // Firestore has no "whole tree" listener, so there is one listener for
+    // the project list, one per project for its books, and one per book for
+    // its entries and templates. They are added and removed as projects and
+    // books come and go. State is updated once per tick, not per listener.
+    const books = {}
+    const entries = {}
+    const templates = {}
+    const bookOwner = {}     // bookId → projectId
+    const pending = new Set() // first loads still on their way
+    let initialDone = false
+    let queued = false
 
-    const categoriesRef = ref(db, `users/${uid}/categories`)
-    const unsubCategories = onValue(categoriesRef, (snapshot) => {
-      setCategories(normaliseCategories(snapshot.val()))
-    })
-    unsubsRef.current.set('categories', unsubCategories)
-
-    // One listener for the whole projects tree. The old setup listened to
-    // `projects` (which already downloads every book and entry) AND then
-    // re-created a listener per book and per entry list on every change —
-    // so each save re-attached everything. Parsing one snapshot is cheaper,
-    // and after the first load Firebase only sends the changed parts.
-    const projectsRef = ref(db, `users/${uid}/projects`)
-    const unsubProjects = onValue(projectsRef, (snapshot) => {
-      const raw = snapshot.val() || {}
-      const nextBooks = {}
-      const nextEntries = {}
-      const nextTemplates = {}
-      const loadedProjects = toArray(raw)
-      loadedProjects.forEach((project) => {
-        const books = toArray(project.books)
-        nextBooks[project.id] = books
-        books.forEach((book) => {
-          nextEntries[book.id] = toArray(book.entries).sort(compareNewestFirst)
-          nextTemplates[book.id] = toArray(book.templates).sort((x, y) => (y.createdAt || 0) - (x.createdAt || 0))
-        })
+    const flush = () => {
+      if (queued) return
+      queued = true
+      queueMicrotask(() => {
+        queued = false
+        if (cancelled) return
+        setBooksByProject({ ...books })
+        setEntriesByBook({ ...entries })
+        setTemplatesByBook({ ...templates })
+        if (!initialDone && pending.size === 0) {
+          initialDone = true
+          setLoading(false)
+        }
       })
-      setProjects(loadedProjects)
-      setBooksByProject(nextBooks)
-      setEntriesByBook(nextEntries)
-      setTemplatesByBook(nextTemplates)
-      setLoading(false)
-      setError(null)
-    }, (err) => {
-      console.error('[Firebase projects] Error:', err)
+    }
+    const fail = (where) => (err) => {
+      console.error(`[Firestore ${where}]`, err)
+      if (cancelled) return
       setError(friendlyDbError(err))
       setLoading(false)
-    })
+    }
+    const listen = (key, ref, onData) => {
+      if (subs.has(key)) return
+      if (!initialDone) pending.add(key)
+      subs.set(key, onSnapshot(ref, (snap) => {
+        onData(snap)
+        pending.delete(key)
+        flush()
+      }, fail(key)))
+    }
+    const stop = (key) => { subs.get(key)?.(); subs.delete(key); pending.delete(key) }
 
-    unsubsRef.current.set('projects', unsubProjects)
+    const watchBook = (pid, bid) => {
+      bookOwner[bid] = pid
+      listen(`e:${bid}`, entriesCol(uid, pid, bid), (snap) => { entries[bid] = docsOf(snap).sort(compareNewestFirst) })
+      listen(`t:${bid}`, templatesCol(uid, pid, bid), (snap) => {
+        templates[bid] = docsOf(snap).sort((x, y) => (y.createdAt || 0) - (x.createdAt || 0))
+      })
+    }
+    const unwatchBook = (bid) => {
+      stop(`e:${bid}`); stop(`t:${bid}`)
+      delete entries[bid]; delete templates[bid]; delete bookOwner[bid]
+    }
+    const watchProject = (pid) => {
+      listen(`b:${pid}`, booksCol(uid, pid), (snap) => {
+        const list = docsOf(snap)
+        const ids = new Set(list.map((b) => b.id))
+        ;(books[pid] || []).forEach((b) => { if (!ids.has(b.id)) unwatchBook(b.id) })
+        books[pid] = list
+        list.forEach((b) => watchBook(pid, b.id))
+      })
+    }
+    const unwatchProject = (pid) => {
+      stop(`b:${pid}`)
+      ;(books[pid] || []).forEach((b) => unwatchBook(b.id))
+      delete books[pid]
+    }
+
+    const attach = () => {
+      if (cancelled) return
+      listen('projects', projectsCol(uid), (snap) => {
+        const list = docsOf(snap)
+        const ids = new Set(list.map((p) => p.id))
+        Object.keys(books).forEach((pid) => { if (!ids.has(pid)) unwatchProject(pid) })
+        list.forEach((p) => watchProject(p.id))
+        setProjects(list)
+        setError(null)
+      })
+      subs.set('trips', onSnapshot(tripsCol(uid), (snap) => { setTrips(docsOf(snap)); setError(null) }, fail('trips')))
+      subs.set('user', onSnapshot(userDoc(uid), (snap) => {
+        setCategories(normaliseCategories(snap.exists() ? snap.data().categories : null))
+      }, () => {}))
+    }
+
+    // Move this account's data from the old database the first time, then listen
+    migrateFromRealtimeDb(uid)
+      .catch((err) => console.warn('[Move to Firestore] will retry next time:', err))
+      .finally(attach)
 
     return () => {
-      unsubsRef.current.forEach((fn) => fn())
-      unsubsRef.current.clear()
+      cancelled = true
+      subs.forEach((fn) => fn())
+      subs.clear()
     }
   }, [user?.uid])
 
   // ── Projects ──────────────────────────────────────────────────────────────
 
   const createProject = useCallback(async ({ name, description, icon }) => {
-    const projectRef = push(ref(db, `users/${user.uid}/projects`))
-    await set(projectRef, {
+    const ref = doc(projectsCol(user.uid))
+    await setDoc(ref, forCreate({
       name,
       description: description || '',
       icon: icon || null,
       createdAt: Date.now(),
       updatedAt: Date.now(),
-    }).catch((err) => { throw new Error(friendlyDbError(err)) })
+    })).catch((err) => { throw new Error(friendlyDbError(err)) })
   }, [user?.uid])
 
   const updateProject = useCallback(async (projectId, payload) => {
-    await update(ref(db, `users/${user.uid}/projects/${projectId}`), {
-      ...payload,
-      updatedAt: Date.now(),
-    }).catch((err) => { throw new Error(friendlyDbError(err)) })
+    await updateDoc(projectDoc(user.uid, projectId), forUpdate({ ...payload, updatedAt: Date.now() }))
+      .catch((err) => { throw new Error(friendlyDbError(err)) })
   }, [user?.uid])
 
+  // Deleting a document does not delete what is inside it, so remove every
+  // book, entry and template first (known from the live copy, so it also works offline).
+  const bookTreeOps = (uid, projectId, bookId) => [
+    ...(entriesNowRef.current[bookId] || []).map((e) => ({ type: 'delete', ref: entryDoc(uid, projectId, bookId, e.id) })),
+    ...(templatesNowRef.current[bookId] || []).map((t) => ({ type: 'delete', ref: templateDoc(uid, projectId, bookId, t.id) })),
+    { type: 'delete', ref: bookDoc(uid, projectId, bookId) },
+  ]
+
   const deleteProject = useCallback(async (projectId) => {
-    await remove(ref(db, `users/${user.uid}/projects/${projectId}`))
-      .catch((err) => { throw new Error(friendlyDbError(err)) })
+    const uid = user.uid
+    const ops = (booksNowRef.current[projectId] || []).flatMap((b) => bookTreeOps(uid, projectId, b.id))
+    ops.push({ type: 'delete', ref: projectDoc(uid, projectId) })
+    await commitAll(ops).catch((err) => { throw new Error(friendlyDbError(err)) })
   }, [user?.uid])
 
   // ── Books ─────────────────────────────────────────────────────────────────
 
   const createBook = useCallback(async (projectId, { name, description }) => {
-    const bookRef = push(ref(db, `users/${user.uid}/projects/${projectId}/books`))
-    await set(bookRef, {
+    const ref = doc(booksCol(user.uid, projectId))
+    await setDoc(ref, {
       name,
       description: description || '',
       createdAt: Date.now(),
@@ -155,31 +201,34 @@ export function AppDataProvider({ children }) {
   }, [user?.uid])
 
   const updateBook = useCallback(async (projectId, bookId, payload) => {
-    await update(ref(db, `users/${user.uid}/projects/${projectId}/books/${bookId}`), {
-      ...payload,
-      updatedAt: Date.now(),
-    }).catch((err) => { throw new Error(friendlyDbError(err)) })
+    await updateDoc(bookDoc(user.uid, projectId, bookId), forUpdate({ ...payload, updatedAt: Date.now() }))
+      .catch((err) => { throw new Error(friendlyDbError(err)) })
   }, [user?.uid])
 
   const deleteBook = useCallback(async (projectId, bookId) => {
-    await remove(ref(db, `users/${user.uid}/projects/${projectId}/books/${bookId}`))
+    await commitAll(bookTreeOps(user.uid, projectId, bookId))
       .catch((err) => { throw new Error(friendlyDbError(err)) })
   }, [user?.uid])
 
   // ── Entries ───────────────────────────────────────────────────────────────
 
-  const bookPath = (projectId, bookId) => `users/${user.uid}/projects/${projectId}/books/${bookId}`
   const localEntriesAsc = (bookId) => [...(entriesNowRef.current[bookId] || [])]
     .sort(compareOldestFirst)
 
+  /** balanceAfter writes for every entry whose running balance changes. */
+  const balanceOps = (projectId, bookId, list, fromTimestamp, skipId = null) =>
+    balanceChanges(list, fromTimestamp, skipId).map(([id, balanceAfter]) => ({
+      type: 'update', ref: entryDoc(user.uid, projectId, bookId, id), data: { balanceAfter },
+    }))
+  const touchBook = (projectId, bookId) => ({ type: 'update', ref: bookDoc(user.uid, projectId, bookId), data: { updatedAt: Date.now() } })
+
   /**
-   * Adds an entry with ONE atomic write (entry + any balances it shifts +
-   * book updatedAt). The listener shows it instantly; `saved` resolves when
-   * the server confirms. Returns { id, saved }.
+   * Adds an entry in one batch (entry + any balances it shifts + book
+   * updatedAt). The listener shows it instantly; `saved` resolves when the
+   * server confirms. Returns { id, saved }.
    */
   const addEntry = useCallback((projectId, bookId, payload) => {
-    const base = bookPath(projectId, bookId)
-    const id = push(ref(db, `${base}/entries`)).key
+    const id = doc(entriesCol(user.uid, projectId, bookId)).id
     const entry = {
       id,
       amount: Number(payload.amount),
@@ -194,24 +243,23 @@ export function AppDataProvider({ children }) {
       isSavings: Boolean(payload.isSavings),
       createdAt: Date.now(),
     }
-    const list = [...localEntriesAsc(bookId), entry]
-      .sort(compareOldestFirst)
-    const updates = balanceUpdates(base, list, entry.timestamp, id)
+    const list = [...localEntriesAsc(bookId), entry].sort(compareOldestFirst)
     entry.balanceAfter = runningBalanceAt(list, id)
-    updates[`${base}/entries/${id}`] = sanitiseEntry(entry)
-    updates[`${base}/updatedAt`] = Date.now()
-
-    const saved = update(ref(db), updates).catch((err) => { throw new Error(friendlyDbError(err)) })
+    const ops = [
+      { type: 'set', ref: entryDoc(user.uid, projectId, bookId, id), data: sanitiseEntry(entry) },
+      ...balanceOps(projectId, bookId, list, entry.timestamp, id),
+      touchBook(projectId, bookId),
+    ]
+    const saved = commitAll(ops).catch((err) => { throw new Error(friendlyDbError(err)) })
     return { id, saved }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.uid])
 
   const deleteEntry = useCallback(async (projectId, bookId, entryId) => {
-    const base = bookPath(projectId, bookId)
     const entry = localEntriesAsc(bookId).find((e) => e.id === entryId)
     if (!entry) throw new Error('Entry not found')
 
-    const updates = { [`${base}/entries/${entryId}`]: null, [`${base}/updatedAt`]: Date.now() }
+    const ops = [{ type: 'delete', ref: entryDoc(user.uid, projectId, bookId, entryId) }, touchBook(projectId, bookId)]
 
     // Linked transfer: the sending book owns it. Deleting there removes both
     // sides; the receiving book can only remove it if the sender's side is gone.
@@ -221,28 +269,26 @@ export function AppDataProvider({ children }) {
         throw new Error('This transfer is managed by the sending book. Delete it there.')
       }
       if (counterpart) {
-        const cBase = bookPath(counterpart.projectId, counterpart.bookId)
-        updates[`${cBase}/entries/${counterpart.entryId}`] = null
-        updates[`${cBase}/updatedAt`] = Date.now()
+        ops.push({ type: 'delete', ref: entryDoc(user.uid, counterpart.projectId, counterpart.bookId, counterpart.entryId) })
+        ops.push(touchBook(counterpart.projectId, counterpart.bookId))
         const cList = localEntriesAsc(counterpart.bookId).filter((e) => e.id !== counterpart.entryId)
-        Object.assign(updates, balanceUpdates(cBase, cList, Number(counterpart.entry.timestamp || 0)))
+        ops.push(...balanceOps(counterpart.projectId, counterpart.bookId, cList, Number(counterpart.entry.timestamp || 0)))
       }
     }
 
     const list = localEntriesAsc(bookId).filter((e) => e.id !== entryId)
-    Object.assign(updates, balanceUpdates(base, list, Number(entry.timestamp || 0)))
-    return update(ref(db), updates).catch((err) => { throw new Error(friendlyDbError(err)) })
+    ops.push(...balanceOps(projectId, bookId, list, Number(entry.timestamp || 0)))
+    return commitAll(ops).catch((err) => { throw new Error(friendlyDbError(err)) })
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.uid])
 
   const updateEntry = useCallback(async (projectId, bookId, entryId, payload) => {
-    const base = bookPath(projectId, bookId)
     const arr = localEntriesAsc(bookId)
     const existing = arr.find((e) => e.id === entryId)
     if (!existing) throw new Error('Entry not found')
     if (existing.transferId) throw new Error('Transfers can only be changed from the sending book.')
 
-    // Strip internal-only keys before writing to Firebase
+    // Strip internal-only keys before writing
     // eslint-disable-next-line no-unused-vars
     const { _localCategories, id: _id, balanceAfter: _b, ...clean } = payload
     const changed = { ...clean, amount: Number(clean.amount) }
@@ -250,11 +296,17 @@ export function AppDataProvider({ children }) {
       .map((e) => (e.id === entryId ? { ...e, ...changed } : e))
       .sort(compareOldestFirst)
 
-    const updates = { [`${base}/updatedAt`]: Date.now() }
-    Object.entries(changed).forEach(([k, v]) => { if (v !== undefined) updates[`${base}/entries/${entryId}/${k}`] = v })
+    // The entry's own new balance goes in the same write as its other changes
+    const own = balanceChanges(next, -Infinity).find(([id]) => id === entryId)
+    const fields = forUpdate(changed)
+    if (own) fields.balanceAfter = own[1]
     const from = Math.min(Number(existing.timestamp || 0), Number(changed.timestamp ?? existing.timestamp ?? 0))
-    Object.assign(updates, balanceUpdates(base, next, from))
-    return update(ref(db), updates).catch((err) => { throw new Error(friendlyDbError(err)) })
+    const ops = [
+      { type: 'update', ref: entryDoc(user.uid, projectId, bookId, entryId), data: fields },
+      ...balanceOps(projectId, bookId, next, from, entryId),
+      touchBook(projectId, bookId),
+    ]
+    return commitAll(ops).catch((err) => { throw new Error(friendlyDbError(err)) })
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.uid])
 
@@ -268,9 +320,8 @@ export function AppDataProvider({ children }) {
   // ── Recurring entry templates (Quick Add) ────────────────────────────────
 
   const saveTemplate = useCallback(async (projectId, bookId, template) => {
-    const templatesRef = ref(db, `users/${user.uid}/projects/${projectId}/books/${bookId}/templates`)
-    const newRef = push(templatesRef)
-    await set(newRef, {
+    const ref = doc(templatesCol(user.uid, projectId, bookId))
+    await setDoc(ref, {
       label: template.label || template.description,
       amount: Number(template.amount),
       description: template.description,
@@ -281,37 +332,36 @@ export function AppDataProvider({ children }) {
       isSavings: Boolean(template.isSavings),
       createdAt: Date.now(),
     }).catch((err) => { throw new Error(friendlyDbError(err)) })
-    return newRef.key
+    return ref.id
   }, [user?.uid])
 
   const deleteTemplate = useCallback(async (projectId, bookId, templateId) => {
-    await remove(ref(db, `users/${user.uid}/projects/${projectId}/books/${bookId}/templates/${templateId}`))
+    await commitAll([{ type: 'delete', ref: templateDoc(user.uid, projectId, bookId, templateId) }])
       .catch((err) => { throw new Error(friendlyDbError(err)) })
   }, [user?.uid])
 
   // ── Categories ────────────────────────────────────────────────────────────
 
   const updateCategories = useCallback(async (projectId, bookId, categories) => {
-    const nextCategories = normaliseCategories(categories)
-    await set(ref(db, `users/${user.uid}/categories`), nextCategories)
+    await setUserField(user.uid, 'categories', normaliseCategories(categories))
       .catch((err) => { throw new Error(friendlyDbError(err)) })
   }, [user?.uid])
 
   const getCategories = useCallback(async (projectId, bookId) => {
     try {
-      const snapshot = await get(ref(db, `users/${user.uid}/categories`))
-      const shared = normaliseCategories(snapshot.val())
+      const snap = await getDoc(userDoc(user.uid))
+      const shared = normaliseCategories(snap.exists() ? snap.data().categories : null)
       if (shared.length > 0) return shared
 
+      // Very old accounts kept categories on each book
       if (projectId && bookId) {
-        const legacySnapshot = await get(ref(db, `users/${user.uid}/projects/${projectId}/books/${bookId}/categories`))
-        const legacy = normaliseCategories(legacySnapshot.val())
+        const book = await getDoc(bookDoc(user.uid, projectId, bookId))
+        const legacy = normaliseCategories(book.exists() ? book.data().categories : null)
         if (legacy.length > 0) {
-          await set(ref(db, `users/${user.uid}/categories`), legacy)
+          await setUserField(user.uid, 'categories', legacy)
           return legacy
         }
       }
-
       return []
     } catch {
       return []
@@ -322,9 +372,7 @@ export function AppDataProvider({ children }) {
 
   /**
    * Transfer money between two books, even when they belong to different projects.
-   *
-   * The write is done as one multi-location Firebase update so either both ledger
-   * entries land together or neither does.
+   * Both ledger entries are written in one batch, so either both land or neither does.
    */
   const transferBetweenBooks = useCallback(async ({
     sourceProjectId,
@@ -334,117 +382,93 @@ export function AppDataProvider({ children }) {
     amount,
     note = '',
   }) => {
+    const uid = user.uid
     const numericAmount = Number(amount)
     if (!Number.isFinite(numericAmount) || numericAmount <= 0) {
       throw new Error('Enter a valid transfer amount.')
     }
-
     if (!sourceProjectId || !sourceBookId || !destinationProjectId || !destinationBookId) {
       throw new Error('Select both source and destination books.')
     }
-
     if (sourceProjectId === destinationProjectId && sourceBookId === destinationBookId) {
       throw new Error('Source and destination books must be different.')
     }
 
     const [sourceProjectSnap, destinationProjectSnap, sourceBookSnap, destinationBookSnap] = await Promise.all([
-      get(ref(db, `users/${user.uid}/projects/${sourceProjectId}`)),
-      get(ref(db, `users/${user.uid}/projects/${destinationProjectId}`)),
-      get(ref(db, `users/${user.uid}/projects/${sourceProjectId}/books/${sourceBookId}`)),
-      get(ref(db, `users/${user.uid}/projects/${destinationProjectId}/books/${destinationBookId}`)),
+      getDoc(projectDoc(uid, sourceProjectId)),
+      getDoc(projectDoc(uid, destinationProjectId)),
+      getDoc(bookDoc(uid, sourceProjectId, sourceBookId)),
+      getDoc(bookDoc(uid, destinationProjectId, destinationBookId)),
     ])
-
     if (!sourceProjectSnap.exists()) throw new Error('Source project not found.')
     if (!destinationProjectSnap.exists()) throw new Error('Destination project not found.')
     if (!sourceBookSnap.exists()) throw new Error('Source book not found.')
     if (!destinationBookSnap.exists()) throw new Error('Destination book not found.')
 
-    const sourceProject = sourceProjectSnap.val() || {}
-    const destinationProject = destinationProjectSnap.val() || {}
-    const sourceBook = sourceBookSnap.val() || {}
-    const destinationBook = destinationBookSnap.val() || {}
+    const sourceProject = sourceProjectSnap.data()
+    const destinationProject = destinationProjectSnap.data()
+    const sourceBook = sourceBookSnap.data()
+    const destinationBook = destinationBookSnap.data()
 
     const [sourceEntriesSnap, destinationEntriesSnap] = await Promise.all([
-      get(ref(db, `users/${user.uid}/projects/${sourceProjectId}/books/${sourceBookId}/entries`)),
-      get(ref(db, `users/${user.uid}/projects/${destinationProjectId}/books/${destinationBookId}/entries`)),
+      getDocs(entriesCol(uid, sourceProjectId, sourceBookId)),
+      getDocs(entriesCol(uid, destinationProjectId, destinationBookId)),
     ])
-
-    const sourceEntries = toArray(sourceEntriesSnap.val())
-    const destinationEntries = toArray(destinationEntriesSnap.val())
-
+    const sourceEntries = docsOf(sourceEntriesSnap)
+    const destinationEntries = docsOf(destinationEntriesSnap)
 
     const calculateBookBalance = (entriesList) => roundMoney(entriesList.reduce((acc, e) => acc + signedAmountOf(e), 0))
-
     const sourceBalance = calculateBookBalance(sourceEntries)
-
     if (numericAmount > sourceBalance) {
       throw new Error(`Insufficient balance. Available: ${sourceBalance.toFixed(2)}`)
     }
 
     const timestamp = Date.now()
     const transferId = `txfr_${timestamp}_${Math.random().toString(36).slice(2, 7)}`
-
-    const sourceEntryRef = push(ref(db, `users/${user.uid}/projects/${sourceProjectId}/books/${sourceBookId}/entries`))
-    const destinationEntryRef = push(ref(db, `users/${user.uid}/projects/${destinationProjectId}/books/${destinationBookId}/entries`))
+    const sourceEntryRef = doc(entriesCol(uid, sourceProjectId, sourceBookId))
+    const destinationEntryRef = doc(entriesCol(uid, destinationProjectId, destinationBookId))
 
     const sourceBalanceAfter = Number((sourceBalance - numericAmount).toFixed(2))
-    const destinationBalance = calculateBookBalance(destinationEntries)
-    const destinationBalanceAfter = Number((destinationBalance + numericAmount).toFixed(2))
-
+    const destinationBalanceAfter = Number((calculateBookBalance(destinationEntries) + numericAmount).toFixed(2))
     const transferScope = sourceProjectId === destinationProjectId ? 'internal' : 'cross_project'
     const noteSuffix = note ? ` · ${note}` : ''
 
-    const sourceDescription = `Transfer to ${destinationBook.name} (${destinationProject.name})${noteSuffix}`
-    const destinationDescription = `Transfer from ${sourceBook.name} (${sourceProject.name})${noteSuffix}`
-
-    const updates = {
-      [`users/${user.uid}/projects/${sourceProjectId}/books/${sourceBookId}/entries/${sourceEntryRef.key}`]: {
-        amount: numericAmount,
-        type: 'transfer_out',
-        description: sourceDescription,
-        category: 'Transfer',
-        mode: 'Internal',
-        balanceAfter: sourceBalanceAfter,
-        enteredBy: '',
-        timestamp,
-        notes: note,
-        transferId,
-        transferScope,
-        fromProjectId: sourceProjectId,
-        fromBookId: sourceBookId,
-        toProjectId: destinationProjectId,
-        toBookId: destinationBookId,
-        isTransfer: true,
-        isSavings: false,
-      },
-      [`users/${user.uid}/projects/${destinationProjectId}/books/${destinationBookId}/entries/${destinationEntryRef.key}`]: {
-        amount: numericAmount,
-        type: 'transfer_in',
-        description: destinationDescription,
-        category: 'Transfer',
-        mode: 'Internal',
-        balanceAfter: destinationBalanceAfter,
-        enteredBy: '',
-        timestamp,
-        notes: note,
-        transferId,
-        transferScope,
-        fromProjectId: sourceProjectId,
-        fromBookId: sourceBookId,
-        toProjectId: destinationProjectId,
-        toBookId: destinationBookId,
-        isTransfer: true,
-        isSavings: false,
-      },
-      [`users/${user.uid}/projects/${sourceProjectId}/books/${sourceBookId}/updatedAt`]: timestamp,
-      [`users/${user.uid}/projects/${destinationProjectId}/books/${destinationBookId}/updatedAt`]: timestamp,
+    const shared = {
+      amount: numericAmount,
+      category: 'Transfer',
+      mode: 'Internal',
+      enteredBy: '',
+      timestamp,
+      notes: note,
+      transferId,
+      transferScope,
+      fromProjectId: sourceProjectId,
+      fromBookId: sourceBookId,
+      toProjectId: destinationProjectId,
+      toBookId: destinationBookId,
+      isTransfer: true,
+      isSavings: false,
     }
-
-    await update(ref(db), updates).catch((err) => { throw new Error(friendlyDbError(err)) })
+    const batch = writeBatch(db)
+    batch.set(sourceEntryRef, {
+      ...shared,
+      type: 'transfer_out',
+      description: `Transfer to ${destinationBook.name} (${destinationProject.name})${noteSuffix}`,
+      balanceAfter: sourceBalanceAfter,
+    })
+    batch.set(destinationEntryRef, {
+      ...shared,
+      type: 'transfer_in',
+      description: `Transfer from ${sourceBook.name} (${sourceProject.name})${noteSuffix}`,
+      balanceAfter: destinationBalanceAfter,
+    })
+    batch.update(bookDoc(uid, sourceProjectId, sourceBookId), { updatedAt: timestamp })
+    batch.update(bookDoc(uid, destinationProjectId, destinationBookId), { updatedAt: timestamp })
+    await batch.commit().catch((err) => { throw new Error(friendlyDbError(err)) })
 
     // Either book may hold entries dated after "now"; keep running balances exact.
-    await _recalcBalancesFrom(user.uid, sourceProjectId, sourceBookId, timestamp)
-    await _recalcBalancesFrom(user.uid, destinationProjectId, destinationBookId, timestamp)
+    await recalcBalances(uid, sourceProjectId, sourceBookId, timestamp)
+    await recalcBalances(uid, destinationProjectId, destinationBookId, timestamp)
   }, [user?.uid])
 
   /**
@@ -452,17 +476,18 @@ export function AppDataProvider({ children }) {
    * both sides; the destination stays fixed (delete and re-send to change it).
    */
   const updateTransfer = useCallback(async (projectId, bookId, entryId, { amount, note = '' }) => {
+    const uid = user.uid
     const numericAmount = Number(amount)
     if (!Number.isFinite(numericAmount) || numericAmount <= 0) {
       throw new Error('Enter a valid transfer amount.')
     }
 
-    const entryPath = `users/${user.uid}/projects/${projectId}/books/${bookId}/entries/${entryId}`
-    const entry = (await get(ref(db, entryPath))).val()
+    const entrySnap = await getDoc(entryDoc(uid, projectId, bookId, entryId))
+    const entry = entrySnap.exists() ? entrySnap.data() : null
     if (!entry?.transferId) throw new Error('Transfer not found.')
     if (entry.type !== 'transfer_out') throw new Error('Transfers can only be changed from the sending book.')
 
-    const sourceEntries = toArray((await get(ref(db, `users/${user.uid}/projects/${projectId}/books/${bookId}/entries`))).val())
+    const sourceEntries = docsOf(await getDocs(entriesCol(uid, projectId, bookId)))
     const balanceWithoutThis = roundMoney(
       sourceEntries.filter((e) => e.id !== entryId).reduce((acc, e) => acc + signedAmountOf(e), 0)
     )
@@ -470,137 +495,79 @@ export function AppDataProvider({ children }) {
       throw new Error(`Insufficient balance. Available: ${balanceWithoutThis.toFixed(2)}`)
     }
 
-    const counterpart = await _findTransferCounterpart(user.uid, entry)
+    const counterpart = await findTransferCounterpart(uid, entry)
     const cleanNote = String(note || '').trim()
     const withNote = (description) => {
       const base = String(description || '').split(' · ')[0]
       return cleanNote ? `${base} · ${cleanNote}` : base
     }
 
-    const updates = {
-      [`${entryPath}/amount`]: numericAmount,
-      [`${entryPath}/notes`]: cleanNote,
-      [`${entryPath}/description`]: withNote(entry.description),
-    }
-    if (counterpart) {
-      const cPath = `users/${user.uid}/projects/${counterpart.projectId}/books/${counterpart.bookId}/entries/${counterpart.entryId}`
-      updates[`${cPath}/amount`] = numericAmount
-      updates[`${cPath}/notes`] = cleanNote
-      updates[`${cPath}/description`] = withNote(counterpart.entry.description)
-    }
-    await update(ref(db), updates).catch((err) => { throw new Error(friendlyDbError(err)) })
-
     const now = Date.now()
-    await _recalcBalances(user.uid, projectId, bookId)
-    await update(ref(db, `users/${user.uid}/projects/${projectId}/books/${bookId}`), { updatedAt: now })
+    const batch = writeBatch(db)
+    batch.update(entryDoc(uid, projectId, bookId, entryId), { amount: numericAmount, notes: cleanNote, description: withNote(entry.description) })
+    batch.update(bookDoc(uid, projectId, bookId), { updatedAt: now })
     if (counterpart) {
-      await _recalcBalances(user.uid, counterpart.projectId, counterpart.bookId)
-      await update(ref(db, `users/${user.uid}/projects/${counterpart.projectId}/books/${counterpart.bookId}`), { updatedAt: now })
+      batch.update(entryDoc(uid, counterpart.projectId, counterpart.bookId, counterpart.entryId), {
+        amount: numericAmount, notes: cleanNote, description: withNote(counterpart.entry.description),
+      })
+      batch.update(bookDoc(uid, counterpart.projectId, counterpart.bookId), { updatedAt: now })
     }
+    await batch.commit().catch((err) => { throw new Error(friendlyDbError(err)) })
+
+    await recalcBalances(uid, projectId, bookId)
+    if (counterpart) await recalcBalances(uid, counterpart.projectId, counterpart.bookId)
   }, [user?.uid])
 
   // Save (or clear, when pinHash is falsy) a PIN. pinLength lets the unlock
   // screen show the right number of digits straight away.
   const setPinForBook = useCallback(async (projectId, bookId, pinHash, pinLength) => {
-    const path = `users/${user.uid}/projects/${projectId}/books/${bookId}`
-    await update(ref(db, path), {
-      pinHash: pinHash || null,
-      pinLength: pinHash && (pinLength === 4 || pinLength === 6) ? pinLength : null,
+    await updateDoc(bookDoc(user.uid, projectId, bookId), {
+      pinHash: pinHash || deleteField(),
+      pinLength: pinHash && (pinLength === 4 || pinLength === 6) ? pinLength : deleteField(),
       updatedAt: Date.now(),
     }).catch((err) => { throw new Error(friendlyDbError(err)) })
   }, [user?.uid])
 
   const setPinForProject = useCallback(async (projectId, pinHash, pinLength) => {
-    const path = `users/${user.uid}/projects/${projectId}`
-    await update(ref(db, path), {
-      pinHash: pinHash || null,
-      pinLength: pinHash && (pinLength === 4 || pinLength === 6) ? pinLength : null,
+    await updateDoc(projectDoc(user.uid, projectId), {
+      pinHash: pinHash || deleteField(),
+      pinLength: pinHash && (pinLength === 4 || pinLength === 6) ? pinLength : deleteField(),
       updatedAt: Date.now(),
     }).catch((err) => { throw new Error(friendlyDbError(err)) })
   }, [user?.uid])
 
-  // ── PIN-verified deletion ─────────────────────────────────────────────────
-
-  const deleteBookWithPin = useCallback(async (projectId, bookId, pin) => {
-    const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000'
-    const token = localStorage.getItem('auth_token')
-    
-    const response = await fetch(
-      `${baseUrl}/api/v1/projects/${projectId}/books/${bookId}`,
-      {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ pin }),
-      }
-    )
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}))
-      throw new Error(errorData.detail || 'Failed to delete book')
-    }
-  }, [])
-
-  const deleteProjectWithPin = useCallback(async (projectId, pin) => {
-    const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000'
-    const token = localStorage.getItem('auth_token')
-    
-    const response = await fetch(
-      `${baseUrl}/api/v1/projects/${projectId}`,
-      {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ pin }),
-      }
-    )
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}))
-      throw new Error(errorData.detail || 'Failed to delete project')
-    }
-  }, [])
-
   // ── Trips / Expense Groups ──────────────────────────────────────────────────
 
   const createTrip = useCallback(async ({ name, description }) => {
-    const tripRef = push(ref(db, `users/${user.uid}/trips`))
-    await set(tripRef, {
+    const ref = doc(tripsCol(user.uid))
+    await setDoc(ref, {
       name,
       description: description || '',
       createdAt: Date.now(),
     }).catch((err) => { throw new Error(friendlyDbError(err)) })
-    return tripRef.key
+    return ref.id
   }, [user?.uid])
 
   const deleteTrip = useCallback(async (tripId) => {
-    await remove(ref(db, `users/${user.uid}/trips/${tripId}`))
+    await commitAll([{ type: 'delete', ref: tripDoc(user.uid, tripId) }])
       .catch((err) => { throw new Error(friendlyDbError(err)) })
   }, [user?.uid])
 
+  // A group's links live in its `entries` map, keyed projectId_bookId_entryId
   const linkEntriesToTrip = useCallback(async (tripId, entryRefs) => {
-    const updates = {}
-    const timestamp = Date.now()
-    entryRefs.forEach(({ projectId, bookId, entryId }) => {
-      const path = `users/${user.uid}/trips/${tripId}/entries/${projectId}_${bookId}_${entryId}`
-      updates[path] = {
-        projectId,
-        bookId,
-        entryId,
-        addedAt: timestamp,
-      }
-    })
-    await update(ref(db), updates).catch((err) => {
-      throw new Error(friendlyDbError(err))
-    })
+    if (!entryRefs.length) return
+    const addedAt = Date.now()
+    const pairs = entryRefs.flatMap(({ projectId, bookId, entryId }) => [
+      new FieldPath('entries', `${projectId}_${bookId}_${entryId}`),
+      { projectId, bookId, entryId, addedAt },
+    ])
+    const batch = writeBatch(db)
+    batch.update(tripDoc(user.uid, tripId), ...pairs)
+    await batch.commit().catch((err) => { throw new Error(friendlyDbError(err)) })
   }, [user?.uid])
 
   const unlinkEntryFromTrip = useCallback(async (tripId, projectId, bookId, entryId) => {
-    await remove(ref(db, `users/${user.uid}/trips/${tripId}/entries/${projectId}_${bookId}_${entryId}`))
+    await updateDoc(tripDoc(user.uid, tripId), new FieldPath('entries', `${projectId}_${bookId}_${entryId}`), deleteField())
       .catch((err) => { throw new Error(friendlyDbError(err)) })
   }, [user?.uid])
 
@@ -619,8 +586,6 @@ export function AppDataProvider({ children }) {
     createBook,
     updateBook,
     deleteBook,
-    deleteBookWithPin,
-    deleteProjectWithPin,
     addEntry,
     deleteEntry,
     updateEntry,
@@ -641,7 +606,6 @@ export function AppDataProvider({ children }) {
     loading, error, projects, booksByProject, entriesByBook, templatesByBook, trips, categories,
     createProject, updateProject, deleteProject,
     createBook, updateBook, deleteBook,
-    deleteBookWithPin, deleteProjectWithPin,
     addEntry, deleteEntry, updateEntry,
     getBookCurrentBalance, updateCategories, getCategories,
     saveTemplate, deleteTemplate,
@@ -652,6 +616,7 @@ export function AppDataProvider({ children }) {
   return <AppDataContext.Provider value={value}>{children}</AppDataContext.Provider>
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useAppData() {
   const ctx = useContext(AppDataContext)
   if (!ctx) throw new Error('useAppData must be used inside AppDataProvider')
@@ -668,17 +633,16 @@ function signedAmountOf(entry) {
 }
 
 /**
- * balanceAfter paths that change for entries at/after `fromTimestamp`.
- * `list` is ascending; `skipId` is an entry written whole elsewhere in the
- * same update (Firebase rejects overlapping paths).
+ * [entryId, balanceAfter] for entries at/after `fromTimestamp` whose stored
+ * balance is wrong. `list` is ascending; `skipId` is written whole elsewhere.
  */
-function balanceUpdates(base, list, fromTimestamp, skipId = null) {
-  const out = {}
+function balanceChanges(list, fromTimestamp, skipId = null) {
+  const out = []
   let running = 0
   for (const e of list) {
     running = roundMoney(running + signedAmountOf(e))
     if (e.id === skipId || Number(e.timestamp) < fromTimestamp) continue
-    if (Number(e.balanceAfter) !== running) out[`${base}/entries/${e.id}/balanceAfter`] = running
+    if (Number(e.balanceAfter) !== running) out.push([e.id, running])
   }
   return out
 }
@@ -703,14 +667,23 @@ function findTransferCounterpartLocal(entriesByBook, entry) {
 }
 
 /** Locate the other side of a linked transfer, or null if it no longer exists. */
-async function _findTransferCounterpart(uid, entry) {
+async function findTransferCounterpart(uid, entry) {
   const isOut = entry.type === 'transfer_out'
   const projectId = isOut ? entry.toProjectId : entry.fromProjectId
   const bookId = isOut ? entry.toBookId : entry.fromBookId
   if (!entry.transferId || !projectId || !bookId) return null
-  const snap = await get(ref(db, `users/${uid}/projects/${projectId}/books/${bookId}/entries`))
-  const match = toArray(snap.val()).find((e) => e.transferId === entry.transferId && e.type === (isOut ? 'transfer_in' : 'transfer_out'))
+  const list = docsOf(await getDocs(entriesCol(uid, projectId, bookId)))
+  const match = list.find((e) => e.transferId === entry.transferId && e.type === (isOut ? 'transfer_in' : 'transfer_out'))
   return match ? { projectId, bookId, entryId: match.id, entry: match } : null
+}
+
+/** Rewrite running balances in a book from `fromTimestamp` on (all of them by default). */
+async function recalcBalances(uid, projectId, bookId, fromTimestamp = -Infinity) {
+  const list = docsOf(await getDocs(entriesCol(uid, projectId, bookId))).sort(compareOldestFirst)
+  const ops = balanceChanges(list, fromTimestamp).map(([id, balanceAfter]) => ({
+    type: 'update', ref: entryDoc(uid, projectId, bookId, id), data: { balanceAfter },
+  }))
+  if (ops.length) await commitAll(ops)
 }
 
 // Avoid floating-point drift (e.g. 0.1 + 0.2) in stored balances.
@@ -720,24 +693,10 @@ function roundMoney(n) {
 
 function friendlyDbError(err) {
   const msg = err?.message || String(err)
-  if (msg.includes('permission_denied')) return 'Permission denied. Check your Firebase rules.'
-  if (msg.includes('network')) return 'Network error. Please check your connection.'
+  const code = err?.code || ''
+  if (code === 'permission-denied' || msg.includes('permission')) return 'Permission denied. Please sign in again.'
+  if (code === 'unavailable' || msg.includes('network') || msg.includes('offline')) return 'Network error. Please check your connection.'
   return msg
-}
-
-async function _recalcBalances(uid, projectId, bookId) {
-  const entriesRef = ref(db, `users/${uid}/projects/${projectId}/books/${bookId}/entries`)
-  const snap = await get(entriesRef)
-  const arr = toArray(snap.val() || {}).sort(compareOldestFirst)
-  const updates = {}
-  let running = 0
-  for (const e of arr) {
-    const signed = signedAmountOf(e)
-    running = roundMoney(running + signed)
-    updates[`users/${uid}/projects/${projectId}/books/${bookId}/entries/${e.id}/balanceAfter`] = running
-  }
-
-  await update(ref(db), updates)
 }
 
 function normaliseCategories(value) {
@@ -772,27 +731,4 @@ function normaliseCategories(value) {
   }
 
   return cleaned
-}
-
-async function _recalcBalancesFrom(uid, projectId, bookId, fromTimestamp) {
-  const entriesRef = ref(db, `users/${uid}/projects/${projectId}/books/${bookId}/entries`)
-  const snap = await get(entriesRef)
-  const arr = toArray(snap.val() || {}).sort(compareOldestFirst)
-  const updates = {}
-  let running = 0
-
-  for (const entry of arr) {
-    const signed = signedAmountOf(entry)
-    if (entry.timestamp < fromTimestamp) {
-      running = roundMoney(running + signed)
-      continue
-    }
-
-    running = roundMoney(running + signed)
-    updates[`users/${uid}/projects/${projectId}/books/${bookId}/entries/${entry.id}/balanceAfter`] = running
-  }
-
-  if (Object.keys(updates).length > 0) {
-    await update(ref(db), updates)
-  }
 }

@@ -13,7 +13,8 @@ import {
   updateProfile,
   reload,
 } from 'firebase/auth'
-import { getDatabase, ref, set } from 'firebase/database'
+import { connectFirestoreEmulator, deleteDoc, doc, initializeFirestore, setDoc } from 'firebase/firestore'
+import { connectAuthEmulator } from 'firebase/auth'
 import { getMessaging, getToken, deleteToken, onMessage, isSupported as isMessagingSupported } from 'firebase/messaging'
 
 const firebaseConfig = {
@@ -29,8 +30,28 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig)
 const auth = getAuth(app)
-const db = getDatabase(app)
+// Firestore is the app's database. Its cache stays in memory (not on disk), so
+// nothing from one account is left on the device for the next person.
+const db = initializeFirestore(app, { ignoreUndefinedProperties: true })
 let analytics = null
+
+// Local testing against the Firebase emulators (never set in production)
+const USE_EMULATORS = import.meta.env.VITE_USE_EMULATORS === 'true'
+if (USE_EMULATORS) {
+  connectFirestoreEmulator(db, '127.0.0.1', 8080)
+  connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings: true })
+}
+
+/** The old Realtime Database, loaded only when moving an account's data across. */
+export async function legacyDatabase() {
+  const rtdb = await import('firebase/database')
+  const instance = rtdb.getDatabase(app)
+  if (USE_EMULATORS && !instance._emulated) {
+    rtdb.connectDatabaseEmulator(instance, '127.0.0.1', 9000)
+    instance._emulated = true
+  }
+  return { ...rtdb, instance }
+}
 
 if (typeof window !== 'undefined' && firebaseConfig.measurementId) {
   isSupported()
@@ -70,8 +91,8 @@ export async function requestFCMToken(vapidKey = import.meta.env.VITE_FIREBASE_V
       const previous = localStorage.getItem('al_fcm_token')
       localStorage.setItem('al_fcm_token', token)
       if (auth.currentUser?.uid) {
-        const base = `users/${auth.currentUser.uid}/pushTokens`
-        await set(ref(db, `${base}/${keyOf(token)}`), {
+        const uid = auth.currentUser.uid
+        await setDoc(doc(db, 'users', uid, 'pushTokens', keyOf(token)), {
           token,
           updatedAt: Date.now(),
           platform: navigator.userAgent,
@@ -79,7 +100,7 @@ export async function requestFCMToken(vapidKey = import.meta.env.VITE_FIREBASE_V
         }).catch(e => console.warn('Push token DB save error:', e))
         // Tokens rotate; drop the old one so the server stops sending to it
         if (previous && previous !== token) {
-          await set(ref(db, `${base}/${keyOf(previous)}`), null).catch(() => {})
+          await deleteDoc(doc(db, 'users', uid, 'pushTokens', keyOf(previous))).catch(() => {})
         }
       }
     }
@@ -101,7 +122,7 @@ export async function unregisterPushForThisDevice() {
   const uid = auth.currentUser?.uid
   if (token && uid) {
     const key = token.replace(/[.#$[\]/]/g, '_').slice(0, 700)
-    await set(ref(db, `users/${uid}/pushTokens/${key}`), null).catch(() => {})
+    await deleteDoc(doc(db, 'users', uid, 'pushTokens', key)).catch(() => {})
   }
   try {
     const messaging = await messagingPromise

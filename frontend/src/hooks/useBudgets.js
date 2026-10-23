@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
-import { onValue, ref, set } from 'firebase/database'
-import { db } from '../lib/firebase'
+import { onSnapshot } from 'firebase/firestore'
+import { setUserField, userDoc } from '../lib/userData'
 import { useAuth } from '../context/AuthContext'
 
 /**
@@ -43,9 +43,8 @@ export function useBudgets() {
 
   useEffect(() => {
     if (!user?.uid) { setBudgets({}); setLoading(false); return }
-    const budgetsRef = ref(db, `users/${user.uid}/budgets`)
-    const unsub = onValue(budgetsRef, (snap) => {
-      setBudgets(normalise(snap.val()))
+    const unsub = onSnapshot(userDoc(user.uid), (snap) => {
+      setBudgets(normalise(snap.exists() ? snap.data().budgets : null))
       setLoading(false)
     }, () => setLoading(false))
     return unsub
@@ -69,7 +68,7 @@ export function useBudgets() {
       }
     }
     setBudgets(next)
-    await set(ref(db, `users/${user.uid}/budgets`), next)
+    await setUserField(user.uid, 'budgets', next)
   }, [user?.uid, budgets])
 
   return { budgets, setBudget, loading }

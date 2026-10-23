@@ -11,7 +11,6 @@ import {
   signOut,
   updateProfile,
   reload,
-  db,
 } from '../lib/firebase'
 import { unregisterPushForThisDevice } from '../lib/firebase'
 import { claimDeviceFor, releaseDevice } from '../lib/deviceData'
@@ -20,7 +19,8 @@ import {
   reauthenticateWithCredential,
   updatePassword,
 } from 'firebase/auth'
-import { get, ref, remove, set } from 'firebase/database'
+import { getDoc, setDoc } from 'firebase/firestore'
+import { deleteAllUserData, userDoc } from '../lib/userData'
 
 const AuthContext = createContext(null)
 
@@ -160,13 +160,13 @@ export function AuthProvider({ children }) {
 
     // Write profile to DB
     try {
-      await set(ref(db, `users/${cred.user.uid}/profile`), {
+      await setDoc(userDoc(cred.user.uid), { profile: {
         displayName: name?.trim() || '',
         email: cred.user.email,
         provider: 'password',
         emailVerified: false,
         createdAt: Date.now(),
-      })
+      } }, { merge: true })
     } catch { /* non-fatal */ }
 
     // Send verification email — retry once if first attempt fails
@@ -211,15 +211,15 @@ export function AuthProvider({ children }) {
       sessionStorage.removeItem('al_pending_email')
 
       try {
-        const snap = await get(ref(db, `users/${u.uid}/profile`))
-        if (!snap.exists()) {
-          await set(ref(db, `users/${u.uid}/profile`), {
+        const snap = await getDoc(userDoc(u.uid))
+        if (!snap.exists() || !snap.data().profile) {
+          await setDoc(userDoc(u.uid), { profile: {
             displayName: u.displayName || '',
             email: u.email || '',
             provider: 'google',
             emailVerified: true,
             createdAt: Date.now(),
-          })
+          } }, { merge: true })
         }
       } catch { /* non-fatal */ }
 
@@ -275,12 +275,11 @@ export function AuthProvider({ children }) {
       }
     }
 
-    // Update profile in Realtime Database
+    // Update the saved profile
     try {
-      const profileRef = ref(db, `users/${currentUser.uid}/profile`)
-      const snap = await get(profileRef)
-      const existing = snap.val() || {}
-      await set(profileRef, {
+      const snap = await getDoc(userDoc(currentUser.uid))
+      const existing = (snap.exists() && snap.data().profile) || {}
+      await setDoc(userDoc(currentUser.uid), { profile: {
         ...existing,
         displayName: displayName?.trim() || existing.displayName || '',
         phone: phone?.trim() || '',
@@ -288,8 +287,8 @@ export function AuthProvider({ children }) {
         dob: dob || '',
         bio: bio?.trim() || '',
         updatedAt: Date.now(),
-      })
-    } catch (err) {
+      } }, { merge: true })
+    } catch {
       throw new Error('Failed to save profile. Please try again.')
     }
   }, [])
@@ -298,8 +297,8 @@ export function AuthProvider({ children }) {
     const currentUser = auth.currentUser
     if (!currentUser) return null
     try {
-      const snap = await get(ref(db, `users/${currentUser.uid}/profile`))
-      return snap.val() || {}
+      const snap = await getDoc(userDoc(currentUser.uid))
+      return (snap.exists() && snap.data().profile) || {}
     } catch {
       return {}
     }
@@ -334,7 +333,7 @@ export function AuthProvider({ children }) {
     // Data first, and stop if it fails: deleting the login while leaving the
     // records behind would orphan them (and break the privacy promise).
     try {
-      await remove(ref(db, `users/${uid}`))
+      await deleteAllUserData(uid)
     } catch {
       throw new Error('Could not delete your data. Check your connection and try again.')
     }
