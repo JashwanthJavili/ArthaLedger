@@ -33,11 +33,11 @@ html.dark {
   --gold-hover: #E0C084;
   --gold-light: rgba(212, 178, 110, 0.14);
 
-  --bg-page: #1B1C20;
-  --bg-card: #25262B;
-  --bg-card-hover: #2C2D33;
-  --border-card: rgba(255, 255, 255, 0.10);
-  --border-subtle: rgba(255, 255, 255, 0.07);
+  --bg-page: #26282E;
+  --bg-card: #31333A;
+  --bg-card-hover: #383A42;
+  --border-card: rgba(255, 255, 255, 0.12);
+  --border-subtle: rgba(255, 255, 255, 0.08);
 
   --text-main: #F1F1F3;
   --text-muted: #B6B7BF;

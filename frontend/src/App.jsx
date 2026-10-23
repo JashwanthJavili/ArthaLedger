@@ -1,6 +1,6 @@
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { applyUpdateIfReady } from './lib/appUpdate'
-import { useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { AuthProvider } from './context/AuthContext'
 import { AppDataProvider } from './context/AppDataContext'
 import ProtectedRoute from './components/ProtectedRoute'
@@ -20,6 +20,7 @@ import SettingsPage from './pages/SettingsPage'
 import VaultPage from './pages/VaultPage'
 import ExpenseGroupsPage from './pages/ExpenseGroupsPage'
 import ExpenseGroupDetailPage from './pages/ExpenseGroupDetailPage'
+import SplashScreen from './components/common/SplashScreen'
 import { useAuth } from './context/AuthContext'
 import Loader from './components/common/Loader'
 import { ensurePushRegistration, syncReminderFromFirebase } from './lib/notifications'
@@ -62,7 +63,25 @@ function PushSync() {
   return null
 }
 
+// Installed app (home-screen PWA or the Play Store build)
+const isInstalledApp = () =>
+  window.matchMedia('(display-mode: standalone)').matches ||
+  window.navigator.standalone === true ||
+  document.referrer.startsWith('android-app://')
+
+// Show the branded splash once each time the app is opened. sessionStorage
+// lives until the app is closed, so an auto-update reload skips it.
+function shouldShowSplash() {
+  try { return isInstalledApp() && !sessionStorage.getItem('al_visited') } catch { return false }
+}
+
 export default function App() {
+  const [splash, setSplash] = useState(shouldShowSplash)
+  const handleSplashDone = () => {
+    try { sessionStorage.setItem('al_visited', '1') } catch { /* private mode */ }
+    setSplash(false)
+  }
+
   // Lock all PIN-protected items when app comes back from background after 5 min
   useEffect(() => {
     let hiddenAt = null
@@ -86,6 +105,7 @@ export default function App() {
       <PushSync />
       <UpdateOnNavigate />
       <AppDataProvider>
+        {splash && <SplashScreen onDone={handleSplashDone} />}
         <Routes>
           <Route path="/" element={<HomeRoute />} />
           <Route path="/privacy" element={<PrivacyPage />} />

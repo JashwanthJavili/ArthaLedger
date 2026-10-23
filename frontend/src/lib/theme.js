@@ -7,6 +7,6 @@ export function isDarkMode() {
 
 export function setDarkMode(dark) {
   document.documentElement.classList.toggle('dark', dark)
-  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', dark ? '#1B1C20' : '#FAF8F5')
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', dark ? '#26282E' : '#FAF8F5')
   try { localStorage.setItem(KEY, String(dark)) } catch { /* storage unavailable */ }
 }
