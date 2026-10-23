@@ -12,6 +12,7 @@ import VerifyEmailPage from './pages/auth/VerifyEmailPage'
 import { lockAll } from './lib/pin'
 import LandingPage from './pages/LandingPage'
 import PrivacyPage from './pages/PrivacyPage'
+import PricingPage from './pages/PricingPage'
 import DashboardPage from './pages/DashboardPage'
 import ProjectDetailPage from './pages/ProjectDetailPage'
 import BookPage from './pages/BookPage'
@@ -90,6 +91,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<HomeRoute />} />
           <Route path="/privacy" element={<PrivacyPage />} />
+          <Route path="/pricing" element={<PricingPage />} />
           <Route path="/login"           element={<PublicRoute><LoginPage /></PublicRoute>} />
           <Route path="/register"        element={<PublicRoute><RegisterPage /></PublicRoute>} />
           <Route path="/forgot-password" element={<PublicRoute><ForgotPasswordPage /></PublicRoute>} />

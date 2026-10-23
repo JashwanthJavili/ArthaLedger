@@ -27,7 +27,7 @@
     <script>
       try {
         // Light by default; dark only if chosen in Settings. Landing page is always light.
-        var dark = localStorage.getItem('sl_dark') === 'true' && location.pathname !== '/';
+        var dark = localStorage.getItem('sl_dark') === 'true' && location.pathname !== '/' && location.pathname !== '/pricing';
         var meta = document.querySelector('meta[name="theme-color"]');
         if (meta) meta.setAttribute('content', dark ? '#26282E' : '#FAF8F5');
         if (dark) {

@@ -1,164 +1,25 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
-import { motion, AnimatePresence, useReducedMotion, useScroll, useMotionValueEvent } from 'framer-motion'
+import { useLocation } from 'react-router-dom'
+import { motion, useReducedMotion } from 'framer-motion'
 import {
-  ArrowRight, ArrowDownLeft, ArrowUpRight, BookOpen, Bell, Users, Lock, FileSpreadsheet, WifiOff, ShieldCheck,
-  Tags, PieChart, CloudUpload, Download, Menu, X, Plus, Minus, NotebookPen, Calculator, Landmark, Star, Mail,
-  Handshake, GraduationCap, Home as HomeIcon, Store, Laptop, Plane, Target, Quote, ChevronDown, FolderOpen, Check,
-  User, Briefcase, ShoppingBasket, ArrowLeftRight,
+  Check, ArrowDownLeft, ArrowUpRight, BookOpen, Bell, Users, Lock, FileSpreadsheet, WifiOff, ShieldCheck,
+  Tags, PieChart, CloudUpload, Download, Plus, Minus, NotebookPen, Calculator, Landmark, Star, Mail,
+  Handshake, GraduationCap, Home as HomeIcon, Store, Laptop, Plane, Target, Quote, FolderOpen,
+  User, Briefcase, ShoppingBasket, ArrowLeftRight, AlertTriangle, TrendingUp, Sparkles, Gift,
 } from 'lucide-react'
 import { forceLightTheme, restoreTheme } from '../lib/theme'
 import { api } from '../lib/api'
+import SiteHeader from '../components/marketing/SiteHeader'
+import SiteFooter from '../components/marketing/SiteFooter'
+import BeforeAfter from '../components/marketing/BeforeAfter'
+import { Counter, Donut, InOutBars, BudgetBar, Sparkline } from '../components/marketing/Charts'
+import { Reveal, Eyebrow, SectionTitle, PrimaryLink, GhostLink, FaqItem, ApkNote } from '../components/marketing/ui'
+import { EASE, APK_URL, CONTACT, GOLD_TINT, GOLD_SOFT, BAND_BG, goldBtn, card } from '../components/marketing/constants'
 
 /* ─────────────────────────── shared bits ─────────────────────────── */
 
-const EASE = [0.22, 1, 0.36, 1]
-const APK_URL = '/download/ArthaLedger.apk'
-const CONTACT = 'jashwanthjavili7@gmail.com'
 const IN = 'text-emerald-600'
 const OUT = 'text-rose-600'
-const GOLD_TINT = 'color-mix(in srgb, var(--gold-primary) 14%, transparent)'
-const GOLD_SOFT = 'color-mix(in srgb, var(--gold-primary) 26%, transparent)'
-const NAV = [['#how', 'How it works'], ['#features', 'Features'], ['#pricing', 'Pricing'], ['#faq', 'FAQ']]
-
-function Reveal({ children, delay = 0, className = '', style, as = 'div' }) {
-  const reduce = useReducedMotion()
-  const Tag = motion[as]
-  return (
-    <Tag
-      className={className}
-      style={style}
-      initial={reduce ? { opacity: 0 } : { opacity: 0, y: 22 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: '-50px' }}
-      transition={{ duration: reduce ? 0.3 : 0.65, delay, ease: EASE }}
-    >
-      {children}
-    </Tag>
-  )
-}
-
-function Logo({ size = 36 }) {
-  return (
-    <img src="/icons/maskable-192.png" alt="" width={size} height={size} draggable="false"
-      className="shrink-0 rounded-full" style={{ width: size, height: size, boxShadow: '0 0 0 1px var(--border-card)' }} />
-  )
-}
-
-function Eyebrow({ children, className = '' }) {
-  return <p className={`text-[11px] font-semibold uppercase tracking-[0.22em] ${className}`} style={{ color: 'var(--gold-primary)' }}>{children}</p>
-}
-
-function SectionTitle({ eyebrow, title, sub, center = true }) {
-  return (
-    <Reveal className={center ? 'mx-auto max-w-2xl text-center' : 'max-w-xl'}>
-      <Eyebrow>{eyebrow}</Eyebrow>
-      <h2 className="font-serif-luxury mt-3 text-[1.85rem] leading-[1.12] font-semibold tracking-tight [text-wrap:balance] sm:text-[2.6rem]" style={{ color: 'var(--text-main)' }}>{title}</h2>
-      {sub && <p className="mt-3 text-[15px] leading-relaxed sm:text-base" style={{ color: 'var(--text-muted)' }}>{sub}</p>}
-    </Reveal>
-  )
-}
-
-const goldBtn = {
-  background: 'linear-gradient(135deg, var(--gold-hover), var(--gold-primary))',
-  color: '#1F1A14',
-  boxShadow: '0 12px 30px -14px var(--gold-primary)',
-}
-
-function PrimaryLink({ to, href, download, children, icon: Icon = ArrowRight, className = '' }) {
-  const cls = `group inline-flex min-h-12 items-center justify-center gap-2 rounded-full px-6 text-[15px] font-semibold transition-[filter,transform] duration-200 active:scale-[0.98] hover:brightness-105 ${className}`
-  const inner = <>{children}<Icon size={17} className="transition-transform duration-200 group-hover:translate-x-0.5" /></>
-  return href
-    ? <a href={href} download={download} className={cls} style={goldBtn}>{inner}</a>
-    : <Link to={to} className={cls} style={goldBtn}>{inner}</Link>
-}
-
-function GhostLink({ to, href, download, children, icon: Icon, className = '' }) {
-  const cls = `inline-flex min-h-12 items-center justify-center gap-2 rounded-full px-6 text-[15px] font-semibold transition-colors duration-200 hover:bg-[var(--bg-card-hover)] active:scale-[0.98] ${className}`
-  const style = { color: 'var(--text-main)', border: '1px solid var(--border-card)', background: 'var(--bg-card)' }
-  const inner = <>{Icon && <Icon size={17} />}{children}</>
-  return href
-    ? <a href={href} download={download} className={cls} style={style}>{inner}</a>
-    : <Link to={to} className={cls} style={style}>{inner}</Link>
-}
-
-/* ─────────────────────────── header ─────────────────────────── */
-
-function Header() {
-  const { scrollY } = useScroll()
-  const [scrolled, setScrolled] = useState(false)
-  const [open, setOpen] = useState(false)
-  useMotionValueEvent(scrollY, 'change', (y) => setScrolled(y > 8))
-
-  return (
-    <header className="sticky top-0 z-50" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
-      <div
-        className="transition-[background-color,box-shadow,border-color] duration-300"
-        style={{
-          background: scrolled || open ? 'color-mix(in srgb, var(--bg-page) 88%, transparent)' : 'transparent',
-          backdropFilter: scrolled || open ? 'saturate(160%) blur(16px)' : 'none',
-          WebkitBackdropFilter: scrolled || open ? 'saturate(160%) blur(16px)' : 'none',
-          borderBottom: `1px solid ${scrolled || open ? 'var(--border-subtle)' : 'transparent'}`,
-        }}
-      >
-        <div className="mx-auto flex h-16 max-w-6xl items-center gap-3 px-4 sm:px-6">
-          <Link to="/" className="flex min-h-11 items-center gap-2.5" aria-label="ArthaLedger home" onClick={() => setOpen(false)}>
-            <Logo size={34} />
-            <span className="font-serif-luxury text-[18px] font-semibold tracking-tight" style={{ color: 'var(--text-main)' }}>ArthaLedger</span>
-          </Link>
-
-          <nav className="ml-6 hidden items-center gap-1 md:flex" aria-label="Main">
-            {NAV.map(([href, label]) => (
-              <a key={href} href={href} className="rounded-full px-3.5 py-2 text-[14px] font-medium transition-colors hover:bg-[var(--border-subtle)]" style={{ color: 'var(--text-muted)' }}>
-                {label}
-              </a>
-            ))}
-          </nav>
-
-          <div className="ml-auto flex items-center gap-2">
-            <Link to="/login" className="hidden min-h-11 items-center rounded-full px-4 text-[14px] font-semibold transition-colors hover:bg-[var(--border-subtle)] min-[420px]:inline-flex" style={{ color: 'var(--text-main)' }}>
-              Sign in
-            </Link>
-            <Link to="/register" className="hidden min-h-11 items-center rounded-full px-5 text-[14px] font-semibold hover:brightness-105 sm:inline-flex" style={goldBtn}>
-              Get started
-            </Link>
-            <button type="button" onClick={() => setOpen(v => !v)} aria-label={open ? 'Close menu' : 'Open menu'} aria-expanded={open}
-              className="flex h-11 w-11 items-center justify-center rounded-full md:hidden" style={{ color: 'var(--text-main)', border: '1px solid var(--border-card)', background: 'var(--bg-card)' }}>
-              {open ? <X size={19} /> : <Menu size={19} />}
-            </button>
-          </div>
-        </div>
-
-        <AnimatePresence initial={false}>
-          {open && (
-            <motion.nav
-              aria-label="Menu"
-              initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.28, ease: EASE }}
-              className="overflow-hidden md:hidden"
-            >
-              <div className="mx-auto max-w-6xl space-y-1 px-4 pb-5 pt-1">
-                {NAV.map(([href, label]) => (
-                  <a key={href} href={href} onClick={() => setOpen(false)} className="flex min-h-12 items-center rounded-2xl px-4 text-[15px] font-medium" style={{ color: 'var(--text-main)' }}>
-                    {label}
-                  </a>
-                ))}
-                <div className="grid grid-cols-2 gap-2 pt-2">
-                  <Link to="/login" onClick={() => setOpen(false)} className="flex min-h-12 items-center justify-center rounded-full text-[15px] font-semibold"
-                    style={{ color: 'var(--text-main)', border: '1px solid var(--border-card)', background: 'var(--bg-card)' }}>Sign in</Link>
-                  <Link to="/register" onClick={() => setOpen(false)} className="flex min-h-12 items-center justify-center rounded-full text-[15px] font-semibold" style={goldBtn}>Get started</Link>
-                </div>
-                <a href={APK_URL} download className="mt-1 flex min-h-12 items-center justify-center gap-2 rounded-full text-[14px] font-semibold" style={{ color: 'var(--text-muted)' }}>
-                  <Download size={16} /> Download the Android app
-                </a>
-              </div>
-            </motion.nav>
-          )}
-        </AnimatePresence>
-      </div>
-    </header>
-  )
-}
 
 /* ─────────────────────────── phone mockup ─────────────────────────── */
 
@@ -293,6 +154,7 @@ function Hero() {
             <PrimaryLink to="/register">Start for free</PrimaryLink>
             <GhostLink href={APK_URL} download icon={Download}>Download for Android</GhostLink>
           </motion.div>
+          <motion.div {...fade(0.28)}><ApkNote className="lg:mx-0 lg:text-left" /></motion.div>
 
           <motion.ul {...fade(0.32)} className="mt-7 flex flex-wrap justify-center gap-x-5 gap-y-2 text-[13px] lg:justify-start" style={{ color: 'var(--text-subtle)' }}>
             <li className="flex items-center gap-1.5"><Landmark size={14} style={{ color: 'var(--gold-primary)' }} /> No bank login needed</li>
@@ -404,7 +266,7 @@ function StepDemo({ kind }) {
 
 function HowItWorks() {
   return (
-    <section id="how" className="scroll-mt-20 px-4 py-16 sm:px-6 sm:py-24" style={{ background: 'color-mix(in srgb, var(--gold-primary) 5%, var(--bg-page))', borderBlock: '1px solid var(--border-subtle)' }}>
+    <section id="how" className="scroll-mt-20 px-4 py-16 sm:px-6 sm:py-24" style={{ background: BAND_BG, borderBlock: '1px solid var(--border-subtle)' }}>
       <div className="mx-auto max-w-6xl">
         <SectionTitle eyebrow="How it works" title="Projects hold books. Books hold your money." sub="Four simple steps. You can start in under a minute, with nothing to set up." />
         <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -440,7 +302,7 @@ const FEATURES = [
 
 function Features() {
   return (
-    <section id="features" className="scroll-mt-20 px-4 py-16 sm:px-6 sm:py-24">
+    <section id="features" className="scroll-mt-20 px-4 py-16 sm:px-6 sm:py-24" style={{ background: BAND_BG, borderBlock: '1px solid var(--border-subtle)' }}>
       <div className="mx-auto max-w-6xl">
         <SectionTitle eyebrow="Features" title="Small habits. Big clarity." sub="Each tool is built to save you a few minutes today and a lot of worry by the end of the month." />
         <div className="mt-12 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -460,58 +322,176 @@ function Features() {
   )
 }
 
-/* ─────────────────────────── pricing ─────────────────────────── */
+/* ─────────────────────────── before / after ─────────────────────────── */
 
-const PLAN_FEATURES = ['Unlimited projects and books', 'Budgets, summaries and reports', 'Groups, reminders and PIN lock', 'Sync across your devices']
+const SHIFTS = [
+  ['Guesses at month end', 'Exact totals, any day'],
+  ['Lost bills and screenshots', 'Every entry saved and searchable'],
+  ['Surprise when money runs out', 'A heads-up before a budget runs out'],
+]
 
-function PriceCard({ name, price, period, note, badge, highlight, cta, delay }) {
+function Transformation() {
   return (
-    <Reveal delay={delay} className="relative flex flex-col rounded-3xl p-6 sm:p-7"
-      style={highlight
-        ? { background: 'linear-gradient(160deg, #2B2620, #15120E)', color: '#F6EFE2', boxShadow: '0 30px 70px -35px rgba(43,38,32,0.8)' }
-        : { background: 'var(--bg-card)', border: '1px solid var(--border-card)', color: 'var(--text-main)' }}>
-      {badge && (
-        <span className="absolute right-5 top-5 rounded-full px-3 py-1 text-[11px] font-semibold"
-          style={highlight ? { background: 'var(--gold-primary)', color: '#1F1A14' } : { background: GOLD_TINT, color: 'var(--text-main)' }}>{badge}</span>
+    <section className="px-4 pb-16 sm:px-6 sm:pb-24">
+      <div className="mx-auto max-w-6xl">
+        <SectionTitle eyebrow="See the difference" title="From scattered to sorted."
+          sub="Most of us keep track of money on scraps: notes, screenshots and memory. Drag the slider to see the same month in ArthaLedger." />
+        <Reveal className="mt-10"><BeforeAfter /></Reveal>
+        <div className="mt-5 grid gap-3 md:grid-cols-3">
+          {SHIFTS.map(([from, to], i) => (
+            <Reveal key={from} delay={i * 0.08} className="flex items-center gap-3 rounded-2xl px-4 py-3.5" style={card}>
+              <div className="min-w-0 flex-1">
+                <p className="text-[12.5px] line-through decoration-rose-400/70" style={{ color: 'var(--text-subtle)' }}>{from}</p>
+                <p className="mt-0.5 text-[14.5px] font-semibold" style={{ color: 'var(--text-main)' }}>{to}</p>
+              </div>
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-emerald-500/12 text-emerald-600"><Check size={16} /></span>
+            </Reveal>
+          ))}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+/* ─────────────────────────── insights (charts) ─────────────────────────── */
+
+const MONTHS = [
+  { m: 'May', in: 62000, out: 48300 },
+  { m: 'June', in: 64500, out: 51200 },
+  { m: 'July', in: 62000, out: 44800 },
+  { m: 'August', in: 68000, out: 46900 },
+  { m: 'September', in: 66500, out: 43100 },
+  { m: 'October', in: 70500, out: 41260 },
+]
+const SPEND = [
+  { label: 'Rent', value: 15000, color: '#C5A059' },
+  { label: 'Groceries', value: 8400, color: '#059669' },
+  { label: 'Bills', value: 5260, color: '#2563EB' },
+  { label: 'Travel', value: 4600, color: '#7C3AED' },
+  { label: 'Eating out', value: 3800, color: '#E11D48' },
+  { label: 'Other', value: 4200, color: '#94A3B8' },
+]
+const SAVED_6M = MONTHS.reduce((s, d) => s + d.in - d.out, 0)
+
+function Panel({ title, sub, children, className = '' }) {
+  return (
+    <div className={`rounded-2xl p-4 sm:p-5 ${className}`} style={card}>
+      {title && (
+        <div className="mb-4">
+          <p className="text-[14px] font-semibold" style={{ color: 'var(--text-main)' }}>{title}</p>
+          {sub && <p className="text-[12px]" style={{ color: 'var(--text-subtle)' }}>{sub}</p>}
+        </div>
       )}
-      <p className="text-[13px] font-semibold uppercase tracking-[0.16em]" style={{ color: highlight ? '#D4B26E' : 'var(--gold-primary)' }}>{name}</p>
-      <p className="mt-4 flex items-baseline gap-1.5">
-        <span className="font-serif-luxury text-[2.6rem] font-semibold leading-none tracking-tight">{price}</span>
-        {period && <span className="text-[14px]" style={{ opacity: 0.7 }}>{period}</span>}
-      </p>
-      <p className="mt-2 text-[14px] leading-relaxed" style={{ opacity: highlight ? 0.75 : 1, color: highlight ? undefined : 'var(--text-muted)' }}>{note}</p>
-      <ul className="mt-6 flex-1 space-y-2.5">
-        {PLAN_FEATURES.map(f => (
-          <li key={f} className="flex items-start gap-2.5 text-[14px]">
-            <Check size={16} className="mt-0.5 shrink-0" style={{ color: highlight ? '#D4B26E' : 'var(--gold-primary)' }} />
-            <span style={{ opacity: highlight ? 0.9 : 1 }}>{f}</span>
-          </li>
-        ))}
-      </ul>
-      <div className="mt-7">{cta}</div>
+      {children}
+    </div>
+  )
+}
+
+function Kpi({ label, value, tone, color, points, delay }) {
+  return (
+    <Reveal delay={delay} y={12} className="flex items-end justify-between gap-3 rounded-2xl p-4 sm:p-5" style={card}>
+      <div className="min-w-0">
+        <p className="text-[12px] font-medium" style={{ color: 'var(--text-subtle)' }}>{label}</p>
+        <Counter value={value} className={`font-serif-luxury mt-1 block text-[1.6rem] font-semibold leading-none ${tone}`} />
+      </div>
+      <Sparkline points={points} width={84} height={30} color={color} />
     </Reveal>
   )
 }
 
-function Pricing() {
-  const soon = (
-    <span className="flex min-h-12 w-full items-center justify-center rounded-full text-[14.5px] font-semibold"
-      style={{ border: '1px dashed var(--border-card)', color: 'var(--text-subtle)' }}>Coming soon</span>
-  )
+function Insights() {
   return (
-    <section id="pricing" className="scroll-mt-20 px-4 py-16 sm:px-6 sm:py-24">
+    <section id="insights" className="scroll-mt-20 px-4 py-16 sm:px-6 sm:py-24">
       <div className="mx-auto max-w-6xl">
-        <SectionTitle eyebrow="Pricing" title="Free for our first 50 users" sub="Paid plans are coming soon. For now, everyone can explore every feature at no cost." />
-        <div className="mt-12 grid gap-4 lg:grid-cols-3">
-          <PriceCard delay={0} highlight name="Early access" price="Free" note="For our first 50 users. Every feature, no card needed."
-            badge="Limited" cta={<PrimaryLink to="/register" className="w-full">Claim your spot</PrimaryLink>} />
-          <PriceCard delay={0.08} name="Monthly" price="₹199" period="/ month" note="Pay month to month. Cancel any time." badge="Coming soon" cta={soon} />
-          <PriceCard delay={0.16} name="Yearly" price="₹999" period="/ year" note="Just ₹83 a month. Save 58% compared to monthly." badge="Best value" cta={soon} />
-        </div>
-        <Reveal delay={0.1} className="mt-6 text-center text-[13.5px]" style={{ color: 'var(--text-subtle)' }}>
-          Prices in Indian rupees. We will let you know well before paid plans begin.
+        <SectionTitle eyebrow="Insights" title="Your money, drawn as a picture."
+          sub="No spreadsheets to build. As you add entries, ArthaLedger turns them into charts you can read at a glance. Tap the charts to explore." />
+
+        <Reveal className="mt-12 rounded-[2rem] p-2.5 sm:p-4" style={{ background: 'linear-gradient(165deg, color-mix(in srgb, var(--gold-primary) 16%, var(--bg-page)), var(--bg-page) 60%)', border: '1px solid var(--border-card)', boxShadow: '0 50px 100px -60px rgba(43,38,32,0.55)' }}>
+          <div className="flex items-center gap-2 px-2 pb-3 pt-1 sm:px-1">
+            <span className="flex gap-1.5" aria-hidden="true">{['#F87171', '#FBBF24', '#34D399'].map(c => <span key={c} className="h-2.5 w-2.5 rounded-full" style={{ background: c }} />)}</span>
+            <span className="ml-2 text-[12.5px] font-semibold" style={{ color: 'var(--text-main)' }}>Analytics · October</span>
+            <span className="ml-auto rounded-full px-2.5 py-0.5 text-[10.5px] font-semibold uppercase tracking-wider" style={{ background: GOLD_TINT, color: 'var(--text-muted)' }}>Sample data</span>
+          </div>
+
+          <div className="grid gap-2.5 sm:gap-3 lg:grid-cols-3">
+            <div className="grid gap-2.5 sm:grid-cols-3 sm:gap-3 lg:col-span-3">
+              <Kpi delay={0} label="Money in" value={70500} tone="text-emerald-600" color="#059669" points={MONTHS.map(d => d.in)} />
+              <Kpi delay={0.06} label="Money out" value={41260} tone="text-rose-600" color="#E11D48" points={MONTHS.map(d => d.out)} />
+              <Kpi delay={0.12} label="Money left" value={29240} tone="text-[var(--text-main)]" color="var(--gold-primary)" points={MONTHS.map(d => d.in - d.out)} />
+            </div>
+
+            <Panel title="In and out, month by month" sub="Last 6 months" className="lg:col-span-2">
+              <InOutBars data={MONTHS} />
+            </Panel>
+
+            <Panel title="Where it went" sub="October spending by category">
+              <Donut data={SPEND} size={176} thickness={24} />
+            </Panel>
+
+            <Panel title="Monthly budgets" sub="Limits you set for each category" className="lg:col-span-2">
+              <div className="grid gap-5 sm:grid-cols-3">
+                <BudgetBar label="Groceries" spent={8400} limit={10000} delay={0.1} />
+                <BudgetBar label="Eating out" spent={3800} limit={3000} delay={0.2} />
+                <BudgetBar label="Travel" spent={4600} limit={6000} delay={0.3} />
+              </div>
+              <motion.div initial={{ opacity: 0, y: 8 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: 1.2, duration: 0.5, ease: EASE }}
+                className="mt-5 flex items-start gap-2.5 rounded-xl px-3.5 py-3 text-[13px]" style={{ background: 'color-mix(in srgb, #E11D48 8%, var(--bg-card))', color: 'var(--text-main)' }}>
+                <AlertTriangle size={16} className="mt-px shrink-0 text-rose-600" />
+                <span><b>Heads-up:</b> Eating out is ₹800 over this month&rsquo;s budget.</span>
+              </motion.div>
+            </Panel>
+
+            <Panel className="relative overflow-hidden">
+              <div className="pointer-events-none absolute -right-10 -top-10 h-36 w-36 rounded-full blur-2xl" style={{ background: GOLD_SOFT }} aria-hidden="true" />
+              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/12 text-emerald-600"><TrendingUp size={19} /></span>
+              <p className="mt-4 text-[12.5px]" style={{ color: 'var(--text-subtle)' }}>Saved in the last 6 months</p>
+              <Counter value={SAVED_6M} className="font-serif-luxury mt-1 block text-[2rem] font-semibold leading-none text-emerald-600" />
+              <p className="mt-3 text-[13px] leading-relaxed" style={{ color: 'var(--text-muted)' }}>Money left has grown every month since June. Seeing it clearly is what makes the difference.</p>
+            </Panel>
+          </div>
         </Reveal>
       </div>
+    </section>
+  )
+}
+
+/* ─────────────────────────── pricing teaser (full page at /pricing) ─────────────────────────── */
+
+function PricingTeaser() {
+  const reduce = useReducedMotion()
+  return (
+    <section className="px-4 py-16 sm:px-6 sm:py-24">
+      <Reveal className="relative isolate mx-auto grid max-w-5xl items-center gap-8 overflow-hidden rounded-[2rem] p-7 sm:p-10 md:grid-cols-[1.35fr_1fr]" style={card}>
+        <div className="pointer-events-none absolute -left-20 -top-24 -z-10 h-64 w-64 rounded-full blur-3xl" style={{ background: GOLD_SOFT }} aria-hidden="true" />
+        <div>
+          <Eyebrow>Pricing</Eyebrow>
+          <h2 className="font-serif-luxury mt-3 text-[1.8rem] font-semibold leading-tight [text-wrap:balance] sm:text-[2.3rem]" style={{ color: 'var(--text-main)' }}>Free for our first 50 users</h2>
+          <p className="mt-3 max-w-md text-[15px] leading-relaxed" style={{ color: 'var(--text-muted)' }}>
+            Everyone else can also try every feature free until paid plans launch. Paid plans of ₹129 a month or ₹999 a year are coming soon.
+          </p>
+          <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+            <PrimaryLink to="/register">Claim your spot</PrimaryLink>
+            <GhostLink to="/pricing">See pricing</GhostLink>
+          </div>
+        </div>
+        <div className="relative mx-auto flex h-48 w-full max-w-[240px] items-center justify-center">
+          <motion.div className="absolute inset-0 rounded-full" style={{ border: '1.5px dashed var(--border-card)' }}
+            animate={reduce ? undefined : { rotate: 360 }} transition={{ duration: 40, repeat: Infinity, ease: 'linear' }} aria-hidden="true" />
+          <div className="text-center">
+            <p className="text-[13px] font-semibold tabular-nums line-through decoration-rose-400" style={{ color: 'var(--text-subtle)' }}>₹129 / month</p>
+            <p className="font-serif-luxury text-[4.2rem] font-semibold leading-none tracking-tight" style={{ color: 'var(--text-main)' }}>₹0</p>
+            <p className="mt-1 text-[12.5px] font-semibold" style={{ color: 'var(--gold-primary)' }}>during early access</p>
+          </div>
+          <motion.span className="absolute right-0 top-4 flex h-11 w-11 items-center justify-center rounded-2xl shadow-lg" style={goldBtn} aria-hidden="true"
+            animate={reduce ? undefined : { y: [0, -6, 0], rotate: [0, -6, 0] }} transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}>
+            <Gift size={19} />
+          </motion.span>
+          <motion.span className="absolute bottom-5 left-0 flex h-9 w-9 items-center justify-center rounded-xl shadow-md" style={{ ...card, color: 'var(--gold-primary)' }} aria-hidden="true"
+            animate={reduce ? undefined : { y: [0, 5, 0] }} transition={{ duration: 3.4, repeat: Infinity, ease: 'easeInOut', delay: 0.5 }}>
+            <Sparkles size={16} />
+          </motion.span>
+        </div>
+      </Reveal>
     </section>
   )
 }
@@ -582,46 +562,19 @@ const FAQ = [
   ['What exactly is ArthaLedger?', 'A money notebook on your phone. You create projects (like Personal or Business), add books inside them, and note down money you receive and spend. ArthaLedger keeps the totals, balances and summaries for you.'],
   ['What is the difference between a project and a book?', 'A project is a folder for one part of your life, such as Family. A book is one account inside it, such as Groceries or Rent. Each book has its own balance, and the project shows them together.'],
   ['Does it connect to my bank account or UPI?', 'No. ArthaLedger never asks for bank, card or UPI details and cannot move money. You type in what you want to keep track of.'],
-  ['Is it free?', 'Right now, yes. Our first 50 users get ArthaLedger free, and everyone can explore every feature at no cost for now. Paid plans (₹199 a month or ₹999 a year) are coming soon, and we will tell you well before anything changes.'],
+  ['Is it free?', 'Right now, yes. Early access is free for our first 50 users. Everyone else can also try every feature free until paid plans launch. Paid plans (₹129 a month or ₹999 a year) are coming soon, and we will tell you well before anything changes.'],
   ['Is my data safe and private?', 'Yes. Your projects and books can only be opened by your own account, and they are encrypted while they travel and while they are stored. You can also lock any project or book with a PIN.'],
   ['Do I need internet?', 'Not to add entries. ArthaLedger works offline and saves your changes as soon as you are connected again.'],
   ['Can I use it on more than one phone?', 'Yes. Sign in with the same account on any phone or computer and your projects and books will be there.'],
-  ['How do I install it on Android?', 'Tap “Download for Android”, open the downloaded file and allow the install when Android asks. You can also open this website in Chrome and choose “Install app”.'],
+  ['How do I install it on Android?', 'ArthaLedger is not on the Play Store yet, so Android asks you to allow the install. Tap “Download for Android”, open the downloaded file, allow installs from your browser when Android asks, then tap Install. Prefer not to download? Open this website in Chrome and choose “Install app”, or simply use ArthaLedger in your browser.'],
   ['What are Groups?', 'A group collects related transactions from different books in one place, such as everything spent on a trip or a wedding. Select transactions in any book, tap Add to group, and see the total and a category breakdown. Your transactions stay in their books.'],
   ['How do I delete my account?', 'Go to Settings, then Delete account. Your account and all your projects and books are removed for good.'],
 ]
 
-function FaqItem({ q, a, open, onToggle, id }) {
-  return (
-    <div className="border-b last:border-b-0" style={{ borderColor: 'var(--border-subtle)' }}>
-      <h3>
-        <button type="button" onClick={onToggle} aria-expanded={open} aria-controls={`${id}-a`} id={`${id}-q`}
-          className="group flex w-full items-center gap-4 px-5 py-5 text-left transition-colors hover:bg-[var(--bg-card-hover)] sm:px-7">
-          <span className="flex-1 text-[15.5px] font-semibold leading-snug sm:text-[16.5px]" style={{ color: 'var(--text-main)' }}>{q}</span>
-          <motion.span animate={{ rotate: open ? 180 : 0 }} transition={{ duration: 0.3, ease: EASE }}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors"
-            style={{ background: open ? 'var(--gold-primary)' : GOLD_TINT, color: open ? '#1F1A14' : 'var(--gold-primary)' }}>
-            <ChevronDown size={17} />
-          </motion.span>
-        </button>
-      </h3>
-      <AnimatePresence initial={false}>
-        {open && (
-          <motion.div id={`${id}-a`} role="region" aria-labelledby={`${id}-q`}
-            initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.32, ease: EASE }} className="overflow-hidden">
-            <p className="max-w-2xl px-5 pb-6 text-[15px] leading-relaxed sm:px-7" style={{ color: 'var(--text-muted)' }}>{a}</p>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  )
-}
-
 function Faq() {
   const [open, setOpen] = useState(-1)
   return (
-    <section id="faq" className="scroll-mt-20 px-4 py-16 sm:px-6 sm:py-24" style={{ background: 'color-mix(in srgb, var(--gold-primary) 5%, var(--bg-page))', borderBlock: '1px solid var(--border-subtle)' }}>
+    <section id="faq" className="scroll-mt-20 px-4 py-16 sm:px-6 sm:py-24" style={{ background: BAND_BG, borderBlock: '1px solid var(--border-subtle)' }}>
       <div className="mx-auto max-w-3xl">
         <SectionTitle eyebrow="FAQ" title="Frequently asked questions" />
         <Reveal className="mt-10 overflow-hidden rounded-3xl" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-card)', boxShadow: '0 24px 60px -40px rgba(0,0,0,0.25)' }}>
@@ -676,71 +629,17 @@ function FinalCta() {
             <Download size={17} /> Download for Android
           </a>
         </div>
+        <ApkNote dark />
       </Reveal>
     </section>
-  )
-}
-
-/* ─────────────────────────── footer ─────────────────────────── */
-
-function FooterCol({ title, children }) {
-  return (
-    <div>
-      <p className="text-[12px] font-semibold uppercase tracking-[0.16em]" style={{ color: 'var(--text-subtle)' }}>{title}</p>
-      <ul className="mt-4 space-y-1">{children}</ul>
-    </div>
-  )
-}
-function FooterLink({ to, href, download, children }) {
-  const cls = 'inline-flex min-h-9 items-center text-[14px] transition-colors hover:text-[var(--text-main)]'
-  const style = { color: 'var(--text-muted)' }
-  return <li>{to ? <Link to={to} className={cls} style={style}>{children}</Link> : <a href={href} download={download} className={cls} style={style}>{children}</a>}</li>
-}
-
-function Footer() {
-  const [year] = useState(() => new Date().getFullYear())
-  return (
-    <footer style={{ borderTop: '1px solid var(--border-subtle)', background: 'color-mix(in srgb, var(--gold-primary) 3%, var(--bg-page))' }}>
-      <div className="mx-auto grid max-w-6xl grid-cols-2 gap-x-6 gap-y-10 px-4 py-14 sm:px-6 lg:grid-cols-[1.6fr_1fr_1fr_1fr]">
-        <div className="col-span-2 max-w-xs lg:col-span-1">
-          <div className="flex items-center gap-2.5">
-            <Logo size={34} />
-            <span className="font-serif-luxury text-[18px] font-semibold" style={{ color: 'var(--text-main)' }}>ArthaLedger</span>
-          </div>
-          <p className="font-serif-luxury mt-3 text-[14px] italic" style={{ color: 'var(--text-muted)' }}>Where every rupee has meaning.</p>
-          <p className="mt-3 text-[13.5px] leading-relaxed" style={{ color: 'var(--text-subtle)' }}>A simple, private money notebook for personal, family and business use.</p>
-        </div>
-        <FooterCol title="Product">
-          <FooterLink href="#how">How it works</FooterLink>
-          <FooterLink href="#features">Features</FooterLink>
-          <FooterLink href="#pricing">Pricing</FooterLink>
-          <FooterLink href="#faq">FAQ</FooterLink>
-          <FooterLink href={APK_URL} download>Download for Android</FooterLink>
-        </FooterCol>
-        <FooterCol title="Account">
-          <FooterLink to="/register">Create account</FooterLink>
-          <FooterLink to="/login">Sign in</FooterLink>
-          <FooterLink to="/forgot-password">Reset password</FooterLink>
-        </FooterCol>
-        <FooterCol title="Company">
-          <FooterLink to="/privacy">Privacy policy</FooterLink>
-          <FooterLink href={`mailto:${CONTACT}`}>Contact us</FooterLink>
-          <FooterLink href={`mailto:${CONTACT}?subject=Collaboration%20with%20ArthaLedger`}>Collaborate</FooterLink>
-        </FooterCol>
-      </div>
-      <div style={{ borderTop: '1px solid var(--border-subtle)', paddingBottom: 'env(safe-area-inset-bottom)' }}>
-        <div className="mx-auto flex max-w-6xl flex-col items-center gap-2 px-4 py-6 text-[13px] sm:flex-row sm:justify-between sm:px-6" style={{ color: 'var(--text-subtle)' }}>
-          <span>© {year} ArthaLedger. All rights reserved.</span>
-          <span>Made with care in India</span>
-        </div>
-      </div>
-    </footer>
   )
 }
 
 /* ─────────────────────────── page ─────────────────────────── */
 
 export default function LandingPage() {
+  const { hash } = useLocation()
+
   // The landing page is always shown in light mode
   useEffect(() => {
     forceLightTheme()
@@ -750,22 +649,31 @@ export default function LandingPage() {
     return () => { restoreTheme(); html.style.scrollBehavior = prev }
   }, [])
 
+  // Arriving from another page with a section link, such as /#faq
+  useEffect(() => {
+    if (!hash) return undefined
+    const t = setTimeout(() => document.getElementById(hash.slice(1))?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80)
+    return () => clearTimeout(t)
+  }, [hash])
+
   return (
     <div className="min-h-screen overflow-x-clip" style={{ background: 'var(--bg-page)', color: 'var(--text-main)' }}>
-      <Header />
+      <SiteHeader />
       <main>
         <Hero />
         <WhatIsIt />
+        <Transformation />
         <HowItWorks />
+        <Insights />
         <Features />
-        <Pricing />
+        <PricingTeaser />
         <Testimonials />
         <Founder />
         <Faq />
         <Collaborate />
         <FinalCta />
       </main>
-      <Footer />
+      <SiteFooter />
     </div>
   )
 }
