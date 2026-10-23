@@ -46,29 +46,25 @@
         if (installed && !sessionStorage.getItem('al_visited')) document.documentElement.classList.add('boot-splash');
       } catch (e) {}
     </script>
-    <link rel="preload" as="image" href="/icons/maskable-192.png" />
     <style>
-      /* Same layout as components/common/SplashScreen.jsx so React takes over seamlessly */
+      /* Same picture the Android app shows while starting (PWABuilder "Icon URL"),
+         at the same size, so the hand-off is invisible. See SplashScreen.jsx. */
       #boot-splash { display: none; }
       html.boot-splash #boot-splash {
         position: fixed; inset: 0; z-index: 10000; display: flex; align-items: center; justify-content: center;
-        background: var(--bg-page, #FAF8F5);
+        background: #FAF8F5;
       }
-      html.dark.boot-splash #boot-splash { background: var(--bg-page, #26282E); }
-      #boot-splash .bs { display: flex; flex-direction: column; align-items: center; }
-      #boot-splash img { width: 84px; height: 84px; border-radius: 9999px; box-shadow: 0 14px 34px -16px rgba(0,0,0,0.4); }
-      #boot-splash .t { margin-top: 20px; font-family: var(--font-serif, Georgia, serif); font-size: 27px; font-weight: 600; letter-spacing: -0.01em; line-height: 1.5; color: var(--text-main, #231E1A); }
-      #boot-splash .s { margin-top: 4px; font-family: var(--font-serif, Georgia, serif); font-size: 13.5px; font-style: italic; line-height: 1.5; color: var(--text-muted, #736960); }
-      #boot-splash .b { margin-top: 24px; width: 64px; height: 2px; border-radius: 9999px; background: var(--border-subtle, rgba(0,0,0,0.05)); }
+      html.dark.boot-splash #boot-splash { background: #26282E; }
+      #boot-splash img { width: 300px; height: 300px; }
+      #boot-splash .dk, html.dark #boot-splash .lt { display: none; }
+      html.dark #boot-splash .dk { display: block; }
     </style>
   </head>
   <body>
-    <div id="root"><div id="boot-splash" aria-hidden="true"><div class="bs">
-      <img src="/icons/maskable-192.png" alt="" />
-      <div class="t">ArthaLedger</div>
-      <div class="s">Where every rupee has meaning</div>
-      <div class="b"></div>
-    </div></div></div>
+    <div id="root"><div id="boot-splash" aria-hidden="true">
+      <img class="lt" src="/icons/splash-1024.png" alt="" />
+      <img class="dk" src="/icons/splash-dark-1024.png" alt="" />
+    </div></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
