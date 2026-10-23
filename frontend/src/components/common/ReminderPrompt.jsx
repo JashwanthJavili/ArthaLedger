@@ -5,9 +5,9 @@ import { Bell, Check, Loader2, AlertTriangle, Target, Sunrise, Sun, Sunset, Moon
 import { enableDailyReminder, getDailyReminderSettings, setBudgetAlertsEnabled, DEFAULT_REMINDER_TIMES } from '../../lib/notifications'
 
 const STORE_KEY = 'al_reminder_prompt'
-const MAX_ASKS = 3
-const ASK_AGAIN_MS = 3 * 24 * 60 * 60 * 1000
-const SHOW_DELAY_MS = 1800
+const SESSION_KEY = 'al_reminder_prompt_shown'
+// Shows just after the launch screen has faded
+const SHOW_DELAY_MS = 2000
 const SLOTS = [
   { key: 'morning', label: 'Morning', hint: 'Plan the day’s spends', Icon: Sunrise },
   { key: 'afternoon', label: 'Afternoon', hint: 'Quick lunch-time check', Icon: Sun },
@@ -20,25 +20,34 @@ const fmt12 = (t) => {
   return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`
 }
 
-function readAsks() {
-  try { return JSON.parse(localStorage.getItem(STORE_KEY) || '{}') || {} } catch { return {} }
+function neverAsk() {
+  try { return JSON.parse(localStorage.getItem(STORE_KEY) || '{}')?.never === true } catch { return false }
 }
-function recordAsk() {
-  const prev = readAsks()
-  try { localStorage.setItem(STORE_KEY, JSON.stringify({ count: (prev.count || 0) + 1, last: Date.now() })) } catch { /* ignore */ }
+function setNeverAsk() {
+  try { localStorage.setItem(STORE_KEY, JSON.stringify({ never: true })) } catch { /* ignore */ }
 }
-
-/** Should we offer reminders on this device right now? */
-function shouldAsk() {
-  if (typeof window === 'undefined' || !('Notification' in window) || !('serviceWorker' in navigator)) return false
-  if (Notification.permission === 'denied') return false
-  if (getDailyReminderSettings().enabled) return false
-  const { count = 0, last = 0 } = readAsks()
-  return count < MAX_ASKS && Date.now() - last > ASK_AGAIN_MS
+function markShownThisOpen() {
+  try { sessionStorage.setItem(SESSION_KEY, '1') } catch { /* ignore */ }
+}
+function shownThisOpen() {
+  try { return sessionStorage.getItem(SESSION_KEY) === '1' } catch { return false }
 }
 
 /**
- * One-time, native-style ask on Home: pick a reminder time and turn it on.
+ * Ask each time the app is opened while notifications are off on this
+ * device (not allowed yet, or reminders switched off), until they are on or
+ * the user says "Don't ask again". Android can't show its permission dialog
+ * once it has been blocked, so a blocked device isn't asked.
+ */
+function shouldAsk() {
+  if (typeof window === 'undefined' || !('Notification' in window) || !('serviceWorker' in navigator)) return false
+  if (Notification.permission === 'denied') return false
+  if (Notification.permission === 'granted' && getDailyReminderSettings().enabled) return false
+  return !neverAsk() && !shownThisOpen()
+}
+
+/**
+ * Native-style ask on Home, once per app open while notifications are off: pick a reminder time and turn it on.
  * Tapping "Turn on" shows Android's own permission dialog, saves the
  * reminder, registers the device and confirms with the server.
  */
@@ -47,19 +56,20 @@ export default function ReminderPrompt() {
 
   useEffect(() => {
     // Re-check after a moment: settings synced from the cloud may say it's already on
-    const t = setTimeout(() => { if (shouldAsk()) setOpen(true) }, SHOW_DELAY_MS)
+    const t = setTimeout(() => { if (shouldAsk()) { markShownThisOpen(); setOpen(true) } }, SHOW_DELAY_MS)
     return () => clearTimeout(t)
   }, [])
 
-  const close = () => { recordAsk(); setOpen(false) }
+  const close = () => setOpen(false)
+  const dontAsk = () => { setNeverAsk(); setOpen(false) }
 
   return createPortal(
-    <AnimatePresence>{open && <PromptSheet key="reminder-prompt" onClose={close} />}</AnimatePresence>,
+    <AnimatePresence>{open && <PromptSheet key="reminder-prompt" onClose={close} onNever={dontAsk} />}</AnimatePresence>,
     document.body,
   )
 }
 
-function PromptSheet({ onClose }) {
+function PromptSheet({ onClose, onNever }) {
   const [slots, setSlots] = useState(() => SLOTS.map((sl, i) => ({ ...sl, time: DEFAULT_REMINDER_TIMES[i], on: true })))
   const [alerts, setAlerts] = useState(true)
   const chosen = slots.filter(sl => sl.on).map(sl => sl.time).sort()
@@ -210,7 +220,13 @@ function PromptSheet({ onClose }) {
                 className="mt-1 w-full rounded-2xl py-3 text-[13px] font-medium text-[var(--text-muted)] hover:text-[var(--text-main)] disabled:opacity-40 transition-colors cursor-pointer">
                 Not now
               </button>
-              <p className="text-center text-[11px] text-[var(--text-subtle)]">You can change this anytime in Settings.</p>
+              <p className="text-center text-[11px] text-[var(--text-subtle)]">
+                You can change this anytime in Settings.{' '}
+                <button type="button" onClick={onNever} disabled={step === 'working'}
+                  className="font-medium text-[var(--text-muted)] underline underline-offset-2 hover:text-[var(--text-main)] cursor-pointer">
+                  Don’t ask again
+                </button>
+              </p>
             </motion.div>
           )}
         </AnimatePresence>

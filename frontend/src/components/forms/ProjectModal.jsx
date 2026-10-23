@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, FolderOpen } from 'lucide-react'
+import { PROJECT_ICONS, suggestIcon, tintStyle, projectIcon } from '../../lib/projectIcons'
 
 const TAGLINE_MAX = 80
 const SUGGESTIONS = ['Personal', 'Family', 'Business', 'Home', 'Travel', 'Savings']
@@ -19,11 +20,15 @@ function ProjectForm({ onClose, onSubmit, initial }) {
   const [name, setName] = useState(initial?.name || '')
   // Stored as `description`; shown as the project's tagline
   const [description, setDescription] = useState(initial?.description || '')
+  // Picked icon; until the user picks one we suggest it from the name
+  const [pickedIcon, setPickedIcon] = useState(initial?.icon || null)
+  const icon = pickedIcon || suggestIcon(name)
+  const preview = projectIcon(icon)
 
   const handleSubmit = (e) => {
     e.preventDefault()
     if (!name.trim()) return
-    onSubmit({ name: name.trim(), description: description.trim() })
+    onSubmit({ name: name.trim(), description: description.trim(), icon: icon || null })
     onClose()
   }
 
@@ -40,17 +45,18 @@ function ProjectForm({ onClose, onSubmit, initial }) {
         initial={{ y: 28, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 28, opacity: 0 }}
         transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}
         onSubmit={handleSubmit}
-        className="relative w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl border border-[var(--border-card)] bg-[var(--bg-page)] shadow-[0_30px_80px_-20px_rgba(0,0,0,0.45)]"
+        className="relative max-h-[92dvh] overflow-y-auto w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl border border-[var(--border-card)] bg-[var(--bg-page)] shadow-[0_30px_80px_-20px_rgba(0,0,0,0.45)]"
         style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
       >
         {/* Header */}
         <div className="flex items-center gap-3 border-b border-[var(--border-subtle)] px-5 pt-5 pb-4">
-          <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-[var(--gold-light)] text-[var(--gold-primary)]">
-            <FolderOpen size={16} />
+          <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-[var(--gold-light)] text-[var(--gold-primary)] transition-colors"
+            style={preview ? tintStyle(preview.tint) : undefined}>
+            {preview ? <preview.Icon size={18} /> : <FolderOpen size={17} />}
           </span>
           <div className="min-w-0 flex-1">
             <h2 className="text-[15px] font-semibold text-[var(--text-main)]">{initial ? 'Edit project' : 'New project'}</h2>
-            <p className="text-[11px] text-[var(--text-subtle)]">{initial ? 'Rename or update the tagline' : 'A project holds related books'}</p>
+            <p className="text-[11px] text-[var(--text-subtle)]">{initial ? 'Rename, change the icon or tagline' : 'A project holds related books'}</p>
           </div>
           <button type="button" onClick={onClose} aria-label="Close"
             className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-[var(--border-subtle)] text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors cursor-pointer">
@@ -86,6 +92,28 @@ function ProjectForm({ onClose, onSubmit, initial }) {
                 ))}
               </div>
             )}
+          </div>
+
+          <div>
+            <div className="mb-2 flex items-baseline justify-between">
+              <span className="text-[11px] font-semibold text-[var(--text-muted)]">Icon</span>
+              <span className="text-[10.5px] text-[var(--text-subtle)]">{preview ? preview.label : 'Pick one'}</span>
+            </div>
+            <div className="grid grid-cols-6 gap-2" role="radiogroup" aria-label="Project icon">
+              {PROJECT_ICONS.map(opt => {
+                const on = icon === opt.key
+                return (
+                  <button key={opt.key} type="button" role="radio" aria-checked={on} aria-label={opt.label} title={opt.label}
+                    onClick={() => setPickedIcon(on ? null : opt.key)}
+                    className={`flex aspect-square items-center justify-center rounded-xl border-2 transition-all active:scale-95 cursor-pointer ${
+                      on ? 'border-[var(--gold-primary)] shadow-[0_6px_16px_-8px_rgba(0,0,0,0.35)]' : 'border-transparent'
+                    }`}
+                    style={tintStyle(opt.tint)}>
+                    <opt.Icon size={18} />
+                  </button>
+                )
+              })}
+            </div>
           </div>
 
           <div>

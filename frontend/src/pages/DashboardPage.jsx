@@ -2,7 +2,7 @@ import { useMemo, useState, useEffect, useRef } from 'react'
 import { format } from 'date-fns'
 import { Link } from 'react-router-dom'
 import {
-  Plus, Search, FolderOpen, MoreVertical, Pencil, Trash2, Lock, ChevronRight, X, Moon, Sun,
+  Plus, Search, FolderOpen, MoreVertical, Pencil, Trash2, ChevronRight, X, Moon, Sun,
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import LayoutShell from '../components/LayoutShell'
@@ -10,6 +10,7 @@ import Loader from '../components/common/Loader'
 import QuoteCard from '../components/common/QuoteCard'
 import ReminderPrompt from '../components/common/ReminderPrompt'
 import AccountMenu from '../components/common/AccountMenu'
+import ProjectAvatar from '../components/common/ProjectAvatar'
 import ProjectModal from '../components/forms/ProjectModal'
 import DeleteDialog from '../components/common/DeleteDialog'
 import Toast from '../components/common/Toast'
@@ -227,11 +228,7 @@ export default function DashboardPage() {
                       to={`/projects/${project.id}`}
                       className="group flex items-center gap-3 py-3 pl-4 pr-2 transition-colors hover:bg-[var(--border-subtle)]/60"
                     >
-                      <span className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl text-sm font-bold uppercase ${
-                        isProjectPinLocked ? 'bg-[var(--border-subtle)] text-[var(--text-subtle)]' : 'bg-[var(--gold-light)] text-[var(--gold-primary)]'
-                      }`}>
-                        {isProjectPinLocked ? <Lock size={15} /> : project.name.charAt(0)}
-                      </span>
+                      <ProjectAvatar project={project} />
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-[14px] font-semibold text-[var(--text-main)]">{project.name}</span>
                         <span className="block truncate text-[11px] text-[var(--text-subtle)]">{subline}</span>

@@ -19,6 +19,7 @@ import SummaryStrip from '../components/cards/SummaryCard'
 import { useAppData } from '../context/AppDataContext'
 import { isUnlocked, setUnlocked, lockItem } from '../lib/pin'
 import { formatAmount, getCurrencySymbol } from '../lib/format'
+import ProjectAvatar from '../components/common/ProjectAvatar'
 
 /**
  * 3-dot menu for each book card.
@@ -104,9 +105,9 @@ export default function ProjectDetailPage() {
   const [stalled, setStalled] = useState(false)
 
   useEffect(() => {
-    let t = null
-    if (loading) t = setTimeout(() => setStalled(true), 3500)
-    else setStalled(false)
+    // `stalled` is only read while loading, so it never needs resetting here
+    if (!loading) return
+    const t = setTimeout(() => setStalled(true), 3500)
     return () => clearTimeout(t)
   }, [loading])
 
@@ -322,6 +323,7 @@ export default function ProjectDetailPage() {
           <Link to="/dashboard" aria-label="Back to home" className={iconBtn + ' !text-[var(--text-main)]'}>
             <ArrowLeft size={17} />
           </Link>
+          <ProjectAvatar project={project} className="h-11 w-11 rounded-2xl" iconSize={20} />
           <div className="min-w-0 flex-1">
             <h1 className="font-serif-luxury truncate text-[23px] font-semibold leading-[1.15] tracking-[-0.01em] text-[var(--text-main)]">{project.name}</h1>
             <p className="font-serif-luxury mt-0.5 truncate text-[13.5px] italic text-[var(--text-muted)]">

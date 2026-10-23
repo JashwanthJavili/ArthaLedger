@@ -118,11 +118,12 @@ export function AppDataProvider({ children }) {
 
   // ── Projects ──────────────────────────────────────────────────────────────
 
-  const createProject = useCallback(async ({ name, description }) => {
+  const createProject = useCallback(async ({ name, description, icon }) => {
     const projectRef = push(ref(db, `users/${user.uid}/projects`))
     await set(projectRef, {
       name,
       description: description || '',
+      icon: icon || null,
       createdAt: Date.now(),
       updatedAt: Date.now(),
     }).catch((err) => { throw new Error(friendlyDbError(err)) })
