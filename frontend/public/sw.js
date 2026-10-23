@@ -81,7 +81,7 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('message', (event) => {
   if (event.data?.type === 'TEST_NOTIFICATION') {
     event.waitUntil(showAppNotification('Notifications are on', {
-      body: 'This is how ArthaLedger reminders will look here.',
+      body: 'Reminders will look just like this.',
       image: '/notify/evening.png',
       tag: 'test-notification',
     }))

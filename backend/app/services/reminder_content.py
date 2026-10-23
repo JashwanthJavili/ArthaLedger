@@ -63,38 +63,38 @@ def _slot(hour: int) -> str:
   return 'night'
 
 
-# Short, playful copy (no emojis). Bodies stay under ~70 characters so they
-# aren't cut off when the notification is collapsed.
+# Short, playful copy (no emojis). With a banner image Android shows the body
+# on ONE line only, so bodies stay under ~40 characters to fit without "...".
 COPY = {
   'morning': [
-    ('Good morning, money manager', "Plan today's spends before the day plans them for you."),
-    ('Needs first, wants later', 'A 10-second plan now saves a "where did it go?" tonight.'),
-    ('Your wallet woke up too', 'Tell it what today looks like. Needs on top, please.'),
-    ('Fresh day, fresh page', 'Decide what today deserves. Your ledger is ready.'),
+    ('Good morning, money manager', 'Plan today before today plans you.'),
+    ('Needs first, wants later', 'A 10-second plan saves a lot tonight.'),
+    ('Your wallet woke up too', 'Tell it what today looks like.'),
+    ('Fresh day, fresh page', 'Decide what today deserves.'),
   ],
   'afternoon': [
-    ('Lunch was good. Was it logged?', 'Add it now. Your future self is watching.'),
-    ('That chai counts too', 'Small spends add up quietly. Note them before they vanish.'),
-    ('Halfway through the day', 'Anything spent since morning? Takes five seconds.'),
-    ('Quick check-in', 'Spent something? Log it while you still remember the amount.'),
+    ('Lunch was good. Was it logged?', 'Add it now. Future you says thanks.'),
+    ('That chai counts too', 'Small spends add up. Note them.'),
+    ('Halfway through the day', 'Spent anything? Takes five seconds.'),
+    ('Quick check-in', 'Log it while the amount is fresh.'),
   ],
   'evening': [
-    ('Evening check-in', 'Anything sneak out of your wallet today? Note it down.'),
-    ('The day is wrapping up', 'Your ledger is too. Add what you spent today.'),
-    ('Psst, your wallet has stories', 'Tell your ledger before it forgets the details.'),
-    ('Golden hour for your ledger', 'Two minutes now, a clear picture forever.'),
+    ('Evening check-in', 'Anything sneak out of the wallet?'),
+    ('The day is wrapping up', 'Your ledger is too. Add today.'),
+    ('Psst, your wallet has stories', 'Tell your ledger before it forgets.'),
+    ('Golden hour for your ledger', 'Two minutes now, clarity forever.'),
   ],
   'night': [
-    ("Don't let today's spends sleep", 'Note them down before they turn into a mystery.'),
-    ('One last thing tonight', 'Close the day in ArthaLedger. Sleep better, literally.'),
-    ("Psst, it's almost tomorrow", "Today's spends are waiting to be written down."),
+    ("Don't let today's spends sleep", 'Note them before they become a mystery.'),
+    ('One last thing tonight', 'Close the day. Sleep better.'),
+    ("Psst, it's almost tomorrow", "Today's spends are still waiting."),
     ('Before you scroll to sleep', 'Ten seconds to log today. We timed it.'),
   ],
 }
 EMPTY_DAY = {
-  'afternoon': ('Nothing logged yet today', 'Either you spent nothing or you forgot. We bet on forgot.'),
-  'evening': ('We saw nothing today', "Either you're a saint or you forgot. Log it in seconds."),
-  'night': ('Your ledger is still empty', "Today happened. Let's write it down before bed."),
+  'afternoon': ('Nothing logged yet today', 'You spent nothing, or you forgot?'),
+  'evening': ('We saw nothing today', 'Saint or forgot? Log it in seconds.'),
+  'night': ('Your ledger is still empty', 'Today happened. Write it down.'),
 }
 
 
@@ -159,10 +159,10 @@ def build_reminder(uid: str, tz_name, snooze: bool = True) -> dict:
     # Real numbers beat clever lines
     noun = 'entry' if count == 1 else 'entries'
     title = f'{count} {noun} today, {fmt_money(data["spent"])} spent' if data['spent'] else f'{count} {noun} logged today'
-    body = 'Missed anything? Add it before the day is over.' if slot == 'evening' else 'Anything else before bed? Your ledger is all ears.'
+    body = 'Missed anything? Add it now.' if slot == 'evening' else 'Anything else before bed?'
   elif slot != 'morning' and not count and streak >= 2:
     title = f'Your {streak}-day streak is on the line'
-    body = 'One quick entry keeps it alive. No pressure. Some pressure.'
+    body = 'One entry keeps it alive. No pressure.'
   elif slot != 'morning' and not count and slot in EMPTY_DAY and random.random() < 0.5:
     title, body = EMPTY_DAY[slot]
 
