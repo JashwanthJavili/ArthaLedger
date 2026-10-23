@@ -34,6 +34,9 @@ export const tripDoc = (uid, tid) => doc(db, 'users', uid, 'trips', tid)
 export const pushTokenDoc = (uid, key) => doc(db, 'users', uid, 'pushTokens', key)
 export const pinGuardDoc = (uid, id) => doc(db, 'users', uid, 'pinGuards', id)
 
+// Bump when the layout changes; a future move can then upgrade each account once
+export const SCHEMA_VERSION = 1
+
 export const docsOf = (snap) => snap.docs.map((d) => ({ id: d.id, ...d.data() }))
 
 /** For a new document: drop empty values (Firestore keeps nulls; the old database dropped them). */
@@ -138,7 +141,7 @@ export async function migrateFromRealtimeDb(uid) {
   }
 
   if (!old) {
-    await setDoc(userDoc(uid), { migratedAt: Date.now() }, { merge: true })
+    await setDoc(userDoc(uid), { migratedAt: Date.now(), schemaVersion: SCHEMA_VERSION }, { merge: true })
     return { done: true, copied: 0 }
   }
 
@@ -188,6 +191,6 @@ export async function migrateFromRealtimeDb(uid) {
   }
 
   await commitAll(ops)
-  await setDoc(userDoc(uid), { migratedAt: Date.now() }, { merge: true })
+  await setDoc(userDoc(uid), { migratedAt: Date.now(), schemaVersion: SCHEMA_VERSION }, { merge: true })
   return { done: true, copied: ops.length }
 }
