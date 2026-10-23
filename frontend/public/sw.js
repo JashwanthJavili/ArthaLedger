@@ -42,7 +42,9 @@ function showAppNotification(title, { body, url = '/dashboard', tag, actions, ad
     tag: tag || undefined,
     renotify: Boolean(tag) && renotify,
     actions: parsedActions.slice(0, maxActions),
-    image: image || undefined,
+    // Android shows only one line of text beside a banner image. Longer text
+    // drops the image so it wraps onto the next lines instead of being cut.
+    image: image && (body || '').length <= 42 ? image : undefined,
     silent,
     data: { url, addUrl, snoozeUrl },
   })
