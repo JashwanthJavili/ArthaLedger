@@ -13,6 +13,8 @@ import {
   reload,
   db,
 } from '../lib/firebase'
+import { unregisterPushForThisDevice } from '../lib/firebase'
+import { claimDeviceFor, releaseDevice } from '../lib/deviceData'
 import {
   EmailAuthProvider,
   reauthenticateWithCredential,
@@ -77,6 +79,8 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (nextUser) => {
+      // A different account on this device: drop the previous one's local data first
+      if (nextUser) claimDeviceFor(nextUser.uid)
       setUser(nextUser)
       setLoading(false)
       if (nextUser?.emailVerified) {
@@ -302,12 +306,13 @@ export function AuthProvider({ children }) {
   }, [])
 
   const logout = useCallback(async () => {
+    // Unlink notifications while still signed in, then sign out and wipe local data
+    await unregisterPushForThisDevice().catch(() => {})
     try {
       await signOut(auth)
-      setPendingVerificationEmail(null)
-      sessionStorage.removeItem('al_pending_email')
-      sessionStorage.removeItem('al_pending_pw')
     } catch { /* ignore */ }
+    setPendingVerificationEmail(null)
+    releaseDevice()
   }, [])
 
   const deleteAccount = useCallback(async (password) => {
@@ -342,7 +347,7 @@ export function AuthProvider({ children }) {
     }
 
     setPendingVerificationEmail(null)
-    sessionStorage.clear()
+    releaseDevice()
   }, [])
 
   // ── Derived state ─────────────────────────────────────────────────────────

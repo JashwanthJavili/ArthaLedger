@@ -14,7 +14,7 @@ import {
   reload,
 } from 'firebase/auth'
 import { getDatabase, ref, set } from 'firebase/database'
-import { getMessaging, getToken, onMessage, isSupported as isMessagingSupported } from 'firebase/messaging'
+import { getMessaging, getToken, deleteToken, onMessage, isSupported as isMessagingSupported } from 'firebase/messaging'
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY || 'YOUR_API_KEY',
@@ -88,6 +88,26 @@ export async function requestFCMToken(vapidKey = import.meta.env.VITE_FIREBASE_V
     console.error('Failed to get FCM token:', err)
     return null
   }
+}
+
+/**
+ * Unlink this device from the signed-in account's notifications. Call while
+ * still signed in (before signOut): removes the token from the account and
+ * deletes it, so the next person on this phone never gets someone else's
+ * reminders.
+ */
+export async function unregisterPushForThisDevice() {
+  const token = (() => { try { return localStorage.getItem('al_fcm_token') } catch { return null } })()
+  const uid = auth.currentUser?.uid
+  if (token && uid) {
+    const key = token.replace(/[.#$[\]/]/g, '_').slice(0, 700)
+    await set(ref(db, `users/${uid}/pushTokens/${key}`), null).catch(() => {})
+  }
+  try {
+    const messaging = await messagingPromise
+    if (messaging && token) await deleteToken(messaging)
+  } catch { /* already gone */ }
+  try { localStorage.removeItem('al_fcm_token') } catch { /* ignore */ }
 }
 
 export async function onForegroundMessage(callback) {
