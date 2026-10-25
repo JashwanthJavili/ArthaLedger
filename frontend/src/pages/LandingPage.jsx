@@ -80,12 +80,23 @@ function Hero() {
 
 function WhatIsIt() {
   return (
-    <section id="learn" className="scroll-mt-16 px-4 py-16 sm:px-6 sm:py-24">
+    <section id="learn" className="scroll-mt-16 px-4 pt-16 pb-8 sm:px-6 sm:pt-24 sm:pb-10">
       <div className="mx-auto max-w-6xl">
         <WhatIsArtha />
-
-        <div className="mt-14"><AudienceBand /></div>
       </div>
+    </section>
+  )
+}
+
+/* ─────────────────────────── who it's for ─────────────────────────── */
+
+/* a section that fills one screen below the header, content centred */
+const SCREEN = 'flex min-h-[calc(100svh-4rem)] flex-col justify-center'
+
+function WhoItsFor() {
+  return (
+    <section id="who" className={`${SCREEN} scroll-mt-16 px-4 py-3 sm:px-6 sm:py-8`}>
+      <div className="mx-auto w-full max-w-6xl"><AudienceBand /></div>
     </section>
   )
 }
@@ -94,9 +105,9 @@ function WhatIsIt() {
 
 function HowItWorks() {
   return (
-    <section id="how" className="scroll-mt-20 overflow-hidden px-4 py-16 sm:px-6 sm:py-24" style={{ background: BAND_BG, borderBlock: '1px solid var(--border-subtle)' }}>
+    <section id="how" className={`${SCREEN} scroll-mt-16 overflow-hidden px-4 py-4 sm:px-6 sm:py-6`} style={{ background: BAND_BG, borderBlock: '1px solid var(--border-subtle)' }}>
       <div className="mx-auto max-w-6xl">
-        <SectionTitle eyebrow="How it works" title="From first entry to full clarity" sub="Set up in under a minute. Watch the walkthrough, or select any step." />
+        <SectionTitle eyebrow="How it works" title="From first entry to full clarity" sub="Set up in under a minute. Watch the walkthrough, or select any step." subClassName="hidden sm:block" />
         <HowItWorksTour />
       </div>
     </section>
@@ -126,17 +137,17 @@ const SHIFTS = [
 
 function Transformation() {
   return (
-    <section className="px-4 pb-16 sm:px-6 sm:pb-24">
-      <div className="mx-auto max-w-6xl">
+    <section id="sorted" className={`${SCREEN} scroll-mt-16 px-4 py-3 sm:px-6 sm:py-10`}>
+      <div className="mx-auto w-full max-w-6xl">
         <SectionTitle eyebrow="See the difference" title="From scattered to sorted."
           sub="Most of us keep track of money on scraps: notes, screenshots and memory. Drag the slider to see the same month in ArthaLedger." />
-        <Reveal className="mt-10"><BeforeAfter /></Reveal>
-        <div className="mt-5 grid gap-3 md:grid-cols-3">
+        <Reveal className="mt-6 sm:mt-8"><BeforeAfter /></Reveal>
+        <div className="mt-3 grid gap-2 sm:mt-4 sm:gap-3 md:grid-cols-3">
           {SHIFTS.map(([from, to], i) => (
-            <Reveal key={from} delay={i * 0.08} className="flex items-center gap-3 rounded-2xl px-4 py-3.5" style={card}>
+            <Reveal key={from} delay={i * 0.08} className="flex items-center gap-3 rounded-2xl px-4 py-2.5 sm:py-3.5" style={card}>
               <div className="min-w-0 flex-1">
-                <p className="text-[12.5px] line-through decoration-rose-400/70" style={{ color: 'var(--text-subtle)' }}>{from}</p>
-                <p className="mt-0.5 text-[14.5px] font-semibold" style={{ color: 'var(--text-main)' }}>{to}</p>
+                <p className="hidden text-[12.5px] line-through decoration-rose-400/70 sm:block" style={{ color: 'var(--text-subtle)' }}>{from}</p>
+                <p className="text-[14.5px] font-semibold sm:mt-0.5" style={{ color: 'var(--text-main)' }}>{to}</p>
               </div>
               <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-emerald-500/12 text-emerald-600"><Check size={16} /></span>
             </Reveal>
@@ -468,6 +479,7 @@ export default function LandingPage() {
       <main>
         <Hero />
         <WhatIsIt />
+        <WhoItsFor />
         <Transformation />
         <HowItWorks />
         <Insights />

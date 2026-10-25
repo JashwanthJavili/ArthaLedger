@@ -142,7 +142,7 @@ export default function BeforeAfter() {
   }
 
   return (
-    <div ref={ref} className="relative h-[440px] select-none overflow-hidden rounded-[1.75rem] sm:h-[400px]"
+    <div ref={ref} className="relative h-[380px] select-none overflow-hidden rounded-[1.75rem] sm:h-[380px]"
       style={{ border: '1px solid var(--border-card)', boxShadow: '0 40px 90px -50px rgba(0,0,0,0.45)' }}
       onClick={(e) => { setTouched(true); if (!dragging.current) setFromX(e.clientX, true) }}>
       <BeforeScene />

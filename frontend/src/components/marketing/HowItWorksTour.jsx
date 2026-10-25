@@ -305,7 +305,7 @@ export default function HowItWorksTour() {
   }, [playing, step])
 
   return (
-    <div ref={ref} className="mt-12 grid items-center gap-10 lg:grid-cols-[1fr_1.05fr] lg:gap-16"
+    <div ref={ref} className="mt-6 grid items-center gap-5 sm:mt-8 sm:gap-8 lg:grid-cols-[1fr_1.05fr] lg:gap-16"
       onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)}>
       {/* steps */}
       <ol className="order-2 grid grid-cols-4 gap-2 lg:order-1 lg:grid-cols-1 lg:gap-3" aria-label="Steps">
@@ -349,7 +349,10 @@ export default function HowItWorksTour() {
 
       {/* phone, with the step's line under it on small screens */}
       <div className="order-1 lg:order-2">
-        <Phone step={step} />
+        {/* a little smaller on phones so the whole tour fits one screen */}
+        <div className="-mb-[78px] origin-top scale-[0.85] sm:mb-0 sm:scale-100">
+          <Phone step={step} />
+        </div>
         <AnimatePresence mode="wait">
           <motion.p key={step} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.25 }}
             className="mx-auto mt-6 max-w-xs text-center text-[14.5px] leading-relaxed lg:hidden" style={{ color: 'var(--text-muted)' }}>

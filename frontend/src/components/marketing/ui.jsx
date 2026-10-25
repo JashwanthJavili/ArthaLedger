@@ -31,12 +31,12 @@ export function Eyebrow({ children, className = '' }) {
   return <p className={`text-[11px] font-semibold uppercase tracking-[0.22em] ${className}`} style={{ color: 'var(--gold-primary)' }}>{children}</p>
 }
 
-export function SectionTitle({ eyebrow, title, sub, center = true }) {
+export function SectionTitle({ eyebrow, title, sub, center = true, subClassName = '' }) {
   return (
     <Reveal className={center ? 'mx-auto max-w-2xl text-center' : 'max-w-xl'}>
       {eyebrow && <Eyebrow>{eyebrow}</Eyebrow>}
       <h2 className="font-serif-luxury mt-3 text-[1.85rem] leading-[1.12] font-semibold tracking-tight [text-wrap:balance] sm:text-[2.6rem]" style={{ color: 'var(--text-main)' }}>{title}</h2>
-      {sub && <p className="mt-3 text-[15px] leading-relaxed sm:text-base" style={{ color: 'var(--text-muted)' }}>{sub}</p>}
+      {sub && <p className={`mt-3 text-[15px] leading-relaxed sm:text-base ${subClassName}`} style={{ color: 'var(--text-muted)' }}>{sub}</p>}
     </Reveal>
   )
 }
