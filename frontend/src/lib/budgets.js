@@ -1,5 +1,6 @@
 // Shared monthly-budget math used by BudgetSection and the Analytics insights.
 // A budget key is either a category ("Food") or "Category · Subcategory".
+import { intlLocale } from '../i18n/core'
 
 export const SUB_SEP = ' · '
 const DAY_MS = 24 * 60 * 60 * 1000
@@ -18,7 +19,7 @@ export function offsetMonth(key, delta) {
 
 export function monthLabel(key, opts = { month: 'long', year: 'numeric' }) {
   const [y, m] = key.split('-').map(Number)
-  return new Date(y, m - 1, 1).toLocaleDateString('en-IN', opts)
+  return new Date(y, m - 1, 1).toLocaleDateString(intlLocale(), opts)
 }
 
 export function monthBounds(key) {
@@ -99,12 +100,13 @@ export function budgetZone({ spent, soft, hard = 0, warnAt = 80, projected = nul
   return 'safe'
 }
 
+// Labels live in budget.zone.* (looked up at render).
 export const ZONE_META = {
-  safe:    { label: 'On track',      color: '#10B981', pill: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' },
-  pace:    { label: 'Trending over', color: '#E0A23B', pill: 'bg-amber-500/10 text-amber-600 dark:text-amber-400' },
-  warning: { label: 'Near limit',    color: '#F59E0B', pill: 'bg-amber-500/12 text-amber-600 dark:text-amber-400' },
-  over:    { label: 'Over budget',   color: '#F43F5E', pill: 'bg-rose-500/10 text-rose-600 dark:text-rose-400' },
-  hard:    { label: 'Limit crossed', color: '#E11D48', pill: 'bg-rose-500/15 text-rose-600 dark:text-rose-400' },
+  safe:    { color: '#10B981', pill: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' },
+  pace:    { color: '#E0A23B', pill: 'bg-amber-500/10 text-amber-600 dark:text-amber-400' },
+  warning: { color: '#F59E0B', pill: 'bg-amber-500/12 text-amber-600 dark:text-amber-400' },
+  over:    { color: '#F43F5E', pill: 'bg-rose-500/10 text-rose-600 dark:text-rose-400' },
+  hard:    { color: '#E11D48', pill: 'bg-rose-500/15 text-rose-600 dark:text-rose-400' },
 }
 
 export const ZONE_RANK = { hard: 0, over: 1, warning: 2, pace: 3, safe: 4 }

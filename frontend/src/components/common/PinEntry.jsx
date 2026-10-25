@@ -4,8 +4,7 @@ import { useAuth } from '../../context/AuthContext'
 import { verifyPin } from '../../lib/pin'
 import { FREE_ATTEMPTS, clearGuard, readGuard, recordFailure } from '../../lib/pinGuard'
 import PinPad from './PinPad'
-
-const fmtClock = (secs) => `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`
+import { useI18n } from '../../i18n/core'
 
 /**
  * Verifies a PIN against `storedHash` with persistent attempt limiting.
@@ -21,6 +20,7 @@ const fmtClock = (secs) => `${Math.floor(secs / 60)}:${String(secs % 60).padStar
  */
 export default function PinEntry({ guardId, storedHash, length: knownLength, onSuccess, tone }) {
   const { user } = useAuth()
+  const { t } = useI18n()
   const uid = user?.uid
   const length = knownLength === 4 || knownLength === 6 ? knownLength : 6
   const lengthUnknown = !(knownLength === 4 || knownLength === 6)
@@ -79,10 +79,10 @@ export default function PinEntry({ guardId, storedHash, length: knownLength, onS
         setNow(Date.now())
       } else {
         const left = FREE_ATTEMPTS - next.failures
-        setMessage(`Wrong PIN · ${left} ${left === 1 ? 'try' : 'tries'} left before a lockout`)
+        setMessage(t('pin.entry.wrongPin', { count: left }))
       }
     } catch {
-      setMessage('Something went wrong. Try again.')
+      setMessage(t('pin.entry.error'))
       setPin('')
     } finally {
       setBusy(false)
@@ -115,12 +115,12 @@ export default function PinEntry({ guardId, storedHash, length: knownLength, onS
       <div className="mt-3 min-h-[36px] text-center" aria-live="polite">
         {locked ? (
           <p className="inline-flex items-center gap-1.5 rounded-full bg-rose-500/10 px-3 py-1.5 text-xs font-semibold text-rose-600 dark:text-rose-400">
-            <Clock size={13} /> Too many wrong attempts · try again in {fmtClock(remainingSecs)}
+            <Clock size={13} /> {t('pin.entry.locked', { minutes: Math.floor(remainingSecs / 60), seconds: String(remainingSecs % 60).padStart(2, '0') })}
           </p>
         ) : message ? (
           <p className="text-xs font-medium text-rose-600 dark:text-rose-400">{message}</p>
         ) : busy && pin.length === length ? (
-          <p className="text-xs text-[var(--text-subtle)]">Checking…</p>
+          <p className="text-xs text-[var(--text-subtle)]">{t('pin.entry.checking')}</p>
         ) : null}
       </div>
     </div>

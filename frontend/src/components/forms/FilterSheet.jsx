@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { datePresets } from '../../lib/dateRanges'
 import { X } from 'lucide-react'
+import { useI18n } from '../../i18n/core'
 
 function Group({ title, children }) {
   return (
@@ -23,6 +24,7 @@ export default function FilterSheet({ open, ...props }) {
 }
 
 function FilterSheetDialog({ onClose, filters, setFilters, categoryNames, enteredByList, resultCount, onReset }) {
+  const { t } = useI18n()
   const presets = datePresets()
   const activePreset = presets.find(p => p.from === filters.from && p.to === filters.to)
   const [customOpen, setCustomOpen] = useState(!activePreset)
@@ -55,7 +57,7 @@ function FilterSheetDialog({ onClose, filters, setFilters, categoryNames, entere
       <motion.div
         role="dialog"
         aria-modal="true"
-        aria-label="Filters"
+        aria-label={t('forms.filters.title')}
         initial={{ opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: 24 }}
@@ -64,24 +66,24 @@ function FilterSheetDialog({ onClose, filters, setFilters, categoryNames, entere
         style={{ maxHeight: '88vh' }}
       >
         <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-[var(--border-subtle)]">
-          <h2 className="text-[15px] font-semibold text-[var(--text-main)]">Filters</h2>
-          <button type="button" onClick={onClose} aria-label="Close" autoFocus
+          <h2 className="text-[15px] font-semibold text-[var(--text-main)]">{t('forms.filters.title')}</h2>
+          <button type="button" onClick={onClose} aria-label={t('common.close')} autoFocus
             className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--border-subtle)] text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors cursor-pointer">
             <X size={15} />
           </button>
         </div>
 
         <div className="flex-1 space-y-5 overflow-y-auto px-5 py-5">
-          <Group title="Type">
-            {options('type', [['income', 'Cash in'], ['expense', 'Cash out'], ['transfer_in', 'Transfer in'], ['transfer_out', 'Transfer out']], 'All')}
+          <Group title={t('forms.filters.type')}>
+            {options('type', [['income', t('forms.filters.cashIn')], ['expense', t('forms.filters.cashOut')], ['transfer_in', t('forms.filters.transferIn')], ['transfer_out', t('forms.filters.transferOut')]], t('common.all'))}
           </Group>
 
-          <Group title="Payment mode">
-            {options('mode', [['Cash', 'Cash'], ['UPI', 'UPI']], 'All')}
+          <Group title={t('forms.filters.paymentMode')}>
+            {options('mode', [['Cash', t('forms.filters.cash')], ['UPI', 'UPI']], t('common.all'))}
           </Group>
 
           <section>
-            <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-[0.1em] text-[var(--text-subtle)]">Date</h3>
+            <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-[0.1em] text-[var(--text-subtle)]">{t('common.date')}</h3>
             <div className="flex flex-wrap gap-1.5">
               {presets.map(p => (
                 <button key={p.id} type="button"
@@ -90,17 +92,17 @@ function FilterSheetDialog({ onClose, filters, setFilters, categoryNames, entere
                   {p.label}
                 </button>
               ))}
-              <button type="button" onClick={() => setCustomOpen(true)} className={chip(customOpen)}>Custom</button>
+              <button type="button" onClick={() => setCustomOpen(true)} className={chip(customOpen)}>{t('forms.filters.custom')}</button>
             </div>
             {customOpen && (
               <div className="mt-3 grid grid-cols-2 gap-2">
                 <label className="block">
-                  <span className="mb-1 block text-[11px] text-[var(--text-muted)]">From</span>
+                  <span className="mb-1 block text-[11px] text-[var(--text-muted)]">{t('forms.filters.from')}</span>
                   <input type="date" value={filters.from} max={filters.to || undefined}
                     onChange={e => set('from', e.target.value)} className={dateInput} />
                 </label>
                 <label className="block">
-                  <span className="mb-1 block text-[11px] text-[var(--text-muted)]">To</span>
+                  <span className="mb-1 block text-[11px] text-[var(--text-muted)]">{t('forms.filters.to')}</span>
                   <input type="date" value={filters.to} min={filters.from || undefined}
                     onChange={e => set('to', e.target.value)} className={dateInput} />
                 </label>
@@ -109,14 +111,14 @@ function FilterSheetDialog({ onClose, filters, setFilters, categoryNames, entere
           </section>
 
           {categoryNames.length > 0 && (
-            <Group title="Category">
-              {options('category', categoryNames.map(c => [c, c]), 'All')}
+            <Group title={t('common.category')}>
+              {options('category', categoryNames.map(c => [c, c]), t('common.all'))}
             </Group>
           )}
 
           {enteredByList.length > 0 && (
-            <Group title="Entered by">
-              {options('enteredBy', enteredByList.map(n => [n, n]), 'Everyone')}
+            <Group title={t('forms.filters.enteredBy')}>
+              {options('enteredBy', enteredByList.map(n => [n, n]), t('forms.filters.everyone'))}
             </Group>
           )}
         </div>
@@ -124,11 +126,11 @@ function FilterSheetDialog({ onClose, filters, setFilters, categoryNames, entere
         <div className="flex items-center gap-3 border-t border-[var(--border-subtle)] px-5 pt-3 pb-5">
           <button type="button" onClick={() => { onReset(); setCustomOpen(false) }}
             className="rounded-xl border border-[var(--border-card)] px-4 py-3 text-xs font-semibold text-[var(--text-muted)] hover:bg-[var(--border-subtle)] hover:text-[var(--text-main)] transition-colors cursor-pointer">
-            Reset
+            {t('common.reset')}
           </button>
           <button type="button" onClick={onClose}
             className="flex-1 rounded-xl bg-[var(--gold-primary)] py-3 text-xs font-semibold text-white hover:bg-[var(--gold-hover)] transition-colors cursor-pointer">
-            Show {resultCount} {resultCount === 1 ? 'result' : 'results'}
+            {t('forms.filters.showResults', { count: resultCount })}
           </button>
         </div>
       </motion.div>

@@ -7,13 +7,14 @@ export const GOLD_TINT = 'color-mix(in srgb, var(--gold-primary) 14%, transparen
 export const GOLD_SOFT = 'color-mix(in srgb, var(--gold-primary) 26%, transparent)'
 export const BAND_BG = 'color-mix(in srgb, var(--gold-primary) 5%, var(--bg-page))'
 
-// Sections live on the landing page; Pricing has its own page
+// Sections live on the landing page; Pricing has its own page.
+// `label` is a translation key, looked up when the menu renders.
 export const NAV = [
-  { id: 'how', label: 'How it works' },
-  { id: 'insights', label: 'Insights' },
-  { id: 'features', label: 'Features' },
-  { page: '/pricing', label: 'Pricing' },
-  { id: 'faq', label: 'FAQ' },
+  { id: 'how', label: 'site.nav.how' },
+  { id: 'insights', label: 'site.nav.insights' },
+  { id: 'features', label: 'site.nav.features' },
+  { page: '/pricing', label: 'site.nav.pricing' },
+  { id: 'faq', label: 'site.nav.faq' },
 ]
 
 export const goldBtn = {

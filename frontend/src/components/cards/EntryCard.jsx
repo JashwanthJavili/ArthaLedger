@@ -4,11 +4,13 @@ import { ArrowDownLeft, ArrowUpRight, ArrowLeftRight, PiggyBank, Compass, User }
 import { useParams } from 'react-router-dom'
 import { useAppData } from '../../context/AppDataContext'
 import { formatAmount, getCurrencySymbol } from '../../lib/format'
+import { useI18n } from '../../i18n/core'
 
 // One transaction row; BookPage places rows inside a per-day card.
 export default function EntryCard({ entry, balance }) {
   const { projectId, bookId } = useParams()
   const { trips } = useAppData()
+  const { t } = useI18n()
 
   const linkedTrips = useMemo(() => {
     if (!projectId || !bookId || !trips) return []
@@ -35,19 +37,19 @@ export default function EntryCard({ entry, balance }) {
   const meta = [
     entry.category || 'General',
     entry.subcategory,
-    entry.mode || 'UPI',
+    entry.mode === 'Cash' ? t('entry.mode.cash') : (entry.mode || 'UPI'),
     format(new Date(entry.timestamp), 'h:mm a'),
   ].filter(Boolean).join(' · ')
 
   const tags = [
-    entry.isSavings && { key: 'savings', label: 'Savings', Icon: PiggyBank, cls: 'text-violet-600 dark:text-violet-400 bg-violet-500/10' },
+    entry.isSavings && { key: 'savings', label: t('entry.card.savings'), Icon: PiggyBank, cls: 'text-violet-600 dark:text-violet-400 bg-violet-500/10' },
     isTransfer && {
       key: 'transfer',
-      label: `${isTransferIn ? 'Transfer in' : 'Transfer out'} · ${entry.transferScope === 'cross_project' ? 'Cross-project' : 'Internal'}`,
+      label: `${isTransferIn ? t('book.transferIn') : t('book.transferOut')} · ${entry.transferScope === 'cross_project' ? t('entry.card.crossProject') : t('entry.card.internal')}`,
       Icon: ArrowLeftRight,
       cls: 'text-sky-600 dark:text-sky-400 bg-sky-500/10',
     },
-    ...linkedTrips.map(t => ({ key: t.id, label: t.name, Icon: Compass, cls: 'text-[var(--gold-primary)] bg-[var(--gold-light)]' })),
+    ...linkedTrips.map(trip => ({ key: trip.id, label: trip.name, Icon: Compass, cls: 'text-[var(--gold-primary)] bg-[var(--gold-light)]' })),
     entry.enteredBy && { key: 'by', label: entry.enteredBy, Icon: User, cls: 'text-[var(--text-muted)] bg-[var(--border-subtle)]' },
   ].filter(Boolean)
 
@@ -60,7 +62,7 @@ export default function EntryCard({ entry, balance }) {
       <div className="min-w-0 flex-1">
         <div className="flex items-baseline justify-between gap-3">
           <p className="truncate text-[14px] font-medium text-[var(--text-main)]">
-            {entry.description || (isCredit ? 'Money in' : 'Money out')}
+            {entry.description || (isCredit ? t('common.moneyIn') : t('common.moneyOut'))}
           </p>
           <p className={`flex-shrink-0 text-[14px] font-semibold tabular-nums ${visual.amount}`}>
             {isCredit ? '+' : '−'}{symbol}{formatAmount(entry.amount)}
@@ -69,7 +71,7 @@ export default function EntryCard({ entry, balance }) {
 
         <div className="mt-0.5 flex items-baseline justify-between gap-3 text-[11px] text-[var(--text-subtle)]">
           <p className="truncate">{meta}</p>
-          <p className="flex-shrink-0 tabular-nums">Bal {(balance ?? entry.balanceAfter ?? 0) < 0 ? '−' : ''}{symbol}{formatAmount(balance ?? entry.balanceAfter ?? 0)}</p>
+          <p className="flex-shrink-0 tabular-nums">{t('entry.card.bal', { amount: `${(balance ?? entry.balanceAfter ?? 0) < 0 ? '−' : ''}${symbol}${formatAmount(balance ?? entry.balanceAfter ?? 0)}` })}</p>
         </div>
 
         {tags.length > 0 && (

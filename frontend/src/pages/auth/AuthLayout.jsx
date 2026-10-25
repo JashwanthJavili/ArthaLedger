@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ArrowLeft, Eye, EyeOff, Loader2, AlertCircle } from 'lucide-react'
+import { useI18n } from '../../i18n/core'
 
 const ease = [0.16, 1, 0.3, 1]
 
@@ -11,6 +12,7 @@ const ease = [0.16, 1, 0.3, 1]
  * pinned to the bottom. On wide screens the form sits in a card.
  */
 export default function AuthLayout({ title, subtitle, back, children, footer }) {
+  const { t } = useI18n()
   return (
     <main className="relative flex min-h-[100dvh] flex-col overflow-hidden bg-[var(--bg-page)] px-5 pb-[max(env(safe-area-inset-bottom),14px)] pt-[max(env(safe-area-inset-top),10px)]">
       {/* Soft glow behind the brand */}
@@ -20,7 +22,7 @@ export default function AuthLayout({ title, subtitle, back, children, footer }) 
         <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45, ease }}
           className="flex h-12 items-center gap-2.5">
           {back && (
-            <Link to={back} aria-label="Back"
+            <Link to={back} aria-label={t('common.back')}
               className="-ml-2 flex h-10 w-10 items-center justify-center rounded-full text-[var(--text-main)] hover:bg-[var(--border-subtle)] active:bg-[var(--border-subtle)] transition-colors">
               <ArrowLeft size={20} />
             </Link>
@@ -54,6 +56,7 @@ export function AuthLink({ to, children }) {
 /** Text field with a leading icon, optional password reveal and inline error.
  * `label` names the field for screen readers and is the placeholder unless one is given. */
 export function Field({ icon: Icon, label, error, type = 'text', trailing, placeholder, ...props }) {
+  const { t } = useI18n()
   const [reveal, setReveal] = useState(false)
   const isPassword = type === 'password'
   return (
@@ -72,7 +75,7 @@ export function Field({ icon: Icon, label, error, type = 'text', trailing, place
         />
         {trailing}
         {isPassword && (
-          <button type="button" onClick={() => setReveal(v => !v)} aria-label={reveal ? 'Hide password' : 'Show password'}
+          <button type="button" onClick={() => setReveal(v => !v)} aria-label={reveal ? t('auth.hidePassword') : t('auth.showPassword')}
             className="-mr-1 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full text-[var(--text-subtle)] hover:text-[var(--text-main)] cursor-pointer">
             {reveal ? <EyeOff size={17} /> : <Eye size={17} />}
           </button>
@@ -110,16 +113,17 @@ const GoogleIcon = () => (
 
 /** "or" divider followed by the Google button */
 export function GoogleOption({ onClick, disabled }) {
+  const { t } = useI18n()
   return (
     <>
       <div className="my-[clamp(10px,2dvh,18px)] flex items-center gap-3">
         <div className="h-px flex-1 bg-[var(--border-card)]" />
-        <span className="text-[12px] text-[var(--text-subtle)]">or</span>
+        <span className="text-[12px] text-[var(--text-subtle)]">{t('auth.or')}</span>
         <div className="h-px flex-1 bg-[var(--border-card)]" />
       </div>
       <motion.button type="button" whileTap={{ scale: 0.98 }} onClick={onClick} disabled={disabled}
         className="flex h-[50px] w-full items-center justify-center gap-3 rounded-2xl border border-[var(--border-card)] bg-[var(--bg-card)] text-[14.5px] font-medium text-[var(--text-main)] hover:bg-[var(--bg-card-hover)] transition-colors disabled:opacity-60 cursor-pointer">
-        <GoogleIcon /> Continue with Google
+        <GoogleIcon /> {t('auth.continueGoogle')}
       </motion.button>
     </>
   )

@@ -1,0 +1,2290 @@
+{
+  "common": {
+    "appName": "ArthaLedger",
+    "save": "Save",
+    "saving": "Saving…",
+    "saved": "Saved",
+    "cancel": "Cancel",
+    "close": "Close",
+    "back": "Back",
+    "next": "Next",
+    "done": "Done",
+    "edit": "Edit",
+    "delete": "Delete",
+    "deleting": "Deleting…",
+    "remove": "Remove",
+    "add": "Add",
+    "create": "Create",
+    "update": "Update",
+    "confirm": "Confirm",
+    "continue": "Continue",
+    "retry": "Try again",
+    "search": "Search",
+    "clear": "Clear",
+    "apply": "Apply",
+    "reset": "Reset",
+    "yes": "Yes",
+    "no": "No",
+    "ok": "OK",
+    "loading": "Loading…",
+    "optional": "Optional",
+    "required": "Required",
+    "all": "All",
+    "none": "None",
+    "more": "More",
+    "less": "Less",
+    "showMore": "Show more",
+    "showLess": "Show less",
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "thisWeek": "This week",
+    "thisMonth": "This month",
+    "lastMonth": "Last month",
+    "thisYear": "This year",
+    "income": "Income",
+    "expense": "Expense",
+    "moneyIn": "Money in",
+    "moneyOut": "Money out",
+    "in": "In",
+    "out": "Out",
+    "balance": "Balance",
+    "total": "Total",
+    "amount": "Amount",
+    "category": "Category",
+    "note": "Note",
+    "date": "Date",
+    "time": "Time",
+    "name": "Name",
+    "email": "Email",
+    "password": "Password",
+    "signIn": "Sign in",
+    "signOut": "Sign out",
+    "getStarted": "Get started",
+    "openApp": "Open app",
+    "downloadAndroid": "Download for Android",
+    "androidApp": "Android app",
+    "somethingWrong": "Something went wrong. Please try again.",
+    "offline": "You are offline. Changes will sync when you are back online.",
+    "copied": "Copied",
+    "language": "Language"
+  },
+  "site": {
+    "nav": {
+      "how": "How it works",
+      "insights": "Insights",
+      "features": "Features",
+      "pricing": "Pricing",
+      "faq": "FAQ"
+    },
+    "header": {
+      "home": "ArthaLedger home",
+      "mainNav": "Main",
+      "menu": "Menu",
+      "openMenu": "Open menu",
+      "closeMenu": "Close menu",
+      "downloadApp": "Download the Android app",
+      "switchLanguage": "Change language"
+    },
+    "footer": {
+      "tagline": "Where every rupee has meaning.",
+      "product": "Product",
+      "account": "Account",
+      "company": "Company",
+      "signUp": "Sign up",
+      "privacy": "Privacy",
+      "contact": "Contact",
+      "collaborate": "Collaborate",
+      "rights": "© {year} ArthaLedger. All rights reserved.",
+      "madeIn": "Made with care in India"
+    },
+    "cta": {
+      "createFree": "Create free account",
+      "claimSpot": "Claim your spot"
+    },
+    "contact": {
+      "title": "Still have a question?",
+      "text": "Write to us and we will get back to you.",
+      "button": "Contact us"
+    },
+    "charts": {
+      "spent": "Spent",
+      "saved": "Saved",
+      "byMonth": "Money in and out by month: {list}",
+      "monthItem": "{month} in ₹{in}, out ₹{out}",
+      "overBy": "Over by ₹{amount}",
+      "almost": "Almost there",
+      "onTrack": "On track"
+    }
+  },
+  "landing": {
+    "cats": {
+      "rent": "Rent",
+      "groceries": "Groceries",
+      "bills": "Bills",
+      "travel": "Travel",
+      "eatingOut": "Eating out",
+      "other": "Other",
+      "milk": "Milk",
+      "salary": "Salary",
+      "vegetables": "Vegetables",
+      "fuel": "Fuel",
+      "refund": "Refund",
+      "schoolFees": "School fees",
+      "family": "Family",
+      "personal": "Personal",
+      "business": "Business",
+      "savings": "Savings",
+      "wallet": "Wallet"
+    },
+    "months": {
+      "long": [
+        "May",
+        "June",
+        "July",
+        "August",
+        "September",
+        "October"
+      ],
+      "short": [
+        "May",
+        "Jun",
+        "Jul",
+        "Aug",
+        "Sep",
+        "Oct"
+      ]
+    },
+    "hero": {
+      "eyebrow": "Your money notebook, on your phone",
+      "title": "Know where every<br/> rupee <em>goes.</em>",
+      "sub": "Add money in and out in a few taps. ArthaLedger does the maths.",
+      "start": "Start for free",
+      "startShort": "Start for free",
+      "noBank": "No bank login needed",
+      "private": "Private to you",
+      "offline": "Works without internet",
+      "photo": {
+        "alt": "Two young friends smiling as they look at ArthaLedger on a phone",
+        "easy": "It’s this easy!",
+        "sorted": "Every rupee, sorted.",
+        "saved": "· Saved",
+        "savedMonth": "Saved this month",
+        "goal": "60% of the goal"
+      },
+      "scrollCue": "Scroll down to see more"
+    },
+    "what": {
+      "eyebrow": "New here?",
+      "title": "What is <em>ArthaLedger?</em>",
+      "sub": "An easy way to keep track of your money, made for everyday life in India.",
+      "khata": "Khata",
+      "bank": "Bank",
+      "you": "You",
+      "noLink": "No link, ever",
+      "chapters": {
+        "khata": {
+          "title": "Like a khata, but on your phone",
+          "text": "The same idea as the notebook many families use for household accounts, neatly organised into projects and books."
+        },
+        "sum": {
+          "title": "You add, it adds up",
+          "text": "Totals, balances and monthly summaries are worked out for you. No spreadsheets, no formulas."
+        },
+        "bank": {
+          "title": "Never touches your bank",
+          "text": "ArthaLedger does not connect to your bank, cards or UPI. You decide what to write. Nothing moves your money."
+        }
+      }
+    },
+    "who": {
+      "eyebrow": "Who it’s for",
+      "title": "If money passes through your hands, <em>this is for you.</em>",
+      "sub": "Whether you manage a salary, a household, a shop or a trip with friends, knowing where your money goes is the first step to keeping more of it.",
+      "leftOver": "Left over",
+      "spent": "Spent",
+      "people": {
+        "students": {
+          "label": "Students",
+          "line": "Pocket money, fees and canteen bills.",
+          "rows": {
+            "pocket": "Pocket money",
+            "canteen": "Canteen",
+            "bus": "Bus pass"
+          }
+        },
+        "families": {
+          "label": "Families",
+          "line": "Groceries, school fees and bills.",
+          "rows": {
+            "groceries": "Groceries",
+            "school": "School fees",
+            "power": "Electricity"
+          }
+        },
+        "shops": {
+          "label": "Shop owners",
+          "line": "Daily sales in, stock and rent out.",
+          "rows": {
+            "sales": "Today’s sales",
+            "stock": "Stock",
+            "rent": "Shop rent"
+          }
+        },
+        "freelancers": {
+          "label": "Freelancers",
+          "line": "Client payments in, work costs out.",
+          "rows": {
+            "client": "Client payment",
+            "software": "Software",
+            "internet": "Internet"
+          }
+        },
+        "salaried": {
+          "label": "Salaried",
+          "line": "Salary in, EMIs and savings out.",
+          "rows": {
+            "salary": "Salary",
+            "emi": "Home EMI",
+            "sip": "SIP"
+          }
+        },
+        "trips": {
+          "label": "Trips",
+          "line": "Who paid for what, all in one place.",
+          "rows": {
+            "hotel": "Hotel · Ravi",
+            "dinner": "Dinner · You",
+            "cab": "Cab · Asha"
+          }
+        }
+      }
+    },
+    "sorted": {
+      "eyebrow": "See the difference",
+      "title": "From scattered to sorted.",
+      "sub": "Most of us keep track of money on scraps: notes, screenshots and memory. Drag the slider to see the same month in ArthaLedger.",
+      "shifts": [
+        {
+          "from": "Guesses at month end",
+          "to": "Exact totals, any day"
+        },
+        {
+          "from": "Lost bills and screenshots",
+          "to": "Every entry saved and searchable"
+        },
+        {
+          "from": "Surprise when money runs out",
+          "to": "A heads-up before a budget runs out"
+        }
+      ],
+      "before": {
+        "badge": "Before",
+        "note": "Note",
+        "noteText": "Milk ₹60?<br/>Auto ₹?? <s>₹120</s>",
+        "paidRamesh": "Paid ₹350 to Ramesh",
+        "whatFor": "What was this for?",
+        "receipt": "Receipt",
+        "medical": "Medical store",
+        "receiptTotal": "Total ₹1,240",
+        "paid": "Paid ₹1,200",
+        "rentOrGas": "Rent or the gas bill?",
+        "reminder": "Reminder",
+        "gaveRavi": "Gave Ravi ₹2,000. Got it back?",
+        "groceries": "Groceries ₹3,4… ₹4,8…<br/>(lost the bill)",
+        "where": "“Where did ₹12,400 go?”",
+        "guesses": "Notes, screenshots and guesses"
+      },
+      "after": {
+        "badge": "With ArthaLedger",
+        "monthLeft": "October · Money left",
+        "in": "In",
+        "out": "Out",
+        "groceries": "Market · Oct 21",
+        "freelance": "Freelance work",
+        "freelanceMeta": "Income · Oct 20",
+        "gas": "Gas bill",
+        "gasMeta": "Bills · Oct 18",
+        "accounted": "Every rupee accounted for"
+      },
+      "slider": "Compare before and after",
+      "drag": "Drag to compare"
+    },
+    "how": {
+      "eyebrow": "How it works",
+      "title": "From first entry to full clarity",
+      "sub": "Set up in under a minute. Watch the walkthrough, or select any step.",
+      "stepsLabel": "Steps",
+      "step": "Step {n}",
+      "steps": {
+        "project": {
+          "title": "Create a project",
+          "text": "A folder for one part of life: Personal, Family or Business."
+        },
+        "books": {
+          "title": "Add books inside",
+          "text": "One book for each purpose, each with its own balance."
+        },
+        "record": {
+          "title": "Record money",
+          "text": "Tap Cash In or Cash Out, type the amount. Done."
+        },
+        "picture": {
+          "title": "See the picture",
+          "text": "Charts and budget alerts, worked out for you."
+        }
+      },
+      "phone": {
+        "home": "Home",
+        "yourProjects": "Your projects",
+        "books": {
+          "one": "{count} book",
+          "other": "{count} books"
+        },
+        "new": "New",
+        "newProject": "New project",
+        "project": "Project",
+        "newBook": "New book",
+        "projectTotal": "Project total",
+        "familyBook": "Family · Book",
+        "moneyLeft": "Money left",
+        "groceriesNow": "Groceries · now",
+        "cashOut": "Cash out",
+        "analytics": "Analytics",
+        "october": "October",
+        "alert": "Groceries at 84%",
+        "alertLeft": "₹1,600 left for October"
+      }
+    },
+    "insights": {
+      "eyebrow": "Insights",
+      "title": "Your money, drawn as a picture.",
+      "sub": "No spreadsheets to build. As you add entries, ArthaLedger turns them into charts you can read at a glance. Tap the charts to explore.",
+      "window": "Analytics · October",
+      "sample": "Sample data",
+      "left": "Money left",
+      "bars": "In and out, month by month",
+      "barsSub": "Last 6 months",
+      "donut": "Where it went",
+      "donutSub": "October spending by category"
+    },
+    "features": {
+      "eyebrow": "Features",
+      "title": "Small habits. Big clarity.",
+      "tiles": {
+        "projects": {
+          "title": "Projects and books",
+          "line": "A folder for each part of life"
+        },
+        "budgets": {
+          "title": "Budgets",
+          "line": "A heads-up before it runs out"
+        },
+        "reminders": {
+          "title": "Reminders",
+          "line": "A nudge, morning to night"
+        },
+        "groups": {
+          "title": "Groups",
+          "line": "One total for a trip or event"
+        },
+        "pin": {
+          "title": "PIN lock",
+          "line": "Keep a book to yourself"
+        },
+        "move": {
+          "title": "Move money",
+          "line": "Transfer between books"
+        },
+        "reports": {
+          "title": "Reports",
+          "line": "Download as PDF or Excel"
+        },
+        "offline": {
+          "title": "Works offline",
+          "line": "Saved when you are back online"
+        },
+        "charts": {
+          "title": "Charts and categories",
+          "line": "See where every rupee went"
+        }
+      },
+      "headsUp": "Heads-up",
+      "goaTrip": "Goa trip",
+      "reminderTime": "ArthaLedger · 9:00 PM",
+      "reminderText": "Time to note today’s spends"
+    },
+    "pricingTeaser": {
+      "eyebrow": "Pricing",
+      "title": "Free for our first 50 users",
+      "text": "Everyone else can also try every feature free until paid plans launch.",
+      "see": "See pricing",
+      "early": "Early access",
+      "free": "Free",
+      "included": "every feature included"
+    },
+    "testimonials": {
+      "eyebrow": "In their words",
+      "title": "What people say",
+      "sub": "Shared by people who use ArthaLedger, with their permission.",
+      "rating": "{rating} out of 5"
+    },
+    "founder": {
+      "eyebrow": "A note from our founder",
+      "paragraphs": [
+        "ArthaLedger began with a simple observation: most of us do not lack income as much as we lack clarity. Small everyday expenses add up quietly, and by the end of the month it is hard to say where the money went.",
+        "Our purpose is to give every household, student and small business in India a clear record of their money, as familiar as a traditional khata and as dependable as a modern app.",
+        "We build with care, read every piece of feedback, and improve ArthaLedger together with the people who use it. Thank you for trusting us with something so personal."
+      ],
+      "role": "Founder, ArthaLedger"
+    },
+    "faq": {
+      "eyebrow": "FAQ",
+      "title": "Frequently asked questions",
+      "items": [
+        {
+          "q": "What exactly is ArthaLedger?",
+          "a": "A money notebook on your phone. You create projects (like Personal or Business), add books inside them, and note down money you receive and spend. ArthaLedger keeps the totals, balances and summaries for you."
+        },
+        {
+          "q": "What is the difference between a project and a book?",
+          "a": "A project is a folder for one part of your life, such as Family. A book is one account inside it, such as Groceries or Rent. Each book has its own balance, and the project shows them together."
+        },
+        {
+          "q": "Does it connect to my bank account or UPI?",
+          "a": "No. ArthaLedger never asks for bank, card or UPI details and cannot move money. You type in what you want to keep track of."
+        },
+        {
+          "q": "Is it free?",
+          "a": "Right now, yes. Early access is free for our first 50 users. Everyone else can also try every feature free until paid plans launch. Paid plans are coming soon, and we will tell you well before anything changes."
+        },
+        {
+          "q": "Is my data safe and private?",
+          "a": "Yes. Your projects and books can only be opened by your own account, and they are encrypted while they travel and while they are stored. You can also lock any project or book with a PIN."
+        },
+        {
+          "q": "Do I need internet?",
+          "a": "Not to add entries. ArthaLedger works offline and saves your changes as soon as you are connected again."
+        },
+        {
+          "q": "Can I use it on more than one phone?",
+          "a": "Yes. Sign in with the same account on any phone or computer and your projects and books will be there."
+        },
+        {
+          "q": "How do I install it on Android?",
+          "a": "ArthaLedger is not on the Play Store yet, so Android asks you to allow the install. Tap “Download for Android”, open the downloaded file, allow installs from your browser when Android asks, then tap Install. Prefer not to download? Open this website in Chrome and choose “Install app”, or simply use ArthaLedger in your browser."
+        },
+        {
+          "q": "Can I use it on an iPhone or iPad?",
+          "a": "Yes. ArthaLedger is not on the App Store yet, but it works in Safari. Open this website in Safari, tap the Share button, then choose “Add to Home Screen”. ArthaLedger then opens from your home screen like any other app. To get reminders, open it from the home screen and allow notifications (this needs iOS 16.4 or later)."
+        },
+        {
+          "q": "What are Groups?",
+          "a": "A group collects related transactions from different books in one place, such as everything spent on a trip or a wedding. Select transactions in any book, tap Add to group, and see the total and a category breakdown. Your transactions stay in their books."
+        },
+        {
+          "q": "How do I delete my account?",
+          "a": "Go to Settings, then Delete account. Your account and all your projects and books are removed for good."
+        }
+      ]
+    },
+    "collaborate": {
+      "title": "Want to collaborate?",
+      "text": "Working on money education, small businesses or community finance? Have an idea we could build together? We would love to hear from you.",
+      "write": "Write to us"
+    },
+    "cta": {
+      "eyebrow": "Free for our first 50 users",
+      "title": "Start your money notebook today.",
+      "imgAlt": "A young woman noting her vegetable shopping in ArthaLedger",
+      "note": "Ready in a minute. No card needed."
+    }
+  },
+  "pricing": {
+    "docTitle": "Pricing · ArthaLedger",
+    "early": "Early access is free for our first 50 users. Everyone else can also try every feature free until paid plans launch.",
+    "hero": {
+      "badge": "Early access is open",
+      "title": "Simple pricing. <em>Free</em> while we grow."
+    },
+    "spots": "50 early access spots",
+    "features": [
+      "Every feature included",
+      "Unlimited projects and books",
+      "Budgets, charts and reports",
+      "Sync across your devices"
+    ],
+    "earlyPlan": {
+      "label": "Early access",
+      "available": "Available now",
+      "price": "Free",
+      "note": "For our first 50 users. Every feature, no card needed."
+    },
+    "paidPlan": {
+      "label": "Monthly and yearly",
+      "soon": "Coming soon",
+      "note": "Paid plans are on the way. We will share the details well before they launch.",
+      "monthly": "Monthly",
+      "monthlyLine": "Pay as you go",
+      "yearly": "Yearly",
+      "yearlyLine": "Best value",
+      "notify": "We will let you know"
+    },
+    "included": {
+      "eyebrow": "No locked features",
+      "title": "Every plan includes everything.",
+      "sub": "No feature is held back for a higher tier. Whichever plan you pick, you get all of ArthaLedger.",
+      "items": {
+        "projects": "Unlimited projects",
+        "books": "Unlimited books",
+        "categories": "Categories",
+        "budgets": "Monthly budgets",
+        "charts": "Charts and summaries",
+        "groups": "Groups",
+        "pin": "PIN lock",
+        "reminders": "Daily reminders",
+        "reports": "PDF and Excel reports",
+        "offline": "Works offline",
+        "transfers": "Transfers between books",
+        "sync": "Sync across devices"
+      }
+    },
+    "compare": {
+      "caption": "Plans compared",
+      "head": "Compare",
+      "early": "Early access",
+      "monthly": "Monthly",
+      "yearly": "Yearly",
+      "rows": {
+        "price": "Price",
+        "every": "Every feature",
+        "unlimited": "Unlimited projects and books",
+        "sync": "Sync across devices",
+        "reminders": "Reminders and PIN lock",
+        "available": "Available"
+      },
+      "free": "Free",
+      "comingSoon": "Coming soon",
+      "now": "Now",
+      "soon": "Soon"
+    },
+    "timeline": {
+      "eyebrow": "Early access",
+      "title": "How early access works",
+      "sub": "Four things to know before you start.",
+      "step": "Step {n}",
+      "items": [
+        {
+          "title": "Sign up today",
+          "text": "Create your account with email or Google. No card, no payment details."
+        },
+        {
+          "title": "Use every feature",
+          "text": "Projects, books, budgets, groups, reports. Nothing is locked."
+        },
+        {
+          "title": "Hear from us first",
+          "text": "We will tell you well before paid plans begin, so there are no surprises."
+        },
+        {
+          "title": "Your data stays yours",
+          "text": "Download any book as PDF or Excel whenever you like, on any plan."
+        }
+      ]
+    },
+    "faq": {
+      "eyebrow": "FAQ",
+      "title": "Questions about pricing",
+      "items": [
+        {
+          "q": "Is ArthaLedger really free right now?",
+          "a": "Yes. Early access is free for our first 50 users. Everyone else can also try every feature free until paid plans launch."
+        },
+        {
+          "q": "What if I am not one of the first 50?",
+          "a": "You can still sign up and use every feature free until paid plans launch. We will let you know well before that happens."
+        },
+        {
+          "q": "Do I need a card to sign up?",
+          "a": "No. You only need an email address or a Google account. We never ask for card, bank or UPI details to use ArthaLedger."
+        },
+        {
+          "q": "When do paid plans start?",
+          "a": "There is no date yet. We will let you know well before paid plans begin, so you have plenty of time to decide."
+        },
+        {
+          "q": "What will paid plans include?",
+          "a": "Every feature, just like today. Monthly and yearly options are planned, and we will share the details well before they launch."
+        },
+        {
+          "q": "Can I cancel a monthly plan?",
+          "a": "Yes. When paid plans arrive, you will be able to cancel a monthly plan at any time."
+        },
+        {
+          "q": "What happens to my data?",
+          "a": "Your data stays yours on every plan. You can download any book as a PDF or Excel file, and you can delete your account from Settings whenever you want."
+        }
+      ]
+    },
+    "cta": {
+      "title": "Get in while it is free.",
+      "text": "Free for our first 50 users. Everyone else can try every feature free until paid plans launch."
+    }
+  },
+  "privacy": {
+    "back": "Back",
+    "contact": "Contact",
+    "eyebrow": "Legal",
+    "title": "Privacy policy",
+    "intro": "Your money records are personal. This policy explains, in plain words, what ArthaLedger collects, how it is used and the control you have over it.",
+    "effective": "Effective {date}",
+    "translationNote": "This is a translation. If anything differs, the English version applies.",
+    "glanceTitle": "At a glance",
+    "glance": {
+      "private": {
+        "title": "Private by default",
+        "text": "Your books can only be opened by your account."
+      },
+      "noSelling": {
+        "title": "No selling, no ads",
+        "text": "We never sell your data or show advertising."
+      },
+      "noBank": {
+        "title": "No bank access",
+        "text": "We never ask for bank, card or UPI details."
+      },
+      "deleteAnytime": {
+        "title": "Delete anytime",
+        "text": "Remove your account and everything in it, for good."
+      }
+    },
+    "contents": "Contents",
+    "sections": {
+      "about": {
+        "title": "Who we are",
+        "blocks": [
+          "ArthaLedger (“we”, “us”) is a personal money notebook for Android and the web, built and run by Javili Jashwanth in India. This policy explains what information the app uses, why, and the choices you have. It applies to the ArthaLedger app, website and services."
+        ]
+      },
+      "collect": {
+        "title": "Information we collect",
+        "blocks": [
+          "We collect only what the app needs to work:",
+          [
+            "Account details: your name, email address, profile photo (if you sign in with Google) and how you sign in.",
+            "Profile details you choose to add, such as phone number, date of birth, gender and a short bio. These are optional.",
+            "Your records: projects, books, entries, categories, budgets, groups and settings that you create in the app.",
+            "Notification details: a device token for each phone or browser where you turn notifications on, your reminder times and time zone.",
+            "Feedback you send us: your message, its type and rating, and your name and email so we can reply.",
+            "Basic technical information needed to keep the service secure and working, such as sign-in times and error logs."
+          ],
+          "We do not collect your bank, card or UPI details, your contacts, your location or your messages."
+        ]
+      },
+      "use": {
+        "title": "How we use it",
+        "blocks": [
+          [
+            "To run the app: show your books, keep balances and summaries, and sync your data across your devices.",
+            "To send the reminders and budget alerts you switch on.",
+            "To answer feedback and support requests, and to improve ArthaLedger.",
+            "To keep the service safe, prevent abuse and fix problems."
+          ],
+          "We do not use your records for advertising, and we do not build profiles about you."
+        ]
+      },
+      "share": {
+        "title": "When information is shared",
+        "blocks": [
+          "We do not sell, rent or trade your information. We share it only in these cases:",
+          [
+            "Service providers that host and run ArthaLedger for us, mainly Google Firebase for secure storage, sign-in and notifications. They process data only on our instructions.",
+            "Testimonials: if you send praise and tick the box allowing it, we may show your message on our website with your first name only. You can ask us to remove it at any time.",
+            "When required by law, or to protect the rights and safety of our users and the service."
+          ]
+        ]
+      },
+      "access": {
+        "title": "Who can see your data",
+        "blocks": [
+          "Your books are protected by security rules so that only your signed-in account can read or change them. Groups you create are visible to you; shared amounts are entered by you.",
+          "For support and to keep the service running, the ArthaLedger team can see account information (name, email, sign-up and last sign-in dates) and simple usage counts such as how many books or entries an account has. The team does not view the contents of your entries, amounts or notes."
+        ]
+      },
+      "security": {
+        "title": "How we protect it",
+        "blocks": [
+          [
+            "Data is encrypted while it travels (HTTPS) and while it is stored.",
+            "Passwords are handled by Google’s sign-in service and are never visible to us.",
+            "Optional PIN locks protect books and projects. PINs are stored only as salted hashes, never as the PIN itself."
+          ],
+          "No method of storage or transfer is perfectly secure, but we work to protect your information and will tell you if a breach affects you."
+        ]
+      },
+      "retention": {
+        "title": "How long we keep it",
+        "blocks": [
+          "We keep your information for as long as your account exists. When you delete your account, your account and records are deleted straight away. Feedback messages are kept until they are no longer needed to support you or improve the app, or until you ask us to delete them."
+        ]
+      },
+      "rights": {
+        "title": "Your choices and rights",
+        "blocks": [
+          [
+            "See and change your details at any time in Settings.",
+            "Download any book as a PDF or Excel file.",
+            "Turn reminders and alerts off in Settings, or block notifications in your phone settings.",
+            "Delete your account and all of your data (see below).",
+            "Ask us any question about your data, or to remove a testimonial, by writing to {email}."
+          ]
+        ]
+      },
+      "deleteAccount": {
+        "title": "Deleting your account and data",
+        "blocks": [
+          "In the app: open Settings, then Delete account, and confirm. Your account and all of your records are permanently deleted.",
+          "If you cannot sign in, email {email} from the address on your account with the subject “Delete my ArthaLedger account”. We will delete the account and all of its data within 30 days and confirm by email."
+        ]
+      },
+      "children": {
+        "title": "Children",
+        "blocks": [
+          "ArthaLedger is not meant for children under 13, and we do not knowingly collect their information. If you believe a child has given us information, contact us and we will delete it."
+        ]
+      },
+      "changes": {
+        "title": "Changes to this policy",
+        "blocks": [
+          "If we change this policy, we will post the new version here with a new effective date. For important changes we may also let you know in the app or by email."
+        ]
+      },
+      "contact": {
+        "title": "Contact us",
+        "blocks": [
+          "Questions, requests or concerns about privacy: {email}. We usually reply within a few days."
+        ]
+      }
+    },
+    "help": {
+      "title": "Questions about your privacy?",
+      "text": "We are happy to help. Write to us and we will get back to you."
+    },
+    "footer": {
+      "rights": "© {year} ArthaLedger. All rights reserved.",
+      "backHome": "Back to ArthaLedger"
+    }
+  },
+  "auth": {
+    "showPassword": "Show password",
+    "hidePassword": "Hide password",
+    "or": "or",
+    "continueGoogle": "Continue with Google",
+    "fields": {
+      "emailPlaceholder": "Email address",
+      "newPassword": "Password (6+ characters)",
+      "fullName": "Full name",
+      "confirmPassword": "Confirm password"
+    },
+    "login": {
+      "title": "Welcome back",
+      "subtitle": "Sign in to pick up right where you left off.",
+      "footer": "New to ArthaLedger? <link>Create an account</link>",
+      "verifiedTitle": "Email verified",
+      "verifiedText": "Sign in with the same email and password to continue.",
+      "forgot": "Forgot password?",
+      "submitting": "Signing in…",
+      "failed": "Sign-in failed. Please try again."
+    },
+    "register": {
+      "title": "Create your ledger",
+      "subtitle": "Track every rupee, privately. Takes a minute.",
+      "footer": "Already have an account? <link>Sign in</link>",
+      "submit": "Create account",
+      "submitting": "Creating account…",
+      "agree": "By continuing you agree to our <link>privacy policy</link>.",
+      "strength": {
+        "tooShort": "Too short",
+        "weak": "Weak",
+        "fair": "Fair",
+        "strong": "Strong"
+      }
+    },
+    "validation": {
+      "emailRequired": "Please enter your email.",
+      "passwordRequired": "Please enter your password.",
+      "nameShort": "Name must be at least 2 characters.",
+      "emailInvalid": "Enter a valid email address.",
+      "passwordShort": "Password must be at least 6 characters.",
+      "passwordMismatch": "Passwords do not match."
+    },
+    "forgot": {
+      "title": "Forgot password?",
+      "subtitle": "No worries. Enter your email and we’ll send you a link to reset it.",
+      "sentTitle": "Check your inbox",
+      "sentSubtitle": "We sent a reset link to <b>{email}</b>. Open it to choose a new password.",
+      "footer": "Remembered it? <link>Back to sign in</link>",
+      "notFound": "Can’t find it? Check your spam folder, or try again in a minute.",
+      "backToSignIn": "Back to sign in",
+      "differentEmail": "Use a different email",
+      "submit": "Send reset link",
+      "submitting": "Sending…",
+      "failed": "Could not send reset email. Please check the address."
+    },
+    "verify": {
+      "tagline": "Where every rupee has meaning",
+      "yourEmail": "your email address",
+      "title": "Check your email",
+      "sentTo": "We sent a verification link to",
+      "instructions": "Click the link in that email to verify your account, then come back here and sign in again using the same email and password.",
+      "spam": "<b>Don't see it?</b> Check your <b>Spam</b> or <b>Junk</b> folder.",
+      "backToSignIn": "Back to Sign In",
+      "notReceived": "Didn't receive the mail?",
+      "sending": "Sending...",
+      "availableIn": "Available in {seconds}s",
+      "resend": "Resend mail",
+      "cooldownHint": "Enabled after 1 minute to prevent duplicate emails.",
+      "resendHint": "Tap resend to send the verification email again.",
+      "sent": "Sent! Check your inbox and spam folder.",
+      "failed": "Failed to send. Please try again."
+    },
+    "errors": {
+      "emailInUse": "An account with this email already exists. Please sign in instead.",
+      "differentCredential": "This email is registered with a different sign-in method (e.g. Google). Please use that method.",
+      "invalidEmail": "Please enter a valid email address.",
+      "weakPassword": "Password is too weak. Use at least 6 characters.",
+      "userNotFound": "No account found with this email.",
+      "wrongPassword": "Incorrect password. Please try again.",
+      "invalidCredential": "Invalid email or password. Please try again.",
+      "tooManyRequests": "Too many attempts. Please wait a moment and try again.",
+      "network": "Network error. Please check your connection.",
+      "popupClosed": "Sign-in popup was closed. Please try again.",
+      "requiresRecentLogin": "For security, please sign out and sign in again before changing your password.",
+      "noUser": "No authenticated user found.",
+      "waitBeforeResend": "Please wait {seconds}s before requesting another email.",
+      "profileSaveFailed": "Failed to save profile. Please try again.",
+      "passwordToDelete": "Please enter your password to confirm deletion.",
+      "deleteDataFailed": "Could not delete your data. Check your connection and try again."
+    }
+  },
+  "nav": {
+    "primary": "Primary",
+    "home": "Home",
+    "analytics": "Analytics",
+    "groups": "Groups",
+    "settings": "Settings"
+  },
+  "dashboard": {
+    "greeting": {
+      "morning": "Good morning,",
+      "afternoon": "Good afternoon,",
+      "evening": "Good evening,",
+      "night": "Good night,",
+      "fallbackName": "there"
+    },
+    "projectOptions": "Project options",
+    "editProject": "Edit project",
+    "deleteProject": "Delete project",
+    "loadError": "Unable to Load Data",
+    "retryLoading": "Retry Loading",
+    "stillSyncing": "Still syncing — your connection seems slow.",
+    "projectCount": {
+      "one": "<b>{count}</b> project",
+      "other": "<b>{count}</b> projects"
+    },
+    "bookCount": {
+      "one": "<b>{count}</b> book",
+      "other": "<b>{count}</b> books"
+    },
+    "projects": "Projects",
+    "searchProjects": "Search projects",
+    "clearSearch": "Clear search",
+    "empty": {
+      "title": "No projects yet",
+      "body": "A project groups related books — Home, Business, Travel."
+    },
+    "createProject": "Create project",
+    "noMatch": "No projects match “{query}”.",
+    "books": {
+      "one": "{count} book",
+      "other": "{count} books"
+    },
+    "updated": "Updated {date}",
+    "newProject": "New project",
+    "toast": {
+      "created": "Project created",
+      "updated": "Project updated",
+      "deleted": "Project deleted"
+    },
+    "delete": {
+      "books": {
+        "one": "Book",
+        "other": "Books"
+      },
+      "transactions": "Transactions",
+      "note": "All books and transactions in this project are removed for good."
+    }
+  },
+  "project": {
+    "locked": "Locked",
+    "bookOptions": "Book options",
+    "editBook": "Edit book",
+    "deleteBook": "Delete book",
+    "opening": "Opening project",
+    "notFound": "Project not found.",
+    "backToDashboard": "Back to dashboard",
+    "backToHome": "Back to home",
+    "pinProtected": "This project is PIN-protected",
+    "changePin": "Change or remove PIN",
+    "setPin": "Set PIN lock",
+    "someLocked": "Some books in this project are PIN-protected.",
+    "overview": "Overview",
+    "hide": "Hide",
+    "show": "Show",
+    "excludesInternal": "Excludes {amount} moved between books in this project.",
+    "books": "Books",
+    "hideAmounts": "Hide amounts",
+    "showAmounts": "Show amounts",
+    "empty": {
+      "title": "No books yet",
+      "body": "Create a book to start recording cash in and cash out."
+    },
+    "createBook": "Create book",
+    "entries": {
+      "one": "{count} entry",
+      "other": "{count} entries"
+    },
+    "transferMoney": "Transfer money",
+    "transferFrom": "Transfer money from {name}",
+    "newBook": "New book",
+    "toast": {
+      "bookCreated": "Book created 🙏",
+      "bookUpdated": "Book updated",
+      "bookDeleted": "Book deleted",
+      "pinSet": "{length}-digit project PIN set",
+      "projectPinRemoved": "Project PIN removed",
+      "pinRemoved": "PIN removed",
+      "transferred": "{amount} transferred"
+    }
+  },
+  "book": {
+    "cashIn": "Cash in",
+    "cashOut": "Cash out",
+    "transferIn": "Transfer in",
+    "transferOut": "Transfer out",
+    "menu": {
+      "entryOptions": "Entry options",
+      "receivedFrom": "Received from <b>{name}</b>. Only the sending book can edit or delete it.",
+      "anotherBook": "another book",
+      "openSource": "Open {name}",
+      "sendingBook": "sending book",
+      "editTransfer": "Edit transfer",
+      "deleteTransfer": "Delete transfer",
+      "bookOptions": "Book options",
+      "transferMoney": "Transfer money",
+      "manageCategories": "Manage categories",
+      "changePin": "Change PIN",
+      "setPinLock": "Set PIN lock",
+      "editBook": "Edit book",
+      "deleteBook": "Delete book"
+    },
+    "loadError": "Unable to Load Data",
+    "retryLoading": "Retry Loading",
+    "opening": "Opening book",
+    "notFound": "Book not found.",
+    "goBack": "Go back",
+    "locked": "{name} is locked",
+    "slowConnection": "Connection is taking longer than expected. Please check your internet connection.",
+    "backToProject": "Back to project",
+    "exportPdf": "Export PDF",
+    "export": "Export",
+    "transactions": "Transactions",
+    "count": {
+      "one": "{count} entry",
+      "other": "{count} entries"
+    },
+    "filteredCount": "{shown} of {total} entries",
+    "select": "Select",
+    "searchPlaceholder": "Search description, category, person",
+    "clearSearch": "Clear search",
+    "filters": "Filters",
+    "removeFilter": "Remove {label} filter",
+    "clearAll": "Clear all",
+    "empty": {
+      "loading": "Retrieving transactions…",
+      "loadingHint": "Connecting to database…",
+      "noMatch": "No matching transactions",
+      "noMatchHint": "Try a different search or reset the filters.",
+      "none": "No transactions yet",
+      "noneHint": "Use Cash In or Cash Out below to record your first entry.",
+      "clearBoth": "Clear search & filters"
+    },
+    "selectEntries": "Select entries",
+    "selected": "{count} selected",
+    "addToGroup": "Add to group",
+    "toast": {
+      "addedToGroup": "Added to Group ✓",
+      "linkFailed": "Failed to link entries",
+      "transferUpdated": "Transfer updated in both books",
+      "transferSent": "{amount} sent to {book}",
+      "bookFallback": "book",
+      "templateSaved": "Saved to Quick Add ⚡",
+      "templateRemoved": "Quick Add template removed",
+      "updateFailed": "Failed to update entry",
+      "entryUpdated": "Entry updated ✓",
+      "saveFailed": "Failed to save entry",
+      "cashInRecorded": "Cash in recorded ✓",
+      "cashOutRecorded": "Cash out recorded ✓",
+      "bookUpdated": "Book updated",
+      "deleteFailed": "Failed to delete",
+      "transferDeleted": "Transfer deleted from both books",
+      "entryDeleted": "Entry deleted",
+      "bookDeleted": "Book deleted",
+      "pinSet": "{length}-digit PIN set",
+      "pinRemoved": "PIN removed"
+    },
+    "confirm": {
+      "deleteTransferTitle": "Delete transfer?",
+      "deleteEntryTitle": "Delete entry?",
+      "deleteTransferMsg": "{amount} sent to {book} will be removed from both books.",
+      "otherBook": "the other book",
+      "deleteEntryMsg": "\"{description}\" ({amount}) will be permanently deleted."
+    },
+    "summary": {
+      "netBalance": "Net balance",
+      "surplus": "Surplus",
+      "deficit": "Deficit"
+    }
+  },
+  "entry": {
+    "type": {
+      "income": "Cash In",
+      "expense": "Cash Out",
+      "tabs": "Entry type"
+    },
+    "mode": {
+      "label": "Payment mode",
+      "cash": "Cash"
+    },
+    "newTitle": "New transaction",
+    "editTitle": "Edit transaction",
+    "dismiss": "Dismiss",
+    "caption": {
+      "savings": "Amount to savings",
+      "received": "Amount received",
+      "paid": "Amount paid"
+    },
+    "validation": {
+      "amount": "Enter valid amount",
+      "description": "Enter description",
+      "missingBoth": "Please fill in the required fields: Amount & Description.",
+      "missingAmount": "Please fill in the required field: Amount.",
+      "missingDescription": "Please fill in the required field: Description."
+    },
+    "quickAdd": "Quick add",
+    "manage": "Manage",
+    "adding": "Adding…",
+    "removeTemplate": "Remove {name}",
+    "description": "Description",
+    "descPlaceholderIncome": "e.g. Salary, Client payment",
+    "descPlaceholderExpense": "e.g. Groceries, Rent",
+    "noSubcats": "No subcategories",
+    "noSubcatsFor": "No subcategories for {category}",
+    "categoriesSaved": "Categories saved",
+    "budget": {
+      "used": "{pct}% used",
+      "noneFor": "No monthly budget for {category}",
+      "none": "No monthly budget for this category",
+      "hardTitle": "Hard limit crossed by {amount}",
+      "hardMsgEntry": "Total after this entry: {total} — {over} over the hard limit of {hard}.",
+      "hardMsg": "Already {amount} over the hard limit.",
+      "overTitle": "{amount} over budget",
+      "overMsgEntry": "{remaining} was remaining. This entry exceeds the budget by {over}.",
+      "overMsg": "Already over budget by {amount}.",
+      "nearTitle": "Near limit · {left} left",
+      "nearTitleAfter": "Near limit · {left} left after this",
+      "nearMsgEntry": "{remaining} remaining · {left} after this entry",
+      "nearMsg": "{remaining} remaining this month",
+      "okTitle": "{left} left this month",
+      "okTitleAfter": "{left} left this month after this",
+      "okMsgEntry": "Budget {soft} · Spent {spent} · {left} left after this entry",
+      "okMsg": "Budget {soft} · Spent {spent}"
+    },
+    "more": {
+      "title": "More details",
+      "savingsOn": "Savings on",
+      "incomeHint": "Savings, group, notes",
+      "expenseHint": "Group, notes, template",
+      "group": "Expense group",
+      "enteredBy": "Entered by",
+      "notes": "Notes",
+      "savingsTitle": "Mark as savings",
+      "savingsHint": "Excluded from spending analytics",
+      "templateTitle": "Save as recurring template",
+      "templateHint": "Adds this to Quick add (rent, salary, EMI…)",
+      "templateLabelDefault": "Label (default: \"{description}\")",
+      "templateLabel": "Template label"
+    },
+    "submit": {
+      "update": "Update Transaction",
+      "savings": "Transfer to Savings",
+      "income": "Record Income",
+      "expense": "Record Expense"
+    },
+    "picker": {
+      "selectDate": "Select date",
+      "selectTime": "Select time",
+      "prevMonth": "Previous month",
+      "nextMonth": "Next month",
+      "now": "Now",
+      "hour": "Hour",
+      "minute": "Minute",
+      "meridiem": "AM or PM"
+    },
+    "card": {
+      "savings": "Savings",
+      "crossProject": "Cross-project",
+      "internal": "Internal",
+      "bal": "Bal {amount}"
+    }
+  },
+  "forms": {
+    "tagline": "Tagline",
+    "optionalParen": "(optional)",
+    "saveChanges": "Save changes",
+    "book": {
+      "newTitle": "New book",
+      "editTitle": "Edit book",
+      "name": "Book name",
+      "namePlaceholder": "e.g. Monthly Budget, Savings",
+      "taglinePlaceholder": "A short line about this book",
+      "create": "Create book"
+    },
+    "project": {
+      "newTitle": "New project",
+      "editTitle": "Edit project",
+      "newSubtitle": "A project holds related books",
+      "editSubtitle": "Rename, change the icon or tagline",
+      "name": "Project name",
+      "namePlaceholder": "e.g. Family Expenses",
+      "icon": "Icon",
+      "pickOne": "Pick one",
+      "iconAria": "Project icon",
+      "taglinePlaceholder": "A short line about this project",
+      "create": "Create project"
+    },
+    "projectIcons": {
+      "personal": "Personal",
+      "family": "Family",
+      "home": "Home",
+      "business": "Business",
+      "shop": "Shop",
+      "travel": "Travel",
+      "savings": "Savings",
+      "invest": "Investments",
+      "education": "Education",
+      "health": "Health",
+      "vehicle": "Vehicle",
+      "rent": "Rent & property",
+      "wedding": "Wedding",
+      "food": "Food",
+      "shopping": "Shopping",
+      "bills": "Bills",
+      "events": "Events",
+      "gifts": "Gifts",
+      "pets": "Pets",
+      "construction": "Construction",
+      "farm": "Farm",
+      "baby": "Baby",
+      "bank": "Bank",
+      "wallet": "Wallet"
+    },
+    "filters": {
+      "title": "Filters",
+      "type": "Type",
+      "cashIn": "Cash in",
+      "cashOut": "Cash out",
+      "transferIn": "Transfer in",
+      "transferOut": "Transfer out",
+      "paymentMode": "Payment mode",
+      "cash": "Cash",
+      "custom": "Custom",
+      "from": "From",
+      "to": "To",
+      "enteredBy": "Entered by",
+      "everyone": "Everyone",
+      "showResults": {
+        "one": "Show {count} result",
+        "other": "Show {count} results"
+      }
+    },
+    "transfer": {
+      "title": "Transfer money",
+      "editTitle": "Edit transfer",
+      "subtitle": "Move money to another book",
+      "editSubtitle": "Changes update both books",
+      "from": "From",
+      "to": "To",
+      "available": "Available",
+      "chooseBelow": "Choose a book below",
+      "max": "Max",
+      "errAmount": "Enter a valid amount",
+      "onlyAvailable": "Only {amount} available",
+      "errDestination": "Choose a book to send to",
+      "failed": "Transfer failed. Please try again.",
+      "willRemain": "{amount} will remain in {book}",
+      "enterHowMuch": "Enter how much to send",
+      "destinationLocked": "The destination can't be changed. To send to a different book, delete this transfer and create a new one.",
+      "sendTo": "Send to",
+      "noOtherBooks": "Create another book to transfer money.",
+      "thisProject": "(this project)",
+      "notePlaceholder": "e.g. Monthly allocation",
+      "transferring": "Transferring…",
+      "submit": "Transfer",
+      "submitTo": "Transfer {amount} to {book}",
+      "footnote": "Recorded as Transfer out here and Transfer in at the destination. Only this book can edit or delete it."
+    },
+    "sendToTrip": {
+      "title": "Add to group",
+      "subtitle": "The selected transactions stay in this book",
+      "choose": "Choose a group",
+      "empty": "No groups yet. Create one below to begin.",
+      "entries": {
+        "one": "{count} entry",
+        "other": "{count} entries"
+      },
+      "newGroup": "New group",
+      "newGroupName": "New group name",
+      "namePlaceholder": "e.g. Holiday Trip",
+      "createAndAdd": "Create & add",
+      "createFailed": "Failed to create expense group"
+    },
+    "categories": {
+      "title": "Categories",
+      "manage": "Manage categories",
+      "count": {
+        "one": "{count} category",
+        "other": "{count} categories"
+      },
+      "subCount": {
+        "one": "{count} subcategory",
+        "other": "{count} subcategories"
+      },
+      "noSubs": "No subcategories",
+      "addPlaceholder": "Add a category, e.g. Travel",
+      "addSub": "Add subcategory",
+      "empty": "No categories yet. Add your first one above.",
+      "exists": "\"{name}\" already exists",
+      "existsIn": "\"{name}\" already exists in {category}",
+      "saveName": "Save name",
+      "cancelRename": "Cancel rename",
+      "renameAria": "Rename {name}",
+      "deleteAria": "Delete {name}",
+      "removeAria": "Remove {name}",
+      "collapse": "Collapse",
+      "expand": "Expand",
+      "unsaved": "Unsaved changes",
+      "noChanges": "No changes",
+      "deleteTitle": "Delete \"{name}\"?",
+      "deleteMessage": "This removes the category and its subcategories from this list. Existing transactions keep their category."
+    }
+  },
+  "dates": {
+    "presets": {
+      "all": "All time",
+      "today": "Today",
+      "week": "This week",
+      "month": "This month",
+      "lastMonth": "Last month"
+    },
+    "from": "From {date}",
+    "until": "Until {date}",
+    "allDates": "All dates"
+  },
+  "vault": {
+    "title": "Vault",
+    "subtitleLocked": "Deep analytics, kept private",
+    "subtitleUnlocked": "Private analytics, verified",
+    "backToSettings": "Back to settings",
+    "lock": "Lock vault",
+    "lockedTitle": "Your vault is locked",
+    "lockedBody": "Confirm it's you to view private income, spending and savings across all your books.",
+    "accountPassword": "Account password",
+    "passwordPlaceholder": "Enter your password",
+    "showPassword": "Show password",
+    "hidePassword": "Hide password",
+    "googleNote": "You signed in with Google. Re-verify your Google session to continue.",
+    "verifying": "Verifying…",
+    "unlock": "Unlock vault",
+    "verifyGoogle": "Verify with Google",
+    "verifyEveryTime": "Verification is required every time you open the vault",
+    "errPasswordRequired": "Password is required.",
+    "errVerification": "Verification failed. Please try again.",
+    "toastUnlocked": "Vault unlocked",
+    "period": "Period",
+    "verified": "Verified",
+    "periods": {
+      "overall": "Overall",
+      "month": "Monthly",
+      "custom": "Custom"
+    },
+    "overallHint": "Every transaction across all books",
+    "prevMonth": "Previous month",
+    "nextMonth": "Next month",
+    "selectMonth": "Select month",
+    "customInvalid": "The start date is after the end date.",
+    "customHint": "Pick one or both dates to narrow the range.",
+    "netSavings": "Net savings",
+    "savedPct": "{pct}% saved",
+    "spentPct": "Spent {pct}% of income",
+    "spent": "Spent",
+    "byCategory": "By category",
+    "breakdownType": "Breakdown type",
+    "breakdown": {
+      "expense": "Spending",
+      "income": "Income"
+    },
+    "noSpending": "No spending",
+    "noIncome": "No income",
+    "nothingYet": "Nothing recorded yet.",
+    "nothingIn": "Nothing recorded in {period}.",
+    "transactions": "Transactions",
+    "noTransactions": "No transactions",
+    "tryOtherPeriod": "Try a different period.",
+    "untitled": "Untitled transaction",
+    "latestOf": "Latest {shown} of {total}",
+    "sheet": {
+      "spending": "Spending",
+      "transactions": {
+        "one": "{count} transaction",
+        "other": "{count} transactions"
+      },
+      "emptyTitle": "No records",
+      "emptyBody": "Nothing in this category for the selected period.",
+      "cash": "Cash",
+      "untitledIncome": "Untitled income",
+      "untitledSpending": "Untitled spending"
+    }
+  },
+  "analytics": {
+    "title": "Analytics",
+    "subtitle": "Where your money goes",
+    "showAmounts": "Show amounts",
+    "hideAmounts": "Hide amounts",
+    "empty": {
+      "title": "No data yet",
+      "text": "Add transactions to your books to see your trends here."
+    },
+    "overview": {
+      "totalSpent": "Total spent",
+      "dailyAvg": "Daily avg · 30d",
+      "saved": "Saved"
+    },
+    "byCategory": {
+      "title": "Spending by category",
+      "count": {
+        "one": "{count} category",
+        "other": "{count} categories"
+      }
+    },
+    "largest": {
+      "title": "Largest expenses",
+      "top": "Top {n}"
+    },
+    "expenseFallback": "Expense",
+    "untitled": "Untitled",
+    "sheet": {
+      "count": {
+        "one": "{count} transaction",
+        "other": "{count} transactions"
+      },
+      "empty": "No transactions here."
+    },
+    "trends": {
+      "title": "Spending summary",
+      "monthly": "Monthly",
+      "yearly": "Yearly",
+      "previous": "Previous",
+      "next": "Next",
+      "totalSpent": "Total spent",
+      "vsPrevious": "{percent}% vs {label}",
+      "dailyAverage": "Daily average",
+      "monthlyAverage": "Monthly average",
+      "transactions": "Transactions",
+      "highestDay": "Highest day",
+      "highestMonth": "Highest month",
+      "noSpending": "No spending in {period}.",
+      "byMonth": "By month",
+      "byCategory": "By category",
+      "categoryCount": {
+        "one": "{count} category",
+        "other": "{count} categories"
+      },
+      "viewTransactions": {
+        "one": "View {count} transaction →",
+        "other": "View {count} transactions →"
+      },
+      "showAll": "Show all {count}"
+    }
+  },
+  "budget": {
+    "title": "Monthly budgets",
+    "prevMonth": "Previous month",
+    "nextMonth": "Next month",
+    "empty": {
+      "title": "Plan your month",
+      "text": "Set a spending limit for a category. We'll track it across all your books and warn you early."
+    },
+    "create": "Create budget",
+    "new": "New budget",
+    "edit": "Edit budget",
+    "spentThisMonth": "Spent this month",
+    "spentIn": "Spent in {month}",
+    "spentOf": "{spent} <muted>of {budget}</muted>",
+    "overBudget": "{amount} over budget",
+    "leftPerDay": {
+      "one": "{left} left · <hl>{perDay}/day</hl> for {count} day",
+      "other": "{left} left · <hl>{perDay}/day</hl> for {count} days"
+    },
+    "leftUnspent": "{amount} left unspent",
+    "attention": {
+      "one": "{count} budget needs attention",
+      "other": "{count} budgets need attention"
+    },
+    "rowSpent": "<b>{spent}</b> of {budget}",
+    "rowOver": "{amount} over",
+    "rowPace": "Pace {amount}",
+    "rowLeft": "{amount} left",
+    "zone": {
+      "safe": "On track",
+      "pace": "Trending over",
+      "warning": "Near limit",
+      "over": "Over budget",
+      "hard": "Limit crossed"
+    },
+    "remove": {
+      "title": "Remove this budget?",
+      "message": "The monthly budget for “{name}” will be removed. Your transactions are not affected."
+    },
+    "form": {
+      "subtitle": "A monthly spending limit across all your books",
+      "monthlyBudget": "Monthly budget",
+      "monthlyBudgetFor": "Monthly budget for <b>{name}</b>",
+      "amountLabel": "Monthly budget amount",
+      "perDay": "≈ <b>{amount}</b> a day",
+      "usually": "Usually {amount} · <b>Use</b>",
+      "noCategories": "Add a category to a book first.",
+      "searchCategories": "Search categories",
+      "alreadyBudgeted": "Already budgeted",
+      "subCount": {
+        "one": "{count} subcategory",
+        "other": "{count} subcategories"
+      },
+      "noSubs": "No subcategories",
+      "noMatch": "No category matches “{query}”.",
+      "limitToSub": "Limit to a subcategory (optional)",
+      "allOf": "All of {category}",
+      "alerts": "Alerts",
+      "warnAt": "Warn me at",
+      "warnAfter": "After {amount} is spent",
+      "warnShare": "Share of the budget used",
+      "hardLimit": "Hard limit",
+      "hardHint": "An absolute maximum above the budget",
+      "example": "e.g. {amount}",
+      "saveChanges": "Save changes",
+      "setAmount": "Set {amount} budget"
+    },
+    "errors": {
+      "chooseCategory": "Choose a category.",
+      "invalidChars": "This name has characters (. # $ / [ ]) that can’t be saved. Rename the category first.",
+      "exists": "{name} already has a budget.",
+      "enterAmount": "Enter a monthly amount.",
+      "hardTooLow": "The hard limit must be higher than the monthly budget.",
+      "saveFailed": "Could not save the budget. Check your connection and try again."
+    },
+    "detail": {
+      "left": "Left",
+      "over": "Over",
+      "perDayLeft": "Per day left",
+      "transactions": "Transactions",
+      "monthEndPace": "Month-end pace",
+      "avgEach": "Avg each",
+      "ofBudget": "of {amount} budget",
+      "hardOver": "{amount} over",
+      "nothingSpent": "Nothing spent here in {month}.",
+      "expenseFallback": "Expense"
+    }
+  },
+  "groups": {
+    "loadError": "Unable to Load Data",
+    "retryLoading": "Retry Loading",
+    "slowSync": "Still syncing — your connection seems slow.",
+    "overview": "Overview",
+    "deleteGroup": "Delete group",
+    "list": {
+      "title": "Groups",
+      "subtitle": "Expenses gathered across books",
+      "howItWorks": "How groups work",
+      "newGroup": "New group",
+      "createGroup": "Create group",
+      "loading": "Loading expense groups...",
+      "retrieving": "Retrieving expense groups…",
+      "connecting": "Connecting to database…",
+      "emptyTitle": "No groups yet",
+      "emptyText": "Collect spending from different books in one place, like everything for a trip or a wedding.",
+      "statGroups": "Groups",
+      "statSpent": "Spent",
+      "statReceived": "Received",
+      "allGroups": "All groups · {count}",
+      "items": {
+        "one": "{count} item",
+        "other": "{count} items"
+      },
+      "spent": "spent",
+      "deleteNamed": "Delete {name}",
+      "footnote": "Groups only reference transactions — deleting a group never changes your books.",
+      "created": "Expense Group created ✓",
+      "createFailed": "Failed to create group",
+      "deleted": "Group deleted",
+      "deleteFailed": "Failed to delete group",
+      "confirmTitle": "Delete Expense Group?",
+      "confirmMessage": "\"{name}\" will be deleted. The original transactions will NOT be affected."
+    },
+    "create": {
+      "subtitle": "Collect related spending from any book",
+      "description": "Description",
+      "optional": "(optional)",
+      "namePlaceholder": "e.g. Europe Trip 2026, Office Refurbish",
+      "descPlaceholder": "Context or dates…"
+    },
+    "detail": {
+      "unknownProject": "Unknown Project",
+      "unknownBook": "Unknown Book",
+      "unlinked": "Unlinked from group",
+      "unlinkFailed": "Failed to unlink item",
+      "deleteFailed": "Failed to delete group",
+      "loading": "Loading group",
+      "notFoundTitle": "Group not found",
+      "notFoundText": "It may have been deleted on another device.",
+      "backToGroups": "Back to groups",
+      "linkedCount": {
+        "one": "{count} linked transaction",
+        "other": "{count} linked transactions"
+      },
+      "spendingByCategory": "Spending by category",
+      "tapToFilter": "Tap to filter",
+      "transactions": "Transactions",
+      "transactionsCount": "Transactions · {count}",
+      "transactionsFiltered": "Transactions · {shown} of {total}",
+      "retrieving": "Retrieving transactions…",
+      "noLinked": "No transactions linked yet",
+      "noLinkedHint": "Open any book, select transactions and choose “Add to group”.",
+      "noItemsInCategory": "No items in this category",
+      "showAll": "Show all",
+      "transactionFallback": "Transaction",
+      "viewInBook": "View in original book",
+      "removeFromGroup": "Remove from group",
+      "footnote": "Tap a transaction to open it in its book. Removing it from this group doesn’t delete it.",
+      "unlinkTitle": "Remove from group?",
+      "unlinkMessageNamed": "\"{name}\" will be removed from this group. It stays in its original book.",
+      "unlinkMessage": "This transaction will be removed from this group. It stays in its original book.",
+      "deleteTitle": "Delete Group?",
+      "deleteMessage": "\"{name}\" will be deleted. The original transactions will NOT be affected."
+    },
+    "help": {
+      "title": "How groups work",
+      "subtitle": "Bring related spending from different books together",
+      "step": "Step {n}",
+      "steps": [
+        {
+          "title": "Create a group",
+          "text": "Tap New group and give it a name, like “Goa trip”, “Wedding” or “New house”."
+        },
+        {
+          "title": "Pick transactions in any book",
+          "text": "Open a book and tap Select, or press and hold a transaction. Tick every transaction that belongs to the group."
+        },
+        {
+          "title": "Tap Add to group",
+          "text": "Choose the group, or make a new one right there. You can add from as many books and projects as you like."
+        },
+        {
+          "title": "See it all in one place",
+          "text": "Open the group to see the total, spending by category, and every transaction with the book it came from."
+        }
+      ],
+      "tipsTitle": "Good to know",
+      "tips": [
+        "Your transactions stay in their books. A group links to them, so any edit you make in the book shows up in the group too.",
+        "Removing a transaction from a group, or deleting the group, never deletes it from the book.",
+        "Tap a transaction inside a group to open it in its original book."
+      ],
+      "gotIt": "Got it"
+    },
+    "createdViaSelection": "Created from selected entries"
+  },
+  "settings": {
+    "title": "Settings",
+    "subtitle": "Your account & preferences",
+    "profile": {
+      "editAria": "Edit profile",
+      "defaultName": "User",
+      "stats": {
+        "projects": "Projects",
+        "books": "Books",
+        "entries": "Entries"
+      }
+    },
+    "groups": {
+      "account": "Account",
+      "preferences": "Preferences",
+      "notifications": "Notifications",
+      "dataPrivacy": "Data & privacy",
+      "admin": "Admin",
+      "support": "Support"
+    },
+    "account": {
+      "changePassword": "Change password",
+      "signInMethod": "Sign-in method",
+      "emailPassword": "Email & password",
+      "google": "Google"
+    },
+    "prefs": {
+      "darkMode": "Dark mode",
+      "darkHint": "Obsidian dark",
+      "lightHint": "Warm cream & gold",
+      "currency": "Currency",
+      "language": "Language / భాష",
+      "installApp": "Install app",
+      "installed": "Installed",
+      "installHint": "Use ArthaLedger like a phone app",
+      "install": "Install"
+    },
+    "install": {
+      "ios": "In Safari, tap Share → Add to Home Screen",
+      "other": "Open the browser menu (⋮) → Install app"
+    },
+    "notif": {
+      "footerBlocked": "Notifications are blocked for this site. Allow them from your browser’s site settings, then reload.",
+      "footerInfo": "Budget alerts fire when a category reaches 80% (warning) or 100% (limit) of its budget.",
+      "budgetAlerts": "Budget alerts",
+      "budgetBlocked": "Blocked in phone settings",
+      "budgetHint": "Alert me at 80% and 100% of a budget",
+      "dailyReminder": "Daily reminder",
+      "dailyNext": "Next {left} · {time}",
+      "dailyHint": "A nudge to log the day’s expenses",
+      "reminderTimes": "Reminder times",
+      "quickReminder": "Quick reminder",
+      "quickComing": "Coming at {time} · {left}",
+      "quickHint": "Remind me once, a little later",
+      "minutes": "{count} min",
+      "diagnostics": "Test & diagnostics"
+    },
+    "toast": {
+      "budgetOff": "Budget alerts off",
+      "notifBlockedSettings": "Notifications are blocked. Allow them in phone Settings → Apps → ArthaLedger / Chrome → Notifications.",
+      "notifBlockedDevice": "Notifications were blocked on this device",
+      "notifNotGiven": "Notification permission not given",
+      "budgetOn": "Budget alerts on ✓",
+      "remindAt": "I’ll remind you at {time} · {left}",
+      "reminderFailed": "Couldn’t set the reminder",
+      "dailyOn": "Daily reminder on · next {next} ✓",
+      "dailyOff": "Daily reminder off",
+      "reminderUpdateFailed": "Couldn’t update the reminder.",
+      "timesSaveFailed": "Couldn’t save reminder times. Check your connection.",
+      "pushSent": "Push sent ✓ {message}",
+      "localOnly": "Shown locally only — {message}",
+      "tokenFailed": "Failed to retrieve FCM Token",
+      "tokenCopied": "FCM token copied to clipboard ✓",
+      "clipboardFailed": "Could not access the clipboard",
+      "profileUpdated": "Profile updated ✓",
+      "passwordChanged": "Password changed successfully ✓",
+      "currencyUpdated": "Currency updated",
+      "exported": "Data exported successfully"
+    },
+    "budgetNotif": {
+      "title": "Budget alerts are on",
+      "body": "You’ll be alerted when a category reaches 80% and 100% of its budget."
+    },
+    "data": {
+      "vault": "Deep Analytics & Vault",
+      "vaultHint": "Password-protected insights & private income",
+      "report": "Download report",
+      "reportHint": "PDF or spreadsheet, filtered by book & date",
+      "export": "Export all data",
+      "exportHint": "Complete backup as JSON",
+      "footer": "Only you can access your data — it’s protected by Firebase security rules and encrypted in transit and at rest. Your password is handled by Firebase Authentication; we never see or store it."
+    },
+    "admin": {
+      "dashboard": "Admin dashboard",
+      "hint": "Feedback, users and testimonials"
+    },
+    "support": {
+      "feedback": "Send feedback",
+      "feedbackHint": "Ideas, problems or a kind word",
+      "faq": "Help & FAQ",
+      "about": "About ArthaLedger",
+      "privacy": "Privacy policy"
+    },
+    "danger": {
+      "logout": "Log out",
+      "deleteAccount": "Delete account",
+      "deleteHint": "Permanently remove your account and data"
+    },
+    "footer": {
+      "tagline": "Where every rupee has meaning",
+      "madeBy": "ArthaLedger v{version} · Made in India by Javili Jashwanth"
+    },
+    "logout": {
+      "title": "Log out?",
+      "message": "You’ll need to sign in again to access your ledger on this device."
+    },
+    "language": {
+      "subtitle": "Choose the language for the app"
+    },
+    "menu": {
+      "account": "Account",
+      "defaultName": "Your account",
+      "manage": "Manage your account",
+      "analytics": "Analytics",
+      "vault": "Vault",
+      "groups": "Groups",
+      "settings": "Settings",
+      "settingsHint": "Profile, security, currency",
+      "reminders": "Reminders",
+      "remindersHint": "Daily nudges and budget alerts",
+      "privacy": "Privacy policy",
+      "privacyHint": "How your data is handled",
+      "feedback": "Send feedback",
+      "feedbackHint": "Ideas, problems or a kind word",
+      "admin": "Admin dashboard",
+      "adminHint": "Feedback, users, testimonials",
+      "logout": "Log out"
+    },
+    "editProfile": {
+      "title": "Edit profile",
+      "subtitle": "How you appear across ArthaLedger",
+      "fullName": "Full name",
+      "namePlaceholder": "Your full name",
+      "emailHint": "Cannot be changed",
+      "mobile": "Mobile number",
+      "gender": "Gender",
+      "genders": {
+        "male": "Male",
+        "female": "Female",
+        "other": "Other",
+        "none": "Prefer not to say"
+      },
+      "dob": "Date of birth",
+      "bio": "Short bio",
+      "bioPlaceholder": "A few words about yourself...",
+      "errors": {
+        "nameRequired": "Name is required.",
+        "phoneInvalid": "Enter a valid 10-digit mobile number.",
+        "failed": "Failed to update profile."
+      }
+    },
+    "password": {
+      "title": "Change password",
+      "subtitle": "Use at least 6 characters",
+      "current": "Current password",
+      "new": "New password",
+      "confirm": "Confirm new password",
+      "changed": "Password changed",
+      "updating": "Updating…",
+      "submit": "Update password",
+      "errors": {
+        "current": "Enter your current password.",
+        "short": "New password must be at least 6 characters.",
+        "mismatch": "New passwords do not match.",
+        "same": "New password must be different from the current one.",
+        "failed": "Failed to change password."
+      }
+    },
+    "currency": {
+      "title": "Currency",
+      "subtitle": "Used for amounts and reports",
+      "names": {
+        "INR": "Indian Rupee",
+        "USD": "US Dollar",
+        "EUR": "Euro",
+        "GBP": "British Pound",
+        "JPY": "Japanese Yen",
+        "AED": "UAE Dirham",
+        "SGD": "Singapore Dollar"
+      }
+    },
+    "reminders": {
+      "title": "Reminder times",
+      "subtitle": "A nudge to log the day's expenses",
+      "added": "Added new reminder time ✓",
+      "removed": "Removed reminder time ✓",
+      "item": "Reminder {n}",
+      "itemTime": "Reminder {n} time",
+      "remove": "Remove reminder {n}",
+      "addTime": "Add time",
+      "autosave": "Changes are saved automatically and synced to your other devices."
+    },
+    "diagnostics": {
+      "title": "Test & diagnostics",
+      "subtitle": "Check that alerts reach this device",
+      "test": "Send test notification",
+      "testHint": "Pushes a sample alert to this device",
+      "copyToken": "Copy FCM token",
+      "copyTokenHint": "For testing from Firebase Console",
+      "run": "Run diagnostic",
+      "runHint": "Checks permission, service worker & token",
+      "running": "Running…"
+    },
+    "installSheet": {
+      "title": "Install ArthaLedger",
+      "subtitle": "Add it to your home screen — it works like a native app",
+      "iosTitle": "iPhone & iPad (Safari)",
+      "iosBody": "Tap <b>Share</b>, scroll down and choose <b>Add to Home Screen</b>.",
+      "androidTitle": "Android (Chrome)",
+      "androidBody": "Open the <b>⋮ menu</b> and choose <b>Install app</b> or <b>Add to Home Screen</b>.",
+      "desktopTitle": "Desktop (Chrome / Edge)",
+      "desktopBody": "Click the <b>install icon</b> at the right of the address bar."
+    },
+    "faq": {
+      "title": "Help & FAQ",
+      "subtitle": "Answers to common questions",
+      "items": [
+        {
+          "q": "Is my financial data secure?",
+          "a": "Yes. All your data is stored in Google Cloud Firestore, which is secured by Firebase security rules — only you can read or write your own data. Data is encrypted in transit (HTTPS/TLS) and at rest by Google Cloud infrastructure."
+        },
+        {
+          "q": "How are passwords stored? Is my password safe?",
+          "a": "ArthaLedger never stores your password. Authentication is handled entirely by Firebase Authentication (Google's identity platform), which stores only a salted, industry-standard hash (scrypt). Your password is never visible to us — not even in logs."
+        },
+        {
+          "q": "What is the hierarchy of data in ArthaLedger?",
+          "a": "Your data is organized as: Account → Projects → Books (Cashbooks) → Entries. A Project can be \"Family Expenses\" or \"Business\". Each Project has multiple Books like \"Monthly Budget\". Each Book has individual transaction Entries."
+        },
+        {
+          "q": "Can I use ArthaLedger offline?",
+          "a": "ArthaLedger is a Progressive Web App (PWA). The app shell loads offline, but adding or viewing entries requires an internet connection since data is stored in Firebase."
+        },
+        {
+          "q": "How do I install ArthaLedger on my phone?",
+          "a": "On Android: open the app in Chrome, tap the three-dot menu, and select \"Add to Home Screen\". On iOS: open in Safari, tap the Share button, then \"Add to Home Screen\"."
+        },
+        {
+          "q": "What payment modes are supported?",
+          "a": "Cash, UPI, Online (net banking / wallets), and Bank Transfer. You can record any transaction under any of these modes for accurate tracking."
+        },
+        {
+          "q": "Can I export my data?",
+          "a": "Yes. Go to Settings → Export all data to download a complete JSON file of all your projects, books, and entries. You can also download PDF or spreadsheet reports from Settings → Download report."
+        },
+        {
+          "q": "How is the running balance calculated?",
+          "a": "Each entry's \"Balance After\" is computed sequentially in chronological order. Income adds to the balance, expenses subtract. If you edit or delete a past entry, all subsequent balances are automatically recalculated."
+        },
+        {
+          "q": "Can multiple people use the same account?",
+          "a": "Each account is tied to one email. However, you can use the \"Entered By\" field on each transaction to track who recorded it, making it suitable for shared family or business tracking."
+        },
+        {
+          "q": "What does \"Artha\" mean?",
+          "a": "\"Artha\" is a Sanskrit word meaning wealth, purpose, and meaning. In ancient Indian philosophy, Artha is one of the four goals of life — the pursuit of material well-being with intention and wisdom."
+        },
+        {
+          "q": "How do I delete my account?",
+          "a": "Go to Settings → Delete account. This permanently removes your account and all of its data, so export your data first if you want to keep a copy."
+        },
+        {
+          "q": "Is ArthaLedger free?",
+          "a": "Yes, ArthaLedger is completely free to use. There are no hidden charges, subscriptions, or premium tiers."
+        }
+      ]
+    },
+    "about": {
+      "title": "About",
+      "label": "About ArthaLedger",
+      "tagline": "Where every rupee has meaning",
+      "version": "Version {version}",
+      "artha": "<b>“Artha”</b> is a Sanskrit word for wealth, purpose and meaning — one of the four goals of life in ancient Indian philosophy. ArthaLedger is built on the belief that mindful tracking of money leads to clarity, peace and abundance.",
+      "facts": {
+        "availableOn": "Available on",
+        "availableOnValue": "Android app & web",
+        "yourData": "Your data",
+        "yourDataValue": "Private to your account",
+        "protection": "Protection",
+        "protectionValue": "Encrypted in transit & at rest"
+      },
+      "developer": "Developer",
+      "role": "Designer & Developer",
+      "phone": "Phone",
+      "collab": "Want to collaborate?",
+      "writeTo": "Write to {email}",
+      "quote": "“Mindful spending creates peaceful living.”"
+    },
+    "deleteAccount": {
+      "title": "Delete account",
+      "subtitle": "This permanently removes your account",
+      "body": "Your account and <em>all of its data</em> will be deleted. This cannot be undone — consider exporting your data first.",
+      "willDelete": {
+        "projects": {
+          "one": "{count} project will be deleted",
+          "other": "{count} projects will be deleted"
+        },
+        "books": {
+          "one": "{count} book will be deleted",
+          "other": "{count} books will be deleted"
+        },
+        "entries": {
+          "one": "{count} entry will be deleted",
+          "other": "{count} entries will be deleted"
+        }
+      },
+      "passwordLabel": "Enter your password to confirm",
+      "passwordPlaceholder": "Current password",
+      "failed": "Failed to delete account. Please try again.",
+      "submit": "Delete account"
+    }
+  },
+  "pin": {
+    "entry": {
+      "wrongPin": {
+        "one": "Wrong PIN · {count} try left before a lockout",
+        "other": "Wrong PIN · {count} tries left before a lockout"
+      },
+      "error": "Something went wrong. Try again.",
+      "locked": "Too many wrong attempts · try again in {minutes}:{seconds}",
+      "checking": "Checking…"
+    },
+    "unlock": {
+      "title": "Enter PIN",
+      "lockedNamed": "<b>{name}</b> is locked",
+      "lockedItem": "This item is locked",
+      "removedTitle": "PIN removed",
+      "removedNamed": "\"{name}\" is no longer locked. You can set a new PIN any time.",
+      "removedItem": "This item is no longer locked. You can set a new PIN any time.",
+      "forgotTitle": "Forgot PIN?",
+      "forgotBody": "Verify your account to remove this PIN lock. Your data stays as it is.",
+      "wrongPassword": "Incorrect account password.",
+      "tooMany": "Too many attempts. Please wait a moment.",
+      "cancelled": "Sign-in was cancelled.",
+      "failed": "Verification failed. Please try again.",
+      "enterPassword": "Enter your account password.",
+      "passwordPlaceholder": "Account password",
+      "verifying": "Verifying…",
+      "verifyRemove": "Verify & remove PIN",
+      "google": "Continue with Google",
+      "signOutHint": "Sign out and sign back in, then try again."
+    },
+    "pad": {
+      "digitsAria": "{count} of {length} digits entered",
+      "inputAria": "Enter {length}-digit PIN",
+      "deleteDigit": "Delete last digit",
+      "typeHint": "Type your PIN"
+    },
+    "verify": {
+      "bodyNamed": "Enter the PIN to permanently delete \"{name}\". This can't be undone.",
+      "bookBody": "Enter the PIN to permanently delete this book. This can't be undone.",
+      "projectBody": "Enter the PIN to permanently delete this project. This can't be undone."
+    },
+    "set": {
+      "differentFromCurrent": "Choose a PIN different from your current one.",
+      "mismatch": "PINs didn't match. Enter a new PIN again.",
+      "saveFailed": "Could not save the PIN. Please try again.",
+      "removeFailed": "Could not remove the PIN. Please try again.",
+      "named": "\"{name}\"",
+      "thisItem": "this item",
+      "verifyTitle": "Enter current PIN",
+      "verifySubtitle": "Confirm it's you before changing the PIN for {name}.",
+      "chooseSubtitle": "Pick how many digits you want for {name}.",
+      "fourTitle": "4-digit PIN",
+      "fourHint": "Quicker to enter",
+      "sixTitle": "6-digit PIN",
+      "sixHint": "Recommended · 100× harder to guess",
+      "best": "Best",
+      "chooseNew": "Choose a new PIN",
+      "setLock": "Set a PIN lock",
+      "removing": "Removing…",
+      "removeLock": "Remove PIN lock",
+      "saved": "PIN saved",
+      "doneSubtitle": "{name} now needs your {length}-digit PIN to open.",
+      "confirmTitle": "Confirm your PIN",
+      "createTitle": "Create a {length}-digit PIN",
+      "confirmSubtitle": "Enter the same PIN again.",
+      "createSubtitle": "Avoid easy picks like 1234 or birthdays.",
+      "step": "Step {n} of 2"
+    },
+    "lib": {
+      "required": "PIN is required",
+      "mustBe": "PIN must be {length} digits",
+      "exact": "PIN must be exactly 4 or 6 digits",
+      "repeat": "Avoid repeating the same digit.",
+      "sequence": "Avoid simple sequences like 1234.",
+      "common": "This PIN is too common. Choose another.",
+      "pattern": "Avoid repeating a pattern."
+    }
+  },
+  "reminders": {
+    "prompt": {
+      "aria": "Daily reminders",
+      "slots": {
+        "morning": {
+          "label": "Morning",
+          "hint": "Plan the day’s spends"
+        },
+        "afternoon": {
+          "label": "Afternoon",
+          "hint": "Quick lunch-time check"
+        },
+        "evening": {
+          "label": "Evening",
+          "hint": "Wrap up the day"
+        },
+        "night": {
+          "label": "Night",
+          "hint": "Log it before bed"
+        }
+      },
+      "slotTimeAria": "{slot} reminder time",
+      "slotAria": "{slot} reminder",
+      "doneTitle": "You’re all set",
+      "next": "Next reminder · <b>{next}</b>",
+      "closedNote": "It arrives even when ArthaLedger is closed.",
+      "blockedTitle": "Notifications are blocked",
+      "failedTitle": "Couldn’t turn on reminders",
+      "errorFallback": "Something went wrong.",
+      "title": "Never miss a day",
+      "body": "Four friendly nudges a day, even when the app is closed. Change them anytime.",
+      "budgetTitle": "Budget alerts too",
+      "budgetHint": "When a category reaches 80% or 100%",
+      "turningOn": "Turning on…",
+      "turnOn": {
+        "one": "Turn on {count} daily reminder",
+        "other": "Turn on {count} daily reminders"
+      },
+      "pickOne": "Pick at least one",
+      "notNow": "Not now",
+      "changeAnytime": "You can change this anytime in Settings.",
+      "dontAsk": "Don’t ask again"
+    },
+    "budget": {
+      "overTitle": "{category} is over budget",
+      "overBody": "{spent} of {limit} spent this month · {over} over",
+      "nearTitle": "{category} · {pct}% of budget used",
+      "nearBody": "{spent} of {limit} spent · {left} left this month",
+      "view": "View budget",
+      "dismiss": "Dismiss"
+    },
+    "errors": {
+      "unsupported": "This device doesn’t support notifications.",
+      "blockedSettings": "Notifications are blocked. Allow them in phone Settings → Apps → ArthaLedger → Notifications.",
+      "blockedLater": "Notifications were blocked. You can allow them later in phone Settings → Apps → ArthaLedger.",
+      "needed": "Notification permission is needed for reminders.",
+      "saveFailed": "Couldn’t save the reminder. Check your connection and try again.",
+      "noDevice": "Reminder saved, but this device couldn’t register for notifications.",
+      "notRegistered": "This device is not registered for push yet. Allow notifications first.",
+      "signInAgain": "Please sign in again.",
+      "notSignedIn": "Not signed in",
+      "serverError": "Server error {status}",
+      "serverWaking": "Server error {status} (it may be waking up — try again)",
+      "unknownError": "unknown error",
+      "unreachableDevice": "The server couldn't reach this device ({why}). Turn notifications off and on again.",
+      "pushUnreachable": "Push server unreachable",
+      "permissionNeeded": "Notification permission is needed.",
+      "cantRegister": "This device couldn’t register for notifications."
+    },
+    "test": {
+      "sentOk": "Sent to this device. Lock the phone or close the app to see it arrive.",
+      "title": "Notifications are on",
+      "body": "This is how ArthaLedger reminders will look on this device."
+    },
+    "timeLeft": {
+      "now": "now",
+      "minutes": {
+        "one": "in {count} min",
+        "other": "in {count} min"
+      },
+      "hours": {
+        "one": "in {count} h",
+        "other": "in {count} h"
+      },
+      "hoursMinutes": "in {hours} h {minutes} min",
+      "day": "in 1 day"
+    }
+  },
+  "download": {
+    "title": "Download Report",
+    "subtitle": "Customise and export your data",
+    "exportFailed": "Export failed. Please try again.",
+    "scope": {
+      "title": "Scope",
+      "all": "Entire App",
+      "allSub": "All projects & books",
+      "custom": "Custom",
+      "customSub": "Pick projects / books"
+    },
+    "picker": {
+      "title": "Projects & Books",
+      "selectAll": "Select all",
+      "deselectAll": "Deselect all",
+      "books": {
+        "one": "{count} book",
+        "other": "{count} books"
+      },
+      "allBooksIn": "All books in {name}",
+      "entries": {
+        "one": "{count} entries",
+        "other": "{count} entries"
+      },
+      "selectOne": "Select at least one project to continue."
+    },
+    "dates": {
+      "filter": "Filter by date range",
+      "allSub": "Export all entries (no date filter)",
+      "from": "From",
+      "to": "To",
+      "invalid": "Start date must be before end date."
+    },
+    "format": {
+      "title": "Format",
+      "pdf": "PDF Report",
+      "pdfSub": "Branded, printable",
+      "csv": "Spreadsheet",
+      "csvSub": "Excel / Google Sheets"
+    },
+    "pdfEnglishNote": "PDF files are made in English.",
+    "preview": {
+      "title": "Preview",
+      "totalIn": "Total In",
+      "totalOut": "Total Out",
+      "net": "Net",
+      "none": "No entries match the selected filters.",
+      "count": {
+        "one": "{count} entry will be exported",
+        "other": "{count} entries will be exported"
+      }
+    },
+    "generating": "Generating...",
+    "downloadAs": "Download {format}"
+  },
+  "feedback": {
+    "label": "Send feedback",
+    "title": "Help us improve",
+    "subtitle": "Ideas, problems or a kind word. We read every message.",
+    "tabs": {
+      "write": "Write",
+      "mine": "Your messages",
+      "mineReplies": {
+        "one": "Your messages · {count} reply",
+        "other": "Your messages · {count} replies"
+      }
+    },
+    "kinds": {
+      "suggestion": "Idea",
+      "bug": "Problem",
+      "praise": "Praise",
+      "other": "Other"
+    },
+    "placeholder": {
+      "suggestion": "What would make ArthaLedger better for you?",
+      "bug": "What happened, and what did you expect? Which screen were you on?",
+      "praise": "What do you like about ArthaLedger?",
+      "other": "Tell us anything."
+    },
+    "status": {
+      "new": "Sent",
+      "seen": "Read",
+      "planned": "Planned",
+      "done": "Done"
+    },
+    "thanks": "Thank you!",
+    "thanksBody": "Your message reached us. If we reply, you’ll see it under “Your messages”.",
+    "sendAnother": "Send another",
+    "typeAria": "Type of message",
+    "messageAria": "Your message",
+    "ratingQuestion": "How do you like ArthaLedger so far?",
+    "optional": "(optional)",
+    "ratingAria": "Rating",
+    "stars": {
+      "one": "{count} star",
+      "other": "{count} stars"
+    },
+    "allowPublic": "You may show this on the ArthaLedger website with my first name.",
+    "sending": "Sending…",
+    "send": "Send",
+    "empty": "You haven’t sent anything yet.",
+    "replyFrom": "Reply from ArthaLedger"
+  },
+  "dialogs": {
+    "showPassword": "Show password",
+    "hidePassword": "Hide password",
+    "confirm": {
+      "irreversible": "This action cannot be undone.",
+      "deleting": "Deleting...",
+      "yesDelete": "Yes, Delete"
+    },
+    "delete": {
+      "book": {
+        "aria": "Delete book",
+        "title": "Delete book?",
+        "note": "Everything in this book is removed for good.",
+        "hold": "Hold to delete book",
+        "failed": "Couldn't delete this book."
+      },
+      "project": {
+        "aria": "Delete project",
+        "title": "Delete project?",
+        "note": "Everything in this project is removed for good.",
+        "hold": "Hold to delete project",
+        "failed": "Couldn't delete this project."
+      },
+      "cantUndo": "This can’t be undone.",
+      "enterPin": "Enter the PIN to delete",
+      "keepHolding": "Keep holding…"
+    },
+    "skeleton": {
+      "loading": "Loading",
+      "stillLoading": "Still loading…",
+      "slow": "Your connection seems slow. We'll show your data as soon as it arrives."
+    }
+  },
+  "quotes": {
+    "items": [
+      "Mindful spending creates peaceful living.",
+      "Awareness in small actions builds abundance.",
+      "Gratitude brings clarity to every decision.",
+      "Discipline in money creates calm in mind.",
+      "Simple records lead to wise choices.",
+      "When intention is clear, wealth becomes purposeful.",
+      "Every rupee spent with awareness is a step toward freedom.",
+      "Peace begins when we know where our money flows.",
+      "Clarity in accounts brings clarity in life.",
+      "A grateful heart sees abundance in every transaction.",
+      "Track with care, live with ease.",
+      "Small consistent actions create lasting prosperity."
+    ]
+  },
+  "app": {
+    "errors": {
+      "entryNotFound": "Entry not found",
+      "transferNotFound": "Transfer not found.",
+      "transferDeleteFromSource": "This transfer is managed by the sending book. Delete it there.",
+      "transferEditFromSource": "Transfers can only be changed from the sending book.",
+      "transferAmount": "Enter a valid transfer amount.",
+      "transferBooks": "Select both source and destination books.",
+      "transferSameBook": "Source and destination books must be different.",
+      "sourceProjectMissing": "Source project not found.",
+      "destinationProjectMissing": "Destination project not found.",
+      "sourceBookMissing": "Source book not found.",
+      "destinationBookMissing": "Destination book not found.",
+      "insufficientBalance": "Insufficient balance. Available: {available}",
+      "permissionDenied": "Permission denied. Please sign in again.",
+      "network": "Network error. Please check your connection."
+    },
+    "api": {
+      "signInAgain": "Please sign in again.",
+      "slowServer": "The server is taking too long. Please try again in a moment.",
+      "noConnection": "No connection. Check your internet and try again.",
+      "checkInput": "Please check what you entered.",
+      "serverError": "Something went wrong ({status})."
+    }
+  }
+}

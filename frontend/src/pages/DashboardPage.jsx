@@ -10,6 +10,7 @@ import Loader from '../components/common/Loader'
 import QuoteCard from '../components/common/QuoteCard'
 import ReminderPrompt from '../components/common/ReminderPrompt'
 import AccountMenu from '../components/common/AccountMenu'
+import LanguageMenu from '../components/common/LanguageMenu'
 import ProjectAvatar from '../components/common/ProjectAvatar'
 import ProjectModal from '../components/forms/ProjectModal'
 import DeleteDialog from '../components/common/DeleteDialog'
@@ -17,8 +18,11 @@ import Toast from '../components/common/Toast'
 import { useAppData } from '../context/AppDataContext'
 import { getQuoteOfTheDay } from '../lib/quotes'
 import { useAuth } from '../context/AuthContext'
+import { useI18n } from '../i18n/core'
+import { Trans } from '../i18n/Trans'
 
 function ProjectMenu({ onEdit, onDelete }) {
+  const { t } = useI18n()
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
 
@@ -33,7 +37,7 @@ function ProjectMenu({ onEdit, onDelete }) {
       <button
         onClick={(e) => { e.preventDefault(); e.stopPropagation(); setOpen((v) => !v) }}
         className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--text-subtle)] hover:text-[var(--text-main)] hover:bg-[var(--border-subtle)] transition-colors cursor-pointer"
-        aria-label="Project options"
+        aria-label={t('dashboard.projectOptions')}
       >
         <MoreVertical size={16} />
       </button>
@@ -50,13 +54,13 @@ function ProjectMenu({ onEdit, onDelete }) {
               onClick={(e) => { e.preventDefault(); e.stopPropagation(); onEdit(); setOpen(false) }}
               className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-xs font-medium text-[var(--text-main)] hover:bg-[var(--border-subtle)] transition-colors cursor-pointer"
             >
-              <Pencil size={13} className="text-[var(--text-muted)]" /> Edit project
+              <Pencil size={13} className="text-[var(--text-muted)]" /> {t('dashboard.editProject')}
             </button>
             <button
               onClick={(e) => { e.preventDefault(); e.stopPropagation(); onDelete(); setOpen(false) }}
               className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-xs font-medium text-rose-600 dark:text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer"
             >
-              <Trash2 size={13} /> Delete project
+              <Trash2 size={13} /> {t('dashboard.deleteProject')}
             </button>
           </motion.div>
         )}
@@ -72,17 +76,19 @@ export default function DashboardPage() {
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [search, setSearch] = useState('')
   const { user } = useAuth()
+  const { t, locale, lang } = useI18n()
   const [stalled, setStalled] = useState(false)
   const [toast, setToast] = useState({ msg: '', type: 'success', visible: false })
 
   useEffect(() => {
     // `stalled` is only read while loading, so it never needs resetting here
     if (!loading) return
-    const t = setTimeout(() => setStalled(true), 3500)
-    return () => clearTimeout(t)
+    const timer = setTimeout(() => setStalled(true), 3500)
+    return () => clearTimeout(timer)
   }, [loading])
 
-  const quote = useMemo(() => getQuoteOfTheDay(), [])
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- lang: re-pick the text when the language changes
+  const quote = useMemo(() => getQuoteOfTheDay(), [lang])
   const filtered = projects.filter((p) => p.name.toLowerCase().includes(search.toLowerCase()))
 
   const totalBooksCount = useMemo(
@@ -93,15 +99,15 @@ export default function DashboardPage() {
 
   const showToast = (msg, type = 'success') => {
     setToast({ msg, type, visible: true })
-    setTimeout(() => setToast((t) => ({ ...t, visible: false })), 2200)
+    setTimeout(() => setToast((s) => ({ ...s, visible: false })), 2200)
   }
 
   const greeting = () => {
     const h = new Date().getHours()
-    if (h < 12) return 'Good morning'
-    if (h < 17) return 'Good afternoon'
-    if (h < 20) return 'Good evening'
-    return 'Good night'
+    if (h < 12) return t('dashboard.greeting.morning')
+    if (h < 17) return t('dashboard.greeting.afternoon')
+    if (h < 20) return t('dashboard.greeting.evening')
+    return t('dashboard.greeting.night')
   }
 
   if (error) {
@@ -109,14 +115,14 @@ export default function DashboardPage() {
       <LayoutShell>
         <div className="flex flex-col items-center justify-center py-20 gap-4 text-center px-4">
           <div className="rounded-2xl border border-rose-500/20 bg-rose-500/10 p-5 max-w-sm">
-            <p className="text-sm font-semibold text-rose-500">Unable to Load Data</p>
+            <p className="text-sm font-semibold text-rose-500">{t('dashboard.loadError')}</p>
             <p className="text-xs text-[var(--text-muted)] mt-1">{error}</p>
           </div>
           <button 
             onClick={() => window.location.reload()}
             className="rounded-xl bg-[var(--gold-primary)] px-5 py-2.5 text-xs font-semibold text-white hover:bg-[var(--gold-hover)] transition-colors"
           >
-            Retry Loading
+            {t('dashboard.retryLoading')}
           </button>
         </div>
       </LayoutShell>
@@ -125,7 +131,7 @@ export default function DashboardPage() {
 
   if (loading && !stalled) return <Loader />
 
-  const firstName = user?.displayName?.split(' ')[0] || 'there'
+  const firstName = user?.displayName?.split(' ')[0] || t('dashboard.greeting.fallbackName')
 
   return (
     <LayoutShell>
@@ -133,24 +139,27 @@ export default function DashboardPage() {
       <div className="mx-auto max-w-2xl space-y-6">
         {loading && stalled && (
           <div className="rounded-2xl border border-[var(--border-card)] bg-[var(--bg-card)] px-4 py-3 text-[11px] text-[var(--text-muted)]">
-            Still syncing — your connection seems slow.
+            {t('dashboard.stillSyncing')}
           </div>
         )}
 
         {/* ── Greeting ── */}
         <motion.header initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} className="flex items-start gap-3 pt-1">
           <div className="min-w-0 flex-1">
-            <p className="font-serif-luxury text-[16px] italic text-[var(--text-muted)]">{greeting()},</p>
+            <p className="font-serif-luxury text-[16px] italic text-[var(--text-muted)]">{greeting()}</p>
             <h1 className="font-serif-luxury truncate text-[30px] font-semibold leading-[1.1] tracking-[-0.015em] text-[var(--text-main)]">
               {firstName}
             </h1>
             <p className="mt-2 text-[12px] text-[var(--text-subtle)]">
-              <span className="font-semibold text-[var(--text-muted)]">{projects.length}</span> {projects.length === 1 ? 'project' : 'projects'}
+              <Trans k="dashboard.projectCount" vars={{ count: projects.length }} components={{ b: <b className="font-semibold text-[var(--text-muted)]" /> }} />
               <span className="mx-1.5 text-[var(--border-card)]">•</span>
-              <span className="font-semibold text-[var(--text-muted)]">{totalBooksCount}</span> {totalBooksCount === 1 ? 'book' : 'books'}
+              <Trans k="dashboard.bookCount" vars={{ count: totalBooksCount }} components={{ b: <b className="font-semibold text-[var(--text-muted)]" /> }} />
             </p>
           </div>
-          <AccountMenu />
+          <div className="flex shrink-0 items-center gap-2">
+            <LanguageMenu />
+            <AccountMenu />
+          </div>
         </motion.header>
 
         {/* ── Quote of the day ── */}
@@ -160,7 +169,7 @@ export default function DashboardPage() {
         <section className="space-y-2.5">
           <div className="flex items-center justify-between px-1">
             <h2 className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[var(--text-subtle)]">
-              Projects{projects.length > 0 ? ` · ${projects.length}` : ''}
+              {t('dashboard.projects')}{projects.length > 0 ? ` · ${projects.length}` : ''}
             </h2>
           </div>
 
@@ -170,11 +179,11 @@ export default function DashboardPage() {
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search projects"
+                placeholder={t('dashboard.searchProjects')}
                 className="w-full bg-transparent text-[13px] text-[var(--text-main)] placeholder-[var(--text-subtle)] outline-none"
               />
               {search && (
-                <button onClick={() => setSearch('')} aria-label="Clear search" className="text-[var(--text-subtle)] hover:text-[var(--text-main)] cursor-pointer">
+                <button onClick={() => setSearch('')} aria-label={t('dashboard.clearSearch')} className="text-[var(--text-subtle)] hover:text-[var(--text-main)] cursor-pointer">
                   <X size={14} />
                 </button>
               )}
@@ -188,27 +197,27 @@ export default function DashboardPage() {
                 <FolderOpen size={20} />
               </span>
               <div>
-                <p className="text-sm font-semibold text-[var(--text-main)]">No projects yet</p>
-                <p className="mt-1 text-xs text-[var(--text-subtle)]">A project groups related books — Home, Business, Travel.</p>
+                <p className="text-sm font-semibold text-[var(--text-main)]">{t('dashboard.empty.title')}</p>
+                <p className="mt-1 text-xs text-[var(--text-subtle)]">{t('dashboard.empty.body')}</p>
               </div>
               {!loading && (
                 <button onClick={() => { setEditingProject(null); setModalOpen(true) }}
                   className="mt-1 rounded-xl bg-[var(--gold-primary)] px-4 py-2.5 text-xs font-semibold text-white hover:bg-[var(--gold-hover)] transition-colors cursor-pointer">
-                  Create project
+                  {t('dashboard.createProject')}
                 </button>
               )}
             </motion.div>
           ) : (
             <div className="divide-y divide-[var(--border-subtle)] rounded-2xl border border-[var(--border-card)] bg-[var(--bg-card)]">
               {filtered.length === 0 && (
-                <p className="px-4 py-6 text-center text-xs text-[var(--text-subtle)]">No projects match “{search}”.</p>
+                <p className="px-4 py-6 text-center text-xs text-[var(--text-subtle)]">{t('dashboard.noMatch', { query: search })}</p>
               )}
               {filtered.map((project, idx) => {
                 const books = booksByProject[project.id] || []
                 const isProjectPinLocked = Boolean(project.pinHash)
                 const lockedBook = books.find((b) => b.pinHash)
                 const subline = project.description
-                  || `${books.length} ${books.length === 1 ? 'book' : 'books'}${project.updatedAt ? ` · Updated ${format(new Date(project.updatedAt), 'd MMM')}` : ''}`
+                  || `${t('dashboard.books', { count: books.length })}${project.updatedAt ? ` · ${t('dashboard.updated', { date: format(new Date(project.updatedAt), 'd MMM', { locale }) })}` : ''}`
                 return (
                   <motion.div
                     key={project.id}
@@ -251,7 +260,7 @@ export default function DashboardPage() {
                 <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl border border-dashed border-[var(--gold-primary)]/50 text-[var(--gold-primary)]">
                   <Plus size={16} />
                 </span>
-                <span className="text-[13px] font-semibold text-[var(--gold-primary)]">New project</span>
+                <span className="text-[13px] font-semibold text-[var(--gold-primary)]">{t('dashboard.newProject')}</span>
               </button>
             </div>
           )}
@@ -266,10 +275,10 @@ export default function DashboardPage() {
         onSubmit={async (payload) => {
           if (editingProject) {
             await updateProject(editingProject.id, payload)
-            showToast('Project updated')
+            showToast(t('dashboard.toast.updated'))
           } else {
             await createProject(payload)
-            showToast('Project created')
+            showToast(t('dashboard.toast.created'))
           }
         }}
       />
@@ -283,17 +292,17 @@ export default function DashboardPage() {
         stats={deleteTarget ? (() => {
           const list = booksByProject[deleteTarget.id] || []
           return [
-            { label: list.length === 1 ? 'Book' : 'Books', value: String(list.length) },
-            { label: 'Transactions', value: String(list.reduce((n, b) => n + Object.keys(b.entries || {}).length, 0)) },
+            { label: t('dashboard.delete.books', { count: list.length }), value: String(list.length) },
+            { label: t('dashboard.delete.transactions'), value: String(list.reduce((n, b) => n + Object.keys(b.entries || {}).length, 0)) },
           ]
         })() : []}
-        note="All books and transactions in this project are removed for good."
+        note={t('dashboard.delete.note')}
         pin={deleteTarget?.hasLockedBooks && deleteTarget?.lockedBookPin
           ? { storedHash: deleteTarget.lockedBookPin, length: deleteTarget.lockedPinLength, guardId: deleteTarget.lockedGuardId }
           : null}
         onConfirm={async () => {
           await deleteProject(deleteTarget.id)
-          showToast('Project deleted', 'info')
+          showToast(t('dashboard.toast.deleted'), 'info')
         }}
       />
 

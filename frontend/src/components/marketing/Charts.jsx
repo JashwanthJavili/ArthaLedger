@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { motion, animate, useInView, useMotionValue, useReducedMotion, useTransform } from 'framer-motion'
 import { EASE } from './constants'
+import { useI18n } from '../../i18n/core'
 
 const inr = (n) => Math.round(n).toLocaleString('en-IN')
 
@@ -24,7 +25,9 @@ export function Counter({ value, prefix = '₹', className = '', style }) {
  * Donut chart. `data` is [{ label, value, color }]. Hover or tap a slice
  * (or its legend row) to see its share in the middle.
  */
-export function Donut({ data, size = 200, thickness = 26, title = 'Spent', legend = true }) {
+export function Donut({ data, size = 200, thickness = 26, title: titleProp, legend = true }) {
+  const { t } = useI18n()
+  const title = titleProp ?? t('site.charts.spent')
   const ref = useRef(null)
   const inView = useInView(ref, { once: true, margin: '-40px' })
   const [active, setActive] = useState(-1)
@@ -84,6 +87,7 @@ export function Donut({ data, size = 200, thickness = 26, title = 'Spent', legen
 
 /** Paired bars of money in and out, one pair per month. */
 export function InOutBars({ data, height = 180 }) {
+  const { t } = useI18n()
   const ref = useRef(null)
   const inView = useInView(ref, { once: true, margin: '-40px' })
   const [hover, setHover] = useState(data.length - 1)
@@ -95,19 +99,19 @@ export function InOutBars({ data, height = 180 }) {
         <div>
           <p className="text-[12px]" style={{ color: 'var(--text-subtle)' }}>{cur.m}</p>
           <p className="text-[13px]" style={{ color: 'var(--text-muted)' }}>
-            Saved <span className="font-semibold tabular-nums text-emerald-600">₹{inr(cur.in - cur.out)}</span>
+            {t('site.charts.saved')} <span className="font-semibold tabular-nums text-emerald-600">₹{inr(cur.in - cur.out)}</span>
           </p>
         </div>
         <div className="flex gap-3 text-[12px]" style={{ color: 'var(--text-muted)' }}>
-          <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-emerald-500" /> In</span>
-          <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-rose-400" /> Out</span>
+          <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-emerald-500" /> {t('common.in')}</span>
+          <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-rose-400" /> {t('common.out')}</span>
         </div>
       </div>
       <div className="relative" style={{ height }}>
         {[0.25, 0.5, 0.75, 1].map(f => (
           <span key={f} className="absolute left-0 right-0 border-t border-dashed" style={{ bottom: `${f * 100}%`, borderColor: 'var(--border-subtle)' }} aria-hidden="true" />
         ))}
-        <div className="relative flex h-full items-end gap-2 sm:gap-3" role="img" aria-label={`Money in and out by month: ${data.map(d => `${d.m} in ₹${inr(d.in)}, out ₹${inr(d.out)}`).join('; ')}`}>
+        <div className="relative flex h-full items-end gap-2 sm:gap-3" role="img" aria-label={t('site.charts.byMonth', { list: data.map(d => t('site.charts.monthItem', { month: d.m, in: inr(d.in), out: inr(d.out) })).join('; ') })}>
           {data.map((d, i) => (
             <button type="button" key={d.m} onPointerEnter={() => setHover(i)} onFocus={() => setHover(i)} onClick={() => setHover(i)} aria-label={d.m}
               className="flex h-full flex-1 items-end justify-center gap-[3px] rounded-lg pt-2 transition-colors sm:gap-1"
@@ -122,7 +126,7 @@ export function InOutBars({ data, height = 180 }) {
       </div>
       <div className="mt-2 flex gap-2 sm:gap-3">
         {data.map((d, i) => (
-          <span key={d.m} className="flex-1 text-center text-[11px] font-medium" style={{ color: hover === i ? 'var(--text-main)' : 'var(--text-subtle)' }}>{d.m.slice(0, 3)}</span>
+          <span key={d.m} className="flex-1 text-center text-[11px] font-medium" style={{ color: hover === i ? 'var(--text-main)' : 'var(--text-subtle)' }}>{d.s ?? d.m.slice(0, 3)}</span>
         ))}
       </div>
     </div>
@@ -131,11 +135,12 @@ export function InOutBars({ data, height = 180 }) {
 
 /** A budget: spent of limit, coloured by how close it is. */
 export function BudgetBar({ label, spent, limit, delay = 0 }) {
+  const { t } = useI18n()
   const ref = useRef(null)
   const inView = useInView(ref, { once: true, margin: '-30px' })
   const pct = spent / limit
   const color = pct > 1 ? '#E11D48' : pct >= 0.8 ? '#D97706' : '#059669'
-  const status = pct > 1 ? `Over by ₹${inr(spent - limit)}` : pct >= 0.8 ? 'Almost there' : 'On track'
+  const status = pct > 1 ? t('site.charts.overBy', { amount: inr(spent - limit) }) : pct >= 0.8 ? t('site.charts.almost') : t('site.charts.onTrack')
   return (
     <div ref={ref}>
       <div className="flex items-baseline justify-between gap-2 text-[13px]">

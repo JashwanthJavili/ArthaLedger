@@ -1,4 +1,5 @@
 import { auth } from './firebase'
+import { translate } from '../i18n/core'
 
 // ArthaLedger server (feedback, admin, reminders). It sleeps when idle on the
 // free plan, so the first call after a while can take several seconds.
@@ -13,7 +14,7 @@ export async function api(path, { method = 'GET', body, signedIn = true, timeout
   if (body !== undefined) headers['Content-Type'] = 'application/json'
   if (signedIn) {
     const token = await auth.currentUser?.getIdToken()
-    if (!token) throw new Error('Please sign in again.')
+    if (!token) throw new Error(translate('app.api.signInAgain'))
     headers.Authorization = `Bearer ${token}`
   }
   const ctrl = new AbortController()
@@ -25,8 +26,8 @@ export async function api(path, { method = 'GET', body, signedIn = true, timeout
     })
   } catch (err) {
     throw new Error(err?.name === 'AbortError'
-      ? 'The server is taking too long. Please try again in a moment.'
-      : 'No connection. Check your internet and try again.', { cause: err })
+      ? translate('app.api.slowServer')
+      : translate('app.api.noConnection'), { cause: err })
   } finally {
     clearTimeout(timer)
   }
@@ -35,7 +36,7 @@ export async function api(path, { method = 'GET', body, signedIn = true, timeout
   if (!res.ok) {
     const detail = data?.detail
     const msg = typeof detail === 'string' ? detail
-      : Array.isArray(detail) ? 'Please check what you entered.' : `Something went wrong (${res.status}).`
+      : Array.isArray(detail) ? translate('app.api.checkInput') : translate('app.api.serverError', { status: res.status })
     const err = new Error(msg)
     err.status = res.status
     throw err

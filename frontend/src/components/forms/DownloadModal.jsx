@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { X, Download, FileSpreadsheet, FileText, ChevronDown, ChevronUp, Calendar, CheckSquare, Square, Loader2 } from 'lucide-react'
 import { format } from 'date-fns'
 import { buildReportRows, exportReportPdf, exportReportCsv } from '../../lib/pdf'
+import { useI18n } from '../../i18n/core'
 
 // ── Small checkbox row ─────────────────────────────────────────────────────
 function CheckRow({ checked, onChange, label, sub }) {
@@ -45,6 +46,7 @@ function DateInput({ label, value, onChange, max }) {
 
 // ── Main modal ─────────────────────────────────────────────────────────────
 export default function DownloadModal({ open, onClose, user, projects, booksByProject, entriesByBook, currencySymbol = '₹' }) {
+  const { t, lang } = useI18n()
   const today = format(new Date(), 'yyyy-MM-dd')
 
   // Scope: 'all' | 'custom'
@@ -178,7 +180,7 @@ export default function DownloadModal({ open, onClose, user, projects, booksByPr
 
       onClose()
     } catch (err) {
-      setError('Export failed. Please try again.')
+      setError(t('download.exportFailed'))
       console.error(err)
     } finally {
       setLoading(false)
@@ -210,12 +212,13 @@ export default function DownloadModal({ open, onClose, user, projects, booksByPr
                   <Download size={15} className="text-amber-700" />
                 </div>
                 <div>
-                  <h3 className="font-serif text-base font-semibold text-stone-800">Download Report</h3>
-                  <p className="text-[10px] text-stone-400">Customise and export your data</p>
+                  <h3 className="font-serif text-base font-semibold text-stone-800">{t('download.title')}</h3>
+                  <p className="text-[10px] text-stone-400">{t('download.subtitle')}</p>
                 </div>
               </div>
               <button
                 onClick={onClose}
+                aria-label={t('common.close')}
                 className="rounded-xl p-1.5 text-stone-400 hover:bg-stone-100 transition-colors"
               >
                 <X size={15} />
@@ -227,11 +230,11 @@ export default function DownloadModal({ open, onClose, user, projects, booksByPr
 
               {/* ── Scope ── */}
               <div>
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-stone-400 mb-2">Scope</p>
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-stone-400 mb-2">{t('download.scope.title')}</p>
                 <div className="grid grid-cols-2 gap-2">
                   {[
-                    { val: 'all', label: 'Entire App', sub: 'All projects & books' },
-                    { val: 'custom', label: 'Custom', sub: 'Pick projects / books' },
+                    { val: 'all', label: t('download.scope.all'), sub: t('download.scope.allSub') },
+                    { val: 'custom', label: t('download.scope.custom'), sub: t('download.scope.customSub') },
                   ].map((opt) => (
                     <button
                       key={opt.val}
@@ -262,7 +265,7 @@ export default function DownloadModal({ open, onClose, user, projects, booksByPr
                   >
                     <div className="rounded-2xl border border-amber-100 overflow-hidden">
                       <div className="px-3 py-2 bg-amber-50/60 border-b border-amber-100 flex items-center justify-between">
-                        <p className="text-[10px] font-semibold uppercase tracking-wider text-stone-500">Projects & Books</p>
+                        <p className="text-[10px] font-semibold uppercase tracking-wider text-stone-500">{t('download.picker.title')}</p>
                         <button
                           type="button"
                           onClick={() => {
@@ -279,7 +282,7 @@ export default function DownloadModal({ open, onClose, user, projects, booksByPr
                           }}
                           className="text-[10px] text-amber-600 font-medium hover:text-amber-700"
                         >
-                          {projects.every((p) => selectedProjectIds.includes(p.id)) ? 'Deselect all' : 'Select all'}
+                          {projects.every((p) => selectedProjectIds.includes(p.id)) ? t('download.picker.deselectAll') : t('download.picker.selectAll')}
                         </button>
                       </div>
 
@@ -304,7 +307,7 @@ export default function DownloadModal({ open, onClose, user, projects, booksByPr
                                     : <Square size={14} className="flex-shrink-0 mt-0.5 text-stone-300" />
                                   }
                                   <span className="text-xs font-medium text-stone-700 leading-tight">{project.name}</span>
-                                  <span className="ml-auto text-[10px] text-stone-400 flex-shrink-0">{books.length} book{books.length !== 1 ? 's' : ''}</span>
+                                  <span className="ml-auto text-[10px] text-stone-400 flex-shrink-0">{t('download.picker.books', { count: books.length })}</span>
                                 </button>
                                 {books.length > 0 && projSelected && (
                                   <button
@@ -337,7 +340,7 @@ export default function DownloadModal({ open, onClose, user, projects, booksByPr
                                         ? <CheckSquare size={12} className="flex-shrink-0 text-amber-600" />
                                         : <Square size={12} className="flex-shrink-0 text-stone-300" />
                                       }
-                                      <span className="text-[10px] text-stone-500 font-medium">All books in {project.name}</span>
+                                      <span className="text-[10px] text-stone-500 font-medium">{t('download.picker.allBooksIn', { name: project.name })}</span>
                                     </button>
                                     {books.map((book) => (
                                       <button
@@ -352,7 +355,7 @@ export default function DownloadModal({ open, onClose, user, projects, booksByPr
                                         }
                                         <span className="text-[10px] text-stone-600">{book.name}</span>
                                         <span className="ml-auto text-[9px] text-stone-300">
-                                          {(entriesByBook[book.id] || []).length} entries
+                                          {t('download.picker.entries', { count: (entriesByBook[book.id] || []).length })}
                                         </span>
                                       </button>
                                     ))}
@@ -366,7 +369,7 @@ export default function DownloadModal({ open, onClose, user, projects, booksByPr
                     </div>
 
                     {scope === 'custom' && selectedProjectIds.length === 0 && (
-                      <p className="text-[10px] text-amber-600 mt-1.5 ml-1">Select at least one project to continue.</p>
+                      <p className="text-[10px] text-amber-600 mt-1.5 ml-1">{t('download.picker.selectOne')}</p>
                     )}
                   </motion.div>
                 )}
@@ -377,8 +380,8 @@ export default function DownloadModal({ open, onClose, user, projects, booksByPr
                 <CheckRow
                   checked={useDateRange}
                   onChange={() => setUseDateRange((v) => !v)}
-                  label="Filter by date range"
-                  sub={useDateRange ? undefined : 'Export all entries (no date filter)'}
+                  label={t('download.dates.filter')}
+                  sub={useDateRange ? undefined : t('download.dates.allSub')}
                 />
                 <AnimatePresence>
                   {useDateRange && (
@@ -390,11 +393,11 @@ export default function DownloadModal({ open, onClose, user, projects, booksByPr
                       className="overflow-hidden"
                     >
                       <div className="flex gap-2 mt-2">
-                        <DateInput label="From" value={fromDate} onChange={setFromDate} max={toDate || today} />
-                        <DateInput label="To" value={toDate} onChange={setToDate} max={today} />
+                        <DateInput label={t('download.dates.from')} value={fromDate} onChange={setFromDate} max={toDate || today} />
+                        <DateInput label={t('download.dates.to')} value={toDate} onChange={setToDate} max={today} />
                       </div>
                       {fromDate && toDate && fromDate > toDate && (
-                        <p className="text-[10px] text-red-500 mt-1 ml-1">Start date must be before end date.</p>
+                        <p className="text-[10px] text-red-500 mt-1 ml-1">{t('download.dates.invalid')}</p>
                       )}
                     </motion.div>
                   )}
@@ -403,11 +406,11 @@ export default function DownloadModal({ open, onClose, user, projects, booksByPr
 
               {/* ── Format ── */}
               <div>
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-stone-400 mb-2">Format</p>
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-stone-400 mb-2">{t('download.format.title')}</p>
                 <div className="grid grid-cols-2 gap-2">
                   {[
-                    { val: 'pdf', label: 'PDF Report', sub: 'Branded, printable', icon: FileText },
-                    { val: 'csv', label: 'Spreadsheet', sub: 'Excel / Google Sheets', icon: FileSpreadsheet },
+                    { val: 'pdf', label: t('download.format.pdf'), sub: t('download.format.pdfSub'), icon: FileText },
+                    { val: 'csv', label: t('download.format.csv'), sub: t('download.format.csvSub'), icon: FileSpreadsheet },
                   ].map((fmt) => {
                     const Icon = fmt.icon
                     return (
@@ -430,35 +433,39 @@ export default function DownloadModal({ open, onClose, user, projects, booksByPr
                     )
                   })}
                 </div>
+                {/* PDF export can't draw Telugu script, so PDFs are always in English */}
+                {lang === 'te' && (
+                  <p className="text-[10px] text-stone-500 mt-1.5 ml-1">{t('download.pdfEnglishNote')}</p>
+                )}
               </div>
 
               {/* ── Preview summary ── */}
               <div className="rounded-2xl bg-amber-50/60 border border-amber-100 px-4 py-3">
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-stone-400 mb-2">Preview</p>
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-stone-400 mb-2">{t('download.preview.title')}</p>
                 <div className="grid grid-cols-3 gap-2 text-center">
                   <div>
                     <p className="text-sm font-bold text-emerald-600">
                       {currencySymbol}{summary.totalIn.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
                     </p>
-                    <p className="text-[9px] text-stone-400 mt-0.5">Total In</p>
+                    <p className="text-[9px] text-stone-400 mt-0.5">{t('download.preview.totalIn')}</p>
                   </div>
                   <div>
                     <p className="text-sm font-bold text-red-500">
                       {currencySymbol}{summary.totalOut.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
                     </p>
-                    <p className="text-[9px] text-stone-400 mt-0.5">Total Out</p>
+                    <p className="text-[9px] text-stone-400 mt-0.5">{t('download.preview.totalOut')}</p>
                   </div>
                   <div>
                     <p className={`text-sm font-bold ${summary.net >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
                       {summary.net < 0 ? '-' : ''}{currencySymbol}{Math.abs(summary.net).toLocaleString('en-IN', { maximumFractionDigits: 0 })}
                     </p>
-                    <p className="text-[9px] text-stone-400 mt-0.5">Net</p>
+                    <p className="text-[9px] text-stone-400 mt-0.5">{t('download.preview.net')}</p>
                   </div>
                 </div>
                 <p className="text-center text-[10px] text-stone-400 mt-2">
                   {summary.entryCount === 0
-                    ? 'No entries match the selected filters.'
-                    : `${summary.entryCount} entr${summary.entryCount !== 1 ? 'ies' : 'y'} will be exported`}
+                    ? t('download.preview.none')
+                    : t('download.preview.count', { count: summary.entryCount })}
                 </p>
               </div>
 
@@ -476,8 +483,8 @@ export default function DownloadModal({ open, onClose, user, projects, booksByPr
                 className="w-full flex items-center justify-center gap-2 rounded-xl bg-amber-600 py-3 text-sm font-semibold text-white hover:bg-amber-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loading
-                  ? <><Loader2 size={15} className="animate-spin" /> Generating...</>
-                  : <><Download size={15} /> Download {fileFormat.toUpperCase()}</>
+                  ? <><Loader2 size={15} className="animate-spin" /> {t('download.generating')}</>
+                  : <><Download size={15} /> {t('download.downloadAs', { format: fileFormat.toUpperCase() })}</>
                 }
               </button>
               <button
@@ -485,7 +492,7 @@ export default function DownloadModal({ open, onClose, user, projects, booksByPr
                 onClick={onClose}
                 className="w-full rounded-xl border border-stone-200 py-2.5 text-sm text-stone-600 hover:bg-stone-50 transition-colors"
               >
-                Cancel
+                {t('common.cancel')}
               </button>
             </div>
           </motion.div>

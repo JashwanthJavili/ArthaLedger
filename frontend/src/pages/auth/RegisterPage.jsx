@@ -3,19 +3,22 @@ import { useNavigate } from 'react-router-dom'
 import { User, Mail, Lock, CheckCircle2 } from 'lucide-react'
 import AuthLayout, { AuthLink, Field, FormError, GoogleOption, PrimaryButton } from './AuthLayout'
 import { useAuth } from '../../context/AuthContext'
+import { useI18n } from '../../i18n/core'
+import { Trans } from '../../i18n/Trans'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 function strengthOf(password) {
   if (!password) return null
-  if (password.length < 6) return { label: 'Too short', color: 'bg-rose-400', level: 1 }
-  if (password.length < 8) return { label: 'Weak', color: 'bg-orange-400', level: 2 }
-  if (!/[A-Z]/.test(password) || !/[0-9]/.test(password)) return { label: 'Fair', color: 'bg-amber-400', level: 3 }
-  return { label: 'Strong', color: 'bg-emerald-500', level: 4 }
+  if (password.length < 6) return { label: 'tooShort', color: 'bg-rose-400', level: 1 }
+  if (password.length < 8) return { label: 'weak', color: 'bg-orange-400', level: 2 }
+  if (!/[A-Z]/.test(password) || !/[0-9]/.test(password)) return { label: 'fair', color: 'bg-amber-400', level: 3 }
+  return { label: 'strong', color: 'bg-emerald-500', level: 4 }
 }
 
 export default function RegisterPage() {
   const { register, googleSignIn } = useAuth()
+  const { t } = useI18n()
   const navigate = useNavigate()
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
@@ -27,10 +30,10 @@ export default function RegisterPage() {
 
   const validate = () => {
     const e = {}
-    if (!name.trim() || name.trim().length < 2) e.name = 'Name must be at least 2 characters.'
-    if (!EMAIL_RE.test(email)) e.email = 'Enter a valid email address.'
-    if (password.length < 6) e.password = 'Password must be at least 6 characters.'
-    if (password !== confirmPassword) e.confirmPassword = 'Passwords do not match.'
+    if (!name.trim() || name.trim().length < 2) e.name = t('auth.validation.nameShort')
+    if (!EMAIL_RE.test(email)) e.email = t('auth.validation.emailInvalid')
+    if (password.length < 6) e.password = t('auth.validation.passwordShort')
+    if (password !== confirmPassword) e.confirmPassword = t('auth.validation.passwordMismatch')
     setErrors(e)
     return Object.keys(e).length === 0
   }
@@ -54,6 +57,7 @@ export default function RegisterPage() {
       }
 
       if (
+        err.code === 'auth/email-already-in-use' ||
         msg.toLowerCase().includes('email already exists') ||
         msg.toLowerCase().includes('already in use') ||
         msg.toLowerCase().includes('already exists')
@@ -85,24 +89,24 @@ export default function RegisterPage() {
 
   return (
     <AuthLayout
-      title="Create your ledger"
-      subtitle="Track every rupee, privately. Takes a minute."
+      title={t('auth.register.title')}
+      subtitle={t('auth.register.subtitle')}
       back="/login"
-      footer={<>Already have an account? <AuthLink to="/login">Sign in</AuthLink></>}
+      footer={<Trans k="auth.register.footer" components={{ link: <AuthLink to="/login" /> }} />}
     >
       <form onSubmit={onSubmit} className="space-y-2.5" noValidate>
-        <Field icon={User} label="Full name" value={name} error={errors.name}
+        <Field icon={User} label={t('auth.fields.fullName')} value={name} error={errors.name}
           onChange={(e) => { setName(e.target.value); clearFieldError('name') }}
-          placeholder="Full name" autoComplete="name" autoCapitalize="words" enterKeyHint="next" />
+          placeholder={t('auth.fields.fullName')} autoComplete="name" autoCapitalize="words" enterKeyHint="next" />
 
-        <Field icon={Mail} label="Email" type="email" value={email} error={errors.email}
+        <Field icon={Mail} label={t('common.email')} type="email" value={email} error={errors.email}
           onChange={(e) => { setEmail(e.target.value); clearFieldError('email') }}
-          placeholder="Email address" autoComplete="email" inputMode="email" enterKeyHint="next" />
+          placeholder={t('auth.fields.emailPlaceholder')} autoComplete="email" inputMode="email" enterKeyHint="next" />
 
         <div>
-          <Field icon={Lock} label="Password" type="password" value={password} error={errors.password}
+          <Field icon={Lock} label={t('common.password')} type="password" value={password} error={errors.password}
             onChange={(e) => { setPassword(e.target.value); clearFieldError('password') }}
-            placeholder="Password (6+ characters)" autoComplete="new-password" enterKeyHint="next" />
+            placeholder={t('auth.fields.newPassword')} autoComplete="new-password" enterKeyHint="next" />
           {strength && (
             <div className="mt-1.5 flex items-center gap-2.5 px-1">
               <div className="flex flex-1 gap-1">
@@ -110,25 +114,25 @@ export default function RegisterPage() {
                   <span key={i} className={`h-1 flex-1 rounded-full transition-colors duration-300 ${i <= strength.level ? strength.color : 'bg-[var(--border-card)]'}`} />
                 ))}
               </div>
-              <span className="w-16 text-right text-[11.5px] font-medium text-[var(--text-muted)]">{strength.label}</span>
+              <span className="min-w-16 text-right text-[11.5px] font-medium text-[var(--text-muted)]">{t(`auth.register.strength.${strength.label}`)}</span>
             </div>
           )}
         </div>
 
-        <Field icon={Lock} label="Confirm password" type="password" value={confirmPassword} error={errors.confirmPassword}
+        <Field icon={Lock} label={t('auth.fields.confirmPassword')} type="password" value={confirmPassword} error={errors.confirmPassword}
           onChange={(e) => { setConfirmPassword(e.target.value); clearFieldError('confirmPassword') }}
-          placeholder="Confirm password" autoComplete="new-password" enterKeyHint="go"
+          placeholder={t('auth.fields.confirmPassword')} autoComplete="new-password" enterKeyHint="go"
           trailing={matches ? <CheckCircle2 size={17} className="flex-shrink-0 text-emerald-500" /> : null} />
 
         <FormError>{globalError}</FormError>
 
-        <PrimaryButton loading={loading} loadingText="Creating account…">Create account</PrimaryButton>
+        <PrimaryButton loading={loading} loadingText={t('auth.register.submitting')}>{t('auth.register.submit')}</PrimaryButton>
       </form>
 
       <GoogleOption onClick={onGoogle} disabled={loading} />
 
       <p className="mt-3 text-center text-[11px] leading-relaxed text-[var(--text-subtle)]">
-        By continuing you agree to our <AuthLink to="/privacy">privacy policy</AuthLink>.
+        <Trans k="auth.register.agree" components={{ link: <AuthLink to="/privacy" /> }} />
       </p>
     </AuthLayout>
   )

@@ -3,39 +3,37 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Lightbulb, Bug, Heart, MessageCircle, Star, CheckCircle2, Loader2, CornerDownRight } from 'lucide-react'
 import { Sheet, SheetHeader, SheetBody, SheetFooter, TextArea, ErrorNote, Button } from '../settings/ui'
 import { api } from '../../lib/api'
+import { useI18n } from '../../i18n/core'
 
+// Labels: feedback.kinds.<key>, feedback.placeholder.<key>, feedback.status.<key>
 const KINDS = [
-  { key: 'suggestion', label: 'Idea', Icon: Lightbulb },
-  { key: 'bug', label: 'Problem', Icon: Bug },
-  { key: 'praise', label: 'Praise', Icon: Heart },
-  { key: 'other', label: 'Other', Icon: MessageCircle },
+  { key: 'suggestion', Icon: Lightbulb },
+  { key: 'bug', Icon: Bug },
+  { key: 'praise', Icon: Heart },
+  { key: 'other', Icon: MessageCircle },
 ]
-const PLACEHOLDER = {
-  suggestion: 'What would make ArthaLedger better for you?',
-  bug: 'What happened, and what did you expect? Which screen were you on?',
-  praise: 'What do you like about ArthaLedger?',
-  other: 'Tell us anything.',
-}
 const STATUS = {
-  new: { label: 'Sent', cls: 'bg-[var(--border-subtle)] text-[var(--text-muted)]' },
-  seen: { label: 'Read', cls: 'bg-sky-500/10 text-sky-600 dark:text-sky-400' },
-  planned: { label: 'Planned', cls: 'bg-violet-500/10 text-violet-600 dark:text-violet-400' },
-  done: { label: 'Done', cls: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' },
+  new: { cls: 'bg-[var(--border-subtle)] text-[var(--text-muted)]' },
+  seen: { cls: 'bg-sky-500/10 text-sky-600 dark:text-sky-400' },
+  planned: { cls: 'bg-violet-500/10 text-violet-600 dark:text-violet-400' },
+  done: { cls: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' },
 }
 const MAX = 2000
 
-const fmtDate = (ms) => new Date(ms).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+const fmtDate = (ms, intl) => new Date(ms).toLocaleDateString(intl, { day: 'numeric', month: 'short', year: 'numeric' })
 
 /** Send an idea, problem or praise to the team, and see earlier messages and replies. */
 export default function FeedbackSheet({ open, onClose }) {
+  const { t } = useI18n()
   return (
-    <Sheet open={open} onClose={onClose} label="Send feedback">
+    <Sheet open={open} onClose={onClose} label={t('feedback.label')}>
       {open && <FeedbackBody onClose={onClose} />}
     </Sheet>
   )
 }
 
 function FeedbackBody({ onClose }) {
+  const { t, intl } = useI18n()
   const [tab, setTab] = useState('write')
   const [kind, setKind] = useState('suggestion')
   const [message, setMessage] = useState('')
@@ -76,10 +74,10 @@ function FeedbackBody({ onClose }) {
 
   return (
     <>
-      <SheetHeader title="Help us improve" subtitle="Ideas, problems or a kind word. We read every message." onClose={onClose} />
+      <SheetHeader title={t('feedback.title')} subtitle={t('feedback.subtitle')} onClose={onClose} />
 
       <div className="flex flex-shrink-0 gap-1 px-5 pt-3">
-        {[['write', 'Write'], ['mine', `Your messages${replies ? ` · ${replies} ${replies === 1 ? 'reply' : 'replies'}` : ''}`]].map(([k, l]) => (
+        {[['write', t('feedback.tabs.write')], ['mine', replies ? t('feedback.tabs.mineReplies', { count: replies }) : t('feedback.tabs.mine')]].map(([k, l]) => (
           <button key={k} type="button" onClick={() => setTab(k)}
             className={`rounded-full px-3.5 py-1.5 text-[12.5px] font-semibold transition-colors cursor-pointer ${
               tab === k ? 'bg-[var(--text-main)] text-[var(--bg-page)]' : 'text-[var(--text-muted)] hover:bg-[var(--border-subtle)]'
@@ -94,21 +92,21 @@ function FeedbackBody({ onClose }) {
               <span className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/10">
                 <CheckCircle2 size={30} className="text-emerald-600 dark:text-emerald-400" />
               </span>
-              <p className="mt-4 text-[16px] font-semibold text-[var(--text-main)]">Thank you!</p>
+              <p className="mt-4 text-[16px] font-semibold text-[var(--text-main)]">{t('feedback.thanks')}</p>
               <p className="mt-1 max-w-xs text-[13px] leading-relaxed text-[var(--text-muted)]">
-                Your message reached us. If we reply, you’ll see it under “Your messages”.
+                {t('feedback.thanksBody')}
               </p>
               <div className="mt-6 flex w-full gap-2">
-                <Button variant="secondary" onClick={() => { setSent(false); setMessage(''); setRating(0); setAllowPublic(false) }}>Send another</Button>
-                <Button onClick={onClose}>Done</Button>
+                <Button variant="secondary" onClick={() => { setSent(false); setMessage(''); setRating(0); setAllowPublic(false) }}>{t('feedback.sendAnother')}</Button>
+                <Button onClick={onClose}>{t('common.done')}</Button>
               </div>
             </motion.div>
           </SheetBody>
         ) : (
           <>
             <SheetBody className="space-y-4">
-              <div className="grid grid-cols-4 gap-2" role="radiogroup" aria-label="Type of message">
-                {KINDS.map(({ key, label, Icon }) => {
+              <div className="grid grid-cols-4 gap-2" role="radiogroup" aria-label={t('feedback.typeAria')}>
+                {KINDS.map(({ key, Icon }) => {
                   const on = kind === key
                   return (
                     <button key={key} type="button" role="radio" aria-checked={on} onClick={() => setKind(key)}
@@ -116,7 +114,7 @@ function FeedbackBody({ onClose }) {
                         on ? 'border-[var(--gold-primary)] bg-[var(--gold-light)] text-[var(--text-main)]' : 'border-[var(--border-card)] bg-[var(--bg-card)] text-[var(--text-muted)]'
                       }`}>
                       <Icon size={17} className={on ? 'text-[var(--gold-primary)]' : ''} />
-                      {label}
+                      {t(`feedback.kinds.${key}`)}
                     </button>
                   )
                 })}
@@ -124,15 +122,15 @@ function FeedbackBody({ onClose }) {
 
               <div>
                 <TextArea rows={5} value={message} maxLength={MAX} onChange={(e) => setMessage(e.target.value)}
-                  placeholder={PLACEHOLDER[kind]} aria-label="Your message" />
+                  placeholder={t(`feedback.placeholder.${kind}`)} aria-label={t('feedback.messageAria')} />
                 <p className="mt-1 text-right text-[10.5px] tabular-nums text-[var(--text-subtle)]">{message.length}/{MAX}</p>
               </div>
 
               <div>
-                <p className="mb-1.5 text-[12px] font-medium text-[var(--text-muted)]">How do you like ArthaLedger so far? <span className="text-[var(--text-subtle)]">(optional)</span></p>
-                <div className="flex gap-1" role="radiogroup" aria-label="Rating">
+                <p className="mb-1.5 text-[12px] font-medium text-[var(--text-muted)]">{t('feedback.ratingQuestion')} <span className="text-[var(--text-subtle)]">{t('feedback.optional')}</span></p>
+                <div className="flex gap-1" role="radiogroup" aria-label={t('feedback.ratingAria')}>
                   {[1, 2, 3, 4, 5].map(n => (
-                    <button key={n} type="button" role="radio" aria-checked={rating === n} aria-label={`${n} star${n > 1 ? 's' : ''}`}
+                    <button key={n} type="button" role="radio" aria-checked={rating === n} aria-label={t('feedback.stars', { count: n })}
                       onClick={() => setRating(rating === n ? 0 : n)}
                       className="flex h-10 w-10 items-center justify-center rounded-xl transition-transform active:scale-90 cursor-pointer">
                       <Star size={24} className={n <= rating ? 'fill-[var(--gold-primary)] text-[var(--gold-primary)]' : 'text-[var(--border-card)]'} strokeWidth={1.75} />
@@ -148,7 +146,7 @@ function FeedbackBody({ onClose }) {
                     <input type="checkbox" checked={allowPublic} onChange={(e) => setAllowPublic(e.target.checked)}
                       className="mt-0.5 h-4 w-4 flex-shrink-0 accent-[var(--gold-primary)]" />
                     <span className="text-[12.5px] leading-relaxed text-[var(--text-muted)]">
-                      You may show this on the ArthaLedger website with my first name.
+                      {t('feedback.allowPublic')}
                     </span>
                   </motion.label>
                 )}
@@ -157,9 +155,9 @@ function FeedbackBody({ onClose }) {
               <ErrorNote>{error}</ErrorNote>
             </SheetBody>
             <SheetFooter>
-              <Button variant="secondary" onClick={onClose}>Cancel</Button>
+              <Button variant="secondary" onClick={onClose}>{t('common.cancel')}</Button>
               <Button onClick={submit} disabled={sending || message.trim().length < 3}>
-                {sending ? <><Loader2 size={15} className="animate-spin" /> Sending…</> : 'Send'}
+                {sending ? <><Loader2 size={15} className="animate-spin" /> {t('feedback.sending')}</> : t('feedback.send')}
               </Button>
             </SheetFooter>
           </>
@@ -173,27 +171,28 @@ function FeedbackBody({ onClose }) {
           ) : history.error ? (
             <ErrorNote>{history.error}</ErrorNote>
           ) : history.items.length === 0 ? (
-            <p className="py-10 text-center text-[13px] text-[var(--text-subtle)]">You haven’t sent anything yet.</p>
+            <p className="py-10 text-center text-[13px] text-[var(--text-subtle)]">{t('feedback.empty')}</p>
           ) : (
             <ul className="space-y-3">
               {history.items.map(item => {
-                const st = STATUS[item.status] || STATUS.new
+                const stKey = STATUS[item.status] ? item.status : 'new'
+                const st = STATUS[stKey]
                 const k = KINDS.find(x => x.key === item.kind) || KINDS[3]
                 return (
                   <li key={item.id} className="rounded-2xl border border-[var(--border-card)] bg-[var(--bg-card)] p-3.5">
                     <div className="flex items-center gap-2 text-[11px] text-[var(--text-subtle)]">
                       <k.Icon size={13} />
-                      <span>{k.label}</span>
+                      <span>{t(`feedback.kinds.${k.key}`)}</span>
                       <span>·</span>
-                      <span>{fmtDate(item.createdAt)}</span>
-                      <span className={`ml-auto rounded-full px-2 py-0.5 text-[10.5px] font-semibold ${st.cls}`}>{st.label}</span>
+                      <span>{fmtDate(item.createdAt, intl)}</span>
+                      <span className={`ml-auto rounded-full px-2 py-0.5 text-[10.5px] font-semibold ${st.cls}`}>{t(`feedback.status.${stKey}`)}</span>
                     </div>
                     <p className="selectable mt-2 whitespace-pre-wrap text-[13px] leading-relaxed text-[var(--text-main)]">{item.message}</p>
                     {item.reply && (
                       <div className="mt-3 flex gap-2 rounded-xl bg-[var(--gold-light)] px-3 py-2.5">
                         <CornerDownRight size={14} className="mt-0.5 flex-shrink-0 text-[var(--gold-primary)]" />
                         <div className="min-w-0">
-                          <p className="text-[11px] font-semibold text-[var(--text-main)]">Reply from ArthaLedger</p>
+                          <p className="text-[11px] font-semibold text-[var(--text-main)]">{t('feedback.replyFrom')}</p>
                           <p className="selectable mt-0.5 whitespace-pre-wrap text-[12.5px] leading-relaxed text-[var(--text-muted)]">{item.reply}</p>
                         </div>
                       </div>

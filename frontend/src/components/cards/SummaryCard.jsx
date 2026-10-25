@@ -1,8 +1,10 @@
 import { motion } from 'framer-motion'
 import { ArrowDownLeft, ArrowUpRight } from 'lucide-react'
 import { formatAmount, getCurrencySymbol } from '../../lib/format'
+import { useI18n } from '../../i18n/core'
 
 export default function SummaryStrip({ net, totalIn, totalOut, delay = 0 }) {
+  const { t } = useI18n()
   const symbol = getCurrencySymbol()
   // Round to paise so tiny float drift never flips the sign or shows "-0.00".
   const netRounded = Math.round((Number(net) || 0) * 100) / 100
@@ -17,7 +19,7 @@ export default function SummaryStrip({ net, totalIn, totalOut, delay = 0 }) {
     >
       <div className="flex items-center justify-between gap-3 px-4 pt-3.5 pb-3">
         <div className="min-w-0">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--text-subtle)]">Net balance</p>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--text-subtle)]">{t('book.summary.netBalance')}</p>
           <p className={`mt-0.5 truncate text-[22px] leading-tight font-bold tracking-tight tabular-nums ${
             netPositive ? 'text-[var(--text-main)]' : 'text-rose-600 dark:text-rose-400'
           }`}>
@@ -29,7 +31,7 @@ export default function SummaryStrip({ net, totalIn, totalOut, delay = 0 }) {
             ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
             : 'bg-rose-500/10 text-rose-700 dark:text-rose-400'
         }`}>
-          {netPositive ? 'Surplus' : 'Deficit'}
+          {netPositive ? t('book.summary.surplus') : t('book.summary.deficit')}
         </span>
       </div>
 
@@ -37,7 +39,7 @@ export default function SummaryStrip({ net, totalIn, totalOut, delay = 0 }) {
         <div className="flex items-center gap-2 px-4 py-2.5 min-w-0">
           <ArrowDownLeft size={14} strokeWidth={2.4} className="flex-shrink-0 text-emerald-600 dark:text-emerald-400" />
           <div className="min-w-0">
-            <p className="text-[10px] text-[var(--text-subtle)]">Cash in</p>
+            <p className="text-[10px] text-[var(--text-subtle)]">{t('book.cashIn')}</p>
             <p className="truncate text-[13px] font-semibold tabular-nums text-emerald-700 dark:text-emerald-400">
               {symbol}{formatAmount(totalIn)}
             </p>
@@ -46,7 +48,7 @@ export default function SummaryStrip({ net, totalIn, totalOut, delay = 0 }) {
         <div className="flex items-center gap-2 px-4 py-2.5 min-w-0">
           <ArrowUpRight size={14} strokeWidth={2.4} className="flex-shrink-0 text-rose-600 dark:text-rose-400" />
           <div className="min-w-0">
-            <p className="text-[10px] text-[var(--text-subtle)]">Cash out</p>
+            <p className="text-[10px] text-[var(--text-subtle)]">{t('book.cashOut')}</p>
             <p className="truncate text-[13px] font-semibold tabular-nums text-rose-700 dark:text-rose-400">
               {symbol}{formatAmount(totalOut)}
             </p>

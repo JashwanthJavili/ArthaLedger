@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
 import { Delete } from 'lucide-react'
+import { useI18n } from '../../i18n/core'
 
 // Touch-first devices (phones/tablets) get an on-screen keypad; others type.
 function useIsTouch() {
@@ -26,6 +27,7 @@ function useIsTouch() {
  */
 export default function PinPad({ length, value, onChange, onComplete, disabled = false, shakeKey = 0, tone = 'default' }) {
   const isTouch = useIsTouch()
+  const { t } = useI18n()
   const inputRef = useRef(null)
   const [focused, setFocused] = useState(false)
 
@@ -76,7 +78,7 @@ export default function PinPad({ length, value, onChange, onComplete, disabled =
           !isTouch && focused && !disabled ? 'border-[var(--gold-primary)]' : 'border-[var(--border-card)]'
         } ${disabled ? 'opacity-60' : ''} ${isTouch ? '' : 'cursor-text'}`}
         role="group"
-        aria-label={`${value.length} of ${length} digits entered`}
+        aria-label={t('pin.pad.digitsAria', { count: value.length, length })}
       >
         {Array.from({ length }).map((_, i) => {
           const filled = i < value.length
@@ -111,7 +113,7 @@ export default function PinPad({ length, value, onChange, onComplete, disabled =
             data-1p-ignore
             data-lpignore="true"
             data-form-type="other"
-            aria-label={`Enter ${length}-digit PIN`}
+            aria-label={t('pin.pad.inputAria', { length })}
             className="absolute inset-0 h-full w-full cursor-text opacity-0"
             style={{ caretColor: 'transparent', fontSize: 16 }}
           />
@@ -128,13 +130,13 @@ export default function PinPad({ length, value, onChange, onComplete, disabled =
           <span />
           <button type="button" disabled={disabled} onClick={() => apply(value + '0')} className={keyCls} aria-label="0">0</button>
           <button type="button" disabled={disabled || !value} onClick={() => onChange(value.slice(0, -1))}
-            className={keyCls + ' !text-[var(--text-muted)]'} aria-label="Delete last digit">
+            className={keyCls + ' !text-[var(--text-muted)]'} aria-label={t('pin.pad.deleteDigit')}>
             <Delete size={22} />
           </button>
         </div>
       ) : (
         <p className={`mt-2 text-center text-[11px] text-[var(--text-subtle)] transition-opacity ${focused || disabled ? 'opacity-0' : 'opacity-100'}`}>
-          Type your PIN
+          {t('pin.pad.typeHint')}
         </p>
       )}
     </div>

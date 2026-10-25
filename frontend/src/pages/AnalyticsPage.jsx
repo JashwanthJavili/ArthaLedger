@@ -5,6 +5,7 @@ import {
   BarChart3, TrendingUp, TrendingDown, Eye, EyeOff, X, ChevronRight, PiggyBank,
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
+import LanguageMenu from '../components/common/LanguageMenu'
 import LayoutShell from '../components/LayoutShell'
 import BudgetSection from '../components/common/BudgetSection'
 import { useAppData } from '../context/AppDataContext'
@@ -12,6 +13,7 @@ import { useBudgets } from '../hooks/useBudgets'
 import { getCurrencySymbol, formatAmount } from '../lib/format'
 import SpendingTrends from '../components/common/SpendingTrends'
 import { compareNewestFirst } from '../lib/entryOrder'
+import { useI18n } from '../i18n/core'
 
 const PALETTE = ['#C5A059', '#7FA58A', '#D88A7A', '#6FA3B5', '#B39BD0', '#E0A166', '#9C8B73', '#8FB8A2']
 
@@ -27,6 +29,7 @@ const TOP_LIMITS = [5, 10, 20]
 export default function AnalyticsPage() {
   const { entriesByBook, booksByProject, projects, categories = [] } = useAppData()
   const navigate = useNavigate()
+  const { t, intl } = useI18n()
   const [hideBalance, setHideBalance] = useState(() => localStorage.getItem('al_hide_balance') === 'true')
   const [selectedCategory, setSelectedCategory] = useState(null)
   const [selectedSubcatFilter, setSelectedSubcatFilter] = useState('all')
@@ -176,13 +179,14 @@ export default function AnalyticsPage() {
         {/* ── Header ── */}
         <header className="flex items-center gap-3 pt-1">
           <div className="min-w-0 flex-1">
-            <h1 className="font-serif-luxury text-[28px] font-semibold leading-tight tracking-[-0.01em] text-[var(--text-main)]">Analytics</h1>
-            <p className="font-serif-luxury mt-0.5 text-[14px] italic text-[var(--text-muted)]">Where your money goes</p>
+            <h1 className="font-serif-luxury text-[28px] font-semibold leading-tight tracking-[-0.01em] text-[var(--text-main)]">{t('analytics.title')}</h1>
+            <p className="font-serif-luxury mt-0.5 text-[14px] italic text-[var(--text-muted)]">{t('analytics.subtitle')}</p>
           </div>
+          <LanguageMenu />
           <button
             onClick={toggleHideBalance}
             className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border border-[var(--border-card)] bg-[var(--bg-card)] text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors cursor-pointer"
-            aria-label={hideBalance ? 'Show amounts' : 'Hide amounts'}
+            aria-label={hideBalance ? t('analytics.showAmounts') : t('analytics.hideAmounts')}
           >
             {hideBalance ? <EyeOff size={16} /> : <Eye size={16} />}
           </button>
@@ -195,8 +199,8 @@ export default function AnalyticsPage() {
               <BarChart3 size={22} />
             </span>
             <div>
-              <p className="text-sm font-semibold text-[var(--text-main)]">No data yet</p>
-              <p className="mt-1 text-xs text-[var(--text-subtle)]">Add transactions to your books to see your trends here.</p>
+              <p className="text-sm font-semibold text-[var(--text-main)]">{t('analytics.empty.title')}</p>
+              <p className="mt-1 text-xs text-[var(--text-subtle)]">{t('analytics.empty.text')}</p>
             </div>
           </motion.div>
         ) : (
@@ -204,20 +208,20 @@ export default function AnalyticsPage() {
             {/* ── Overview ── */}
             <motion.section initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className={card}>
               <div className="px-5 pt-4 pb-4">
-                <p className={sectionTitle}>Total spent</p>
+                <p className={sectionTitle}>{t('analytics.overview.totalSpent')}</p>
                 <p className="mt-1 text-[30px] font-bold leading-tight tracking-tight tabular-nums text-[var(--text-main)]">
                   {hideBalance ? '••••••' : `${sym}${formatAmount(totalSpent)}`}
                 </p>
               </div>
               <div className="grid grid-cols-3 divide-x divide-[var(--border-subtle)] border-t border-[var(--border-subtle)]">
                 {[
-                  { label: 'This month', value: money(thisMonthSpent), Icon: TrendingDown, cls: 'text-rose-600 dark:text-rose-400' },
-                  { label: 'Daily avg · 30d', value: money(dailyAvg), Icon: BarChart3, cls: 'text-[var(--gold-primary)]' },
+                  { id: 'month', label: t('common.thisMonth'), value: money(thisMonthSpent), Icon: TrendingDown, cls: 'text-rose-600 dark:text-rose-400' },
+                  { id: 'avg', label: t('analytics.overview.dailyAvg'), value: money(dailyAvg), Icon: BarChart3, cls: 'text-[var(--gold-primary)]' },
                   totalSaved > 0
-                    ? { label: 'Saved', value: money(totalSaved), Icon: PiggyBank, cls: 'text-violet-600 dark:text-violet-400' }
-                    : { label: 'Income', value: money(totalIncome), Icon: TrendingUp, cls: 'text-emerald-600 dark:text-emerald-400' },
-                ].map(({ label, value, Icon, cls }) => (
-                  <div key={label} className="min-w-0 px-3.5 py-3">
+                    ? { id: 'saved', label: t('analytics.overview.saved'), value: money(totalSaved), Icon: PiggyBank, cls: 'text-violet-600 dark:text-violet-400' }
+                    : { id: 'income', label: t('common.income'), value: money(totalIncome), Icon: TrendingUp, cls: 'text-emerald-600 dark:text-emerald-400' },
+                ].map(({ id, label, value, Icon, cls }) => (
+                  <div key={id} className="min-w-0 px-3.5 py-3">
                     <p className="flex items-center gap-1 truncate text-[10px] text-[var(--text-subtle)]">
                       <Icon size={11} className={cls} /> {label}
                     </p>
@@ -251,8 +255,8 @@ export default function AnalyticsPage() {
             {byCategory.length > 0 && (
               <section className="space-y-2">
                 <div className="flex items-baseline justify-between px-1">
-                  <h2 className={sectionTitle}>Spending by category</h2>
-                  <span className="text-[11px] text-[var(--text-subtle)]">{byCategory.length} categories</span>
+                  <h2 className={sectionTitle}>{t('analytics.byCategory.title')}</h2>
+                  <span className="text-[11px] text-[var(--text-subtle)]">{t('analytics.byCategory.count', { count: byCategory.length })}</span>
                 </div>
                 <div className={card}>
                   {/* Stacked share bar */}
@@ -299,14 +303,14 @@ export default function AnalyticsPage() {
             {topExpenses.length > 0 && (
               <section className="space-y-2">
                 <div className="flex items-center justify-between px-1">
-                  <h2 className={sectionTitle}>Largest expenses</h2>
+                  <h2 className={sectionTitle}>{t('analytics.largest.title')}</h2>
                   <div className="grid grid-cols-3 gap-0.5 rounded-lg bg-[var(--border-subtle)] p-0.5">
                     {TOP_LIMITS.map(n => (
                       <button key={n} type="button" onClick={() => setTopLimit(n)}
                         className={`rounded-md px-2.5 py-1 text-[11px] font-semibold tabular-nums transition-colors cursor-pointer ${
                           topLimit === n ? 'bg-[var(--bg-card)] text-[var(--text-main)] shadow-sm' : 'text-[var(--text-subtle)] hover:text-[var(--text-main)]'
                         }`}>
-                        Top {n}
+                        {t('analytics.largest.top', { n })}
                       </button>
                     ))}
                   </div>
@@ -315,7 +319,7 @@ export default function AnalyticsPage() {
                   {topExpenses.map((item, idx) => {
                     const bookInfo = bookIdMap[item.bookId]
                     const d = item.timestamp ? new Date(item.timestamp) : null
-                    const dateStr = d ? d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : ''
+                    const dateStr = d ? d.toLocaleDateString(intl, { day: 'numeric', month: 'short', year: 'numeric' }) : ''
                     const meta = [item.category, bookInfo?.bookName, dateStr].filter(Boolean).join(' · ')
                     return (
                       <li key={item.id || idx}>
@@ -330,7 +334,7 @@ export default function AnalyticsPage() {
                             {idx + 1}
                           </span>
                           <span className="min-w-0 flex-1">
-                            <span className="block truncate text-[13px] font-medium text-[var(--text-main)]">{item.description || 'Expense'}</span>
+                            <span className="block truncate text-[13px] font-medium text-[var(--text-main)]">{item.description || t('analytics.expenseFallback')}</span>
                             <span className="block truncate text-[11px] text-[var(--text-subtle)]">{meta}</span>
                           </span>
                           <span className="flex-shrink-0 text-[13px] font-semibold tabular-nums text-[var(--text-main)]">
@@ -375,10 +379,10 @@ export default function AnalyticsPage() {
                   <div className="min-w-0">
                     <h3 className="truncate text-[15px] font-semibold text-[var(--text-main)]">{selectedCategory}</h3>
                     <p className="mt-0.5 text-[11px] text-[var(--text-subtle)]">
-                      {categoryTransactions.length} transaction{categoryTransactions.length !== 1 ? 's' : ''} · {money(categoryTransactions.reduce((s, t) => s + Number(t.amount), 0))}
+                      {t('analytics.sheet.count', { count: categoryTransactions.length })} · {money(categoryTransactions.reduce((s, x) => s + Number(x.amount), 0))}
                     </p>
                   </div>
-                  <button type="button" onClick={() => setShowCategoryModal(false)} aria-label="Close"
+                  <button type="button" onClick={() => setShowCategoryModal(false)} aria-label={t('common.close')}
                     className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-[var(--border-subtle)] text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors cursor-pointer">
                     <X size={15} />
                   </button>
@@ -395,7 +399,7 @@ export default function AnalyticsPage() {
                               ? 'border-[var(--text-main)] bg-[var(--text-main)] font-semibold text-[var(--bg-page)]'
                               : 'border-[var(--border-card)] bg-[var(--bg-card)] font-medium text-[var(--text-muted)] hover:text-[var(--text-main)]'
                           }`}>
-                          {sub === 'all' ? 'All' : sub}
+                          {sub === 'all' ? t('common.all') : sub}
                         </button>
                       )
                     })}
@@ -404,14 +408,14 @@ export default function AnalyticsPage() {
 
                 <div className="flex-1 overflow-y-auto px-5 py-4">
                   {categoryTransactions.length === 0 ? (
-                    <p className="py-10 text-center text-xs text-[var(--text-subtle)]">No transactions here.</p>
+                    <p className="py-10 text-center text-xs text-[var(--text-subtle)]">{t('analytics.sheet.empty')}</p>
                   ) : (
                     <ul className={`${card} divide-y divide-[var(--border-subtle)]`}>
                       {categoryTransactions.map((txn, idx) => {
                         const date = new Date(txn.timestamp)
                         const bookInfo = bookIdMap[txn.bookId]
                         const meta = [
-                          date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }),
+                          date.toLocaleDateString(intl, { day: 'numeric', month: 'short' }),
                           txn.subcategory,
                           txn.mode || 'Cash',
                           bookInfo?.bookName,
@@ -428,7 +432,7 @@ export default function AnalyticsPage() {
                               className="flex w-full items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-[var(--border-subtle)]/60 cursor-pointer first:rounded-t-2xl last:rounded-b-2xl"
                             >
                               <span className="min-w-0 flex-1">
-                                <span className="block truncate text-[13px] font-medium text-[var(--text-main)]">{txn.description || 'Untitled'}</span>
+                                <span className="block truncate text-[13px] font-medium text-[var(--text-main)]">{txn.description || t('analytics.untitled')}</span>
                                 <span className="block truncate text-[11px] text-[var(--text-subtle)]">{meta}</span>
                                 {txn.notes && <span className="mt-1 block line-clamp-2 text-[11px] text-[var(--text-muted)]">{txn.notes}</span>}
                               </span>

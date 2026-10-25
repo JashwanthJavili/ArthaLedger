@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence, useInView, useReducedMotion } from 'framer-motion'
 import { GraduationCap, Home as HomeIcon, Store, Laptop, Briefcase, Plane } from 'lucide-react'
 import { EASE, card } from './constants'
+import { useI18n } from '../../i18n/core'
+import { Trans } from '../../i18n/Trans'
 
 /*
  * "If money passes through your hands": a gold ₹ coin sits in the middle with
@@ -11,19 +13,14 @@ import { EASE, card } from './constants'
  * pauses the hand-off for a while.
  */
 
+// Text lives under landing.who.people.<id> (label, line, rows.<row>)
 const PEOPLE = [
-  { label: 'Students', Icon: GraduationCap, line: 'Pocket money, fees and canteen bills.',
-    rows: [['Pocket money', 3000], ['Canteen', -420], ['Bus pass', -350]] },
-  { label: 'Families', Icon: HomeIcon, line: 'Groceries, school fees and bills.',
-    rows: [['Groceries', -4800], ['School fees', -6500], ['Electricity', -1240]] },
-  { label: 'Shop owners', Icon: Store, line: 'Daily sales in, stock and rent out.',
-    rows: [['Today’s sales', 12400], ['Stock', -7900], ['Shop rent', -9000]] },
-  { label: 'Freelancers', Icon: Laptop, line: 'Client payments in, work costs out.',
-    rows: [['Client payment', 35000], ['Software', -1600], ['Internet', -799]] },
-  { label: 'Salaried', Icon: Briefcase, line: 'Salary in, EMIs and savings out.',
-    rows: [['Salary', 62000], ['Home EMI', -18500], ['SIP', -5000]] },
-  { label: 'Trips', Icon: Plane, line: 'Who paid for what, all in one place.',
-    rows: [['Hotel · Ravi', -6000], ['Dinner · You', -2100], ['Cab · Asha', -900]] },
+  { id: 'students', Icon: GraduationCap, rows: [['pocket', 3000], ['canteen', -420], ['bus', -350]] },
+  { id: 'families', Icon: HomeIcon, rows: [['groceries', -4800], ['school', -6500], ['power', -1240]] },
+  { id: 'shops', Icon: Store, rows: [['sales', 12400], ['stock', -7900], ['rent', -9000]] },
+  { id: 'freelancers', Icon: Laptop, rows: [['client', 35000], ['software', -1600], ['internet', -799]] },
+  { id: 'salaried', Icon: Briefcase, rows: [['salary', 62000], ['emi', -18500], ['sip', -5000]] },
+  { id: 'trips', Icon: Plane, rows: [['hotel', -6000], ['dinner', -2100], ['cab', -900]] },
 ]
 
 const R = 40 // orbit radius, in percent of the box
@@ -34,6 +31,7 @@ const spot = (i) => {
 const inr = (v) => Math.abs(v).toLocaleString('en-IN')
 
 function Orbit({ active, onPick, reduce }) {
+  const { t } = useI18n()
   const to = spot(active)
   return (
     <div className="relative mx-auto aspect-square w-full max-w-[270px] sm:max-w-[360px]">
@@ -64,11 +62,12 @@ function Orbit({ active, onPick, reduce }) {
       </div>
 
       {/* the people */}
-      {PEOPLE.map(({ label, Icon }, i) => {
+      {PEOPLE.map(({ id, Icon }, i) => {
+        const label = t(`landing.who.people.${id}.label`)
         const p = spot(i)
         const on = i === active
         return (
-          <button key={label} type="button" onClick={() => onPick(i)} aria-pressed={on} aria-label={label}
+          <button key={id} type="button" onClick={() => onPick(i)} aria-pressed={on} aria-label={label}
             className="absolute flex -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-1.5"
             style={{ left: `${p.x}%`, top: `${p.y}%` }}>
             <motion.span className="flex h-12 w-12 items-center justify-center rounded-full sm:h-14 sm:w-14"
@@ -92,10 +91,12 @@ function Orbit({ active, onPick, reduce }) {
 }
 
 function Ledger({ person, reduce }) {
+  const { t } = useI18n()
+  const text = (k) => t(`landing.who.people.${person.id}.${k}`)
   const total = person.rows.reduce((s, [, v]) => s + v, 0)
   return (
     <AnimatePresence mode="wait">
-      <motion.div key={person.label} className="rounded-3xl p-4 shadow-[0_24px_48px_-34px_rgba(43,38,32,0.45)] sm:p-6" style={card}
+      <motion.div key={person.id} className="rounded-3xl p-4 shadow-[0_24px_48px_-34px_rgba(43,38,32,0.45)] sm:p-6" style={card}
         initial={reduce ? { opacity: 0 } : { opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} exit={reduce ? { opacity: 0 } : { opacity: 0, y: -10 }}
         transition={{ duration: 0.35, ease: EASE }}>
         <div className="flex items-center gap-3">
@@ -103,8 +104,8 @@ function Ledger({ person, reduce }) {
             <person.Icon size={19} />
           </span>
           <div className="min-w-0 text-left">
-            <p className="text-[15px] font-semibold" style={{ color: 'var(--text-main)' }}>{person.label}</p>
-            <p className="truncate text-[13px]" style={{ color: 'var(--text-muted)' }}>{person.line}</p>
+            <p className="text-[15px] font-semibold" style={{ color: 'var(--text-main)' }}>{text('label')}</p>
+            <p className="truncate text-[13px]" style={{ color: 'var(--text-muted)' }}>{text('line')}</p>
           </div>
         </div>
         <div className="mt-3 space-y-1.5 sm:mt-4">
@@ -112,13 +113,13 @@ function Ledger({ person, reduce }) {
             <motion.div key={l} className="flex items-center justify-between rounded-xl px-3.5 py-2 text-[13.5px] sm:py-2.5"
               style={{ background: 'color-mix(in srgb, var(--gold-primary) 5%, var(--bg-page))', color: 'var(--text-main)' }}
               initial={reduce ? false : { opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.15 + i * 0.1, duration: 0.35, ease: EASE }}>
-              <span>{l}</span>
+              <span>{text(`rows.${l}`)}</span>
               <span className={`tabular-nums font-semibold ${v > 0 ? 'text-emerald-600' : 'text-rose-600'}`}>{v > 0 ? '+' : '−'} ₹{inr(v)}</span>
             </motion.div>
           ))}
         </div>
         <div className="mt-3 flex items-baseline justify-between border-t px-1 pt-3" style={{ borderColor: 'var(--border-card)' }}>
-          <span className="text-[11px] font-semibold uppercase tracking-[0.16em]" style={{ color: 'var(--text-subtle)' }}>{total >= 0 ? 'Left over' : 'Spent'}</span>
+          <span className="text-[11px] font-semibold uppercase tracking-[0.16em]" style={{ color: 'var(--text-subtle)' }}>{total >= 0 ? t('landing.who.leftOver') : t('landing.who.spent')}</span>
           <span className="font-serif-luxury text-[22px] font-semibold tabular-nums" style={{ color: 'var(--gold-primary)' }}>₹{inr(total)}</span>
         </div>
       </motion.div>
@@ -127,6 +128,7 @@ function Ledger({ person, reduce }) {
 }
 
 export default function AudienceBand() {
+  const { t } = useI18n()
   const ref = useRef(null)
   const inView = useInView(ref, { margin: '-80px' })
   const reduce = useReducedMotion()
@@ -136,10 +138,10 @@ export default function AudienceBand() {
   useEffect(() => {
     if (!inView || reduce) return undefined
     let id
-    const t = setTimeout(() => {
+    const timer = setTimeout(() => {
       id = setInterval(() => setActive((a) => (a + 1) % PEOPLE.length), 2800)
     }, picks ? 7000 : 0)
-    return () => { clearTimeout(t); clearInterval(id) }
+    return () => { clearTimeout(timer); clearInterval(id) }
   }, [inView, reduce, picks])
 
   const pick = (i) => { setActive(i); setPicks((n) => n + 1) }
@@ -151,12 +153,12 @@ export default function AudienceBand() {
       viewport={{ once: true, margin: '-60px' }} transition={{ duration: 0.7, ease: EASE }}>
       <div className="grid items-center gap-5 sm:gap-8 lg:grid-cols-[1fr_1.05fr] lg:gap-x-12 lg:gap-y-7">
         <div className="text-center lg:col-start-1 lg:row-start-1 lg:self-end lg:text-left">
-          <span className="text-[11px] font-semibold uppercase tracking-[0.22em]" style={{ color: 'var(--gold-primary)' }}>Who it&rsquo;s for</span>
+          <span className="text-[11px] font-semibold uppercase tracking-[0.22em]" style={{ color: 'var(--gold-primary)' }}>{t('landing.who.eyebrow')}</span>
           <h3 className="font-serif-luxury mt-3 text-[1.7rem] font-semibold leading-[1.15] [text-wrap:balance] sm:text-[2.2rem]" style={{ color: 'var(--text-main)' }}>
-            If money passes through your hands, <em className="italic" style={{ color: 'var(--gold-primary)' }}>this is for you.</em>
+            <Trans k="landing.who.title" components={{ em: <em className="italic" style={{ color: 'var(--gold-primary)' }} /> }} />
           </h3>
           <p className="mx-auto mt-3 hidden max-w-md text-[14.5px] leading-relaxed sm:block lg:mx-0" style={{ color: 'var(--text-muted)' }}>
-            Whether you manage a salary, a household, a shop or a trip with friends, knowing where your money goes is the first step to keeping more of it.
+            {t('landing.who.sub')}
           </p>
         </div>
         <div className="lg:col-start-2 lg:row-span-2 lg:row-start-1">

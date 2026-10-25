@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { motion } from 'framer-motion'
 import { X, ArrowDown, Check, AlertTriangle, Lock } from 'lucide-react'
 import { getCurrencySymbol, formatAmount } from '../../lib/format'
+import { useI18n } from '../../i18n/core'
 
 const LAST_TRANSFER_KEY = 'al_last_transfer_target'
 
@@ -36,6 +37,7 @@ function TransferDialog({
   editing = null,
   onTransfer,
 }) {
+  const { t } = useI18n()
   const symbol = getCurrencySymbol()
   const isEdit = Boolean(editing)
   // When editing, the existing transfer amount is already deducted; it's available again.
@@ -67,8 +69,8 @@ function TransferDialog({
   const amountRef = useRef(null)
 
   useEffect(() => {
-    const t = setTimeout(() => amountRef.current?.focus(), 80)
-    return () => clearTimeout(t)
+    const timer = setTimeout(() => amountRef.current?.focus(), 80)
+    return () => clearTimeout(timer)
   }, [])
 
   const selectedProject = destinationProjects.find((p) => p.id === destinationProjectId)
@@ -89,9 +91,9 @@ function TransferDialog({
 
   const validate = () => {
     const e = {}
-    if (!amount || num <= 0) e.amount = 'Enter a valid amount'
-    else if (overLimit) e.amount = `Only ${symbol}${formatAmount(available)} available`
-    if (!isEdit && (!destinationProjectId || !destinationBookId)) e.destination = 'Choose a book to send to'
+    if (!amount || num <= 0) e.amount = t('forms.transfer.errAmount')
+    else if (overLimit) e.amount = t('forms.transfer.onlyAvailable', { amount: `${symbol}${formatAmount(available)}` })
+    if (!isEdit && (!destinationProjectId || !destinationBookId)) e.destination = t('forms.transfer.errDestination')
     setErrors(e)
     return Object.keys(e).length === 0
   }
@@ -105,7 +107,7 @@ function TransferDialog({
       if (!isEdit) localStorage.setItem(LAST_TRANSFER_KEY, JSON.stringify({ projectId: destinationProjectId, bookId: destinationBookId }))
       onClose()
     } catch (err) {
-      setErrors({ submit: err.message || 'Transfer failed. Please try again.' })
+      setErrors({ submit: err.message || t('forms.transfer.failed') })
     } finally {
       setSubmitting(false)
     }
@@ -133,12 +135,12 @@ function TransferDialog({
         {/* Header */}
         <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-[var(--border-subtle)]">
           <div>
-            <h2 className="text-[15px] font-semibold text-[var(--text-main)]">{isEdit ? 'Edit transfer' : 'Transfer money'}</h2>
+            <h2 className="text-[15px] font-semibold text-[var(--text-main)]">{isEdit ? t('forms.transfer.editTitle') : t('forms.transfer.title')}</h2>
             <p className="mt-0.5 text-[11px] text-[var(--text-subtle)]">
-              {isEdit ? 'Changes update both books' : 'Move money to another book'}
+              {isEdit ? t('forms.transfer.editSubtitle') : t('forms.transfer.subtitle')}
             </p>
           </div>
-          <button type="button" onClick={onClose} aria-label="Close"
+          <button type="button" onClick={onClose} aria-label={t('common.close')}
             className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--border-subtle)] text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors cursor-pointer">
             <X size={15} />
           </button>
@@ -148,11 +150,11 @@ function TransferDialog({
           {/* From → To */}
           <div className="relative rounded-2xl border border-[var(--border-card)] bg-[var(--bg-card)]">
             <div className="px-4 py-3">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--text-subtle)]">From</p>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--text-subtle)]">{t('forms.transfer.from')}</p>
               <div className="mt-0.5 flex items-baseline justify-between gap-3">
                 <p className="truncate text-[13px] font-semibold text-[var(--text-main)]">{currentBook?.name}</p>
                 <p className="flex-shrink-0 text-[11px] text-[var(--text-subtle)]">
-                  Available <span className="font-semibold tabular-nums text-[var(--text-main)]">{symbol}{formatAmount(available)}</span>
+                  {t('forms.transfer.available')} <span className="font-semibold tabular-nums text-[var(--text-main)]">{symbol}{formatAmount(available)}</span>
                 </p>
               </div>
               {currentProject?.name && <p className="truncate text-[11px] text-[var(--text-subtle)]">{currentProject.name}</p>}
@@ -162,9 +164,9 @@ function TransferDialog({
                 <ArrowDown size={14} strokeWidth={2.4} />
               </span>
               <div className="px-4 py-3 pt-4">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--text-subtle)]">To</p>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--text-subtle)]">{t('forms.transfer.to')}</p>
                 <p className={`mt-0.5 truncate text-[13px] font-semibold ${selectedBook ? 'text-[var(--text-main)]' : 'text-[var(--text-subtle)]'}`}>
-                  {selectedBook?.name || 'Choose a book below'}
+                  {selectedBook?.name || t('forms.transfer.chooseBelow')}
                 </p>
                 {destinationProjectName && <p className="truncate text-[11px] text-[var(--text-subtle)]">{destinationProjectName}</p>}
               </div>
@@ -173,7 +175,7 @@ function TransferDialog({
 
           {/* Amount */}
           <div>
-            <label htmlFor="transfer-amount" className={sectionLabel}>Amount</label>
+            <label htmlFor="transfer-amount" className={sectionLabel}>{t('common.amount')}</label>
             <div className={`flex items-center gap-3 rounded-2xl border bg-[var(--bg-card)] px-4 py-2.5 transition-colors ${
               errors.amount || overLimit ? 'border-rose-500' : 'border-[var(--border-card)] focus-within:border-[var(--gold-primary)]'
             }`}>
@@ -190,14 +192,14 @@ function TransferDialog({
               <button type="button" onClick={() => { setAmount(String(Math.max(available, 0))); setErrors((p) => ({ ...p, amount: '' })) }}
                 disabled={available <= 0}
                 className="rounded-lg bg-[var(--gold-light)] px-2.5 py-1 text-[11px] font-semibold text-[var(--gold-primary)] hover:bg-[var(--gold-primary)] hover:text-white disabled:opacity-40 transition-colors cursor-pointer">
-                Max
+                {t('forms.transfer.max')}
               </button>
             </div>
             <p className={`mt-1.5 text-[11px] ${errors.amount || overLimit ? 'text-rose-500' : 'text-[var(--text-subtle)]'}`}>
               {errors.amount
                 || (overLimit
-                  ? `Only ${symbol}${formatAmount(available)} available`
-                  : num > 0 ? `${symbol}${formatAmount(remaining)} will remain in ${currentBook?.name}` : 'Enter how much to send')}
+                  ? t('forms.transfer.onlyAvailable', { amount: `${symbol}${formatAmount(available)}` })
+                  : num > 0 ? t('forms.transfer.willRemain', { amount: `${symbol}${formatAmount(remaining)}`, book: currentBook?.name }) : t('forms.transfer.enterHowMuch'))}
             </p>
           </div>
 
@@ -206,15 +208,15 @@ function TransferDialog({
             <div className="flex items-start gap-2.5 rounded-xl bg-[var(--border-subtle)] px-3.5 py-3">
               <Lock size={14} className="mt-0.5 flex-shrink-0 text-[var(--text-subtle)]" />
               <p className="text-[11px] leading-relaxed text-[var(--text-muted)]">
-                The destination can't be changed. To send to a different book, delete this transfer and create a new one.
+                {t('forms.transfer.destinationLocked')}
               </p>
             </div>
           ) : (
             <div>
-              <span className={sectionLabel}>Send to</span>
+              <span className={sectionLabel}>{t('forms.transfer.sendTo')}</span>
               {destinationProjects.length === 0 ? (
                 <p className="rounded-xl border border-dashed border-[var(--border-card)] px-3 py-4 text-center text-xs text-[var(--text-subtle)]">
-                  Create another book to transfer money.
+                  {t('forms.transfer.noOtherBooks')}
                 </p>
               ) : (
                 <>
@@ -229,7 +231,7 @@ function TransferDialog({
                                 ? 'border-[var(--text-main)] bg-[var(--text-main)] font-semibold text-[var(--bg-page)]'
                                 : 'border-[var(--border-card)] bg-[var(--bg-card)] font-medium text-[var(--text-muted)] hover:text-[var(--text-main)]'
                             }`}>
-                            {project.name}{project.id === currentProject?.id ? ' (this project)' : ''}
+                            {project.name}{project.id === currentProject?.id ? ` ${t('forms.transfer.thisProject')}` : ''}
                           </button>
                         )
                       })}
@@ -271,12 +273,12 @@ function TransferDialog({
 
           {/* Note */}
           <div>
-            <label htmlFor="transfer-note" className={sectionLabel}>Note <span className="font-normal text-[var(--text-subtle)]">(optional)</span></label>
+            <label htmlFor="transfer-note" className={sectionLabel}>{t('common.note')} <span className="font-normal text-[var(--text-subtle)]">{t('forms.optionalParen')}</span></label>
             <input
               id="transfer-note"
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              placeholder="e.g. Monthly allocation"
+              placeholder={t('forms.transfer.notePlaceholder')}
               className="w-full rounded-xl border border-[var(--border-card)] bg-[var(--bg-card)] px-3.5 py-2.5 text-[13px] text-[var(--text-main)] placeholder-[var(--text-subtle)] outline-none focus:border-[var(--gold-primary)] transition-colors"
             />
           </div>
@@ -297,13 +299,13 @@ function TransferDialog({
             className="w-full rounded-2xl bg-[var(--gold-primary)] py-3.5 text-[13px] font-semibold text-white hover:bg-[var(--gold-hover)] disabled:opacity-40 transition-colors cursor-pointer"
           >
             {submitting
-              ? (isEdit ? 'Saving…' : 'Transferring…')
+              ? (isEdit ? t('common.saving') : t('forms.transfer.transferring'))
               : isEdit
-                ? 'Save changes'
-                : num > 0 && selectedBook ? `Transfer ${symbol}${formatAmount(num)} to ${selectedBook.name}` : 'Transfer'}
+                ? t('forms.saveChanges')
+                : num > 0 && selectedBook ? t('forms.transfer.submitTo', { amount: `${symbol}${formatAmount(num)}`, book: selectedBook.name }) : t('forms.transfer.submit')}
           </button>
           <p className="mt-2 text-center text-[10px] text-[var(--text-subtle)]">
-            Recorded as Transfer out here and Transfer in at the destination. Only this book can edit or delete it.
+            {t('forms.transfer.footnote')}
           </p>
         </div>
       </motion.form>

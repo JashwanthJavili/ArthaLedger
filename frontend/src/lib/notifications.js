@@ -1,6 +1,7 @@
 import { getDoc, setDoc } from 'firebase/firestore'
 import { auth, requestFCMToken } from './firebase'
 import { remindersDoc } from './userData'
+import { translate } from '../i18n/core'
 
 // LocalStorage Keys for persistent multi-time reminder config
 const REMINDER_KEY_ENABLED = 'al_reminder_enabled'
@@ -102,19 +103,19 @@ export function triggerBudgetAlertNotification({ categoryName, spent, limit, per
   const left = Number(limit) - Number(spent)
   const common = {
     data: { url: '/analytics' },
-    actions: [{ action: 'view', title: 'View budget' }, { action: 'dismiss', title: 'Dismiss' }],
+    actions: [{ action: 'view', title: translate('reminders.budget.view') }, { action: 'dismiss', title: translate('reminders.budget.dismiss') }],
     renotify: true,
   }
   if (percentage >= 100) {
-    sendNativeNotification(`${categoryName} is over budget`, {
+    sendNativeNotification(translate('reminders.budget.overTitle', { category: categoryName }), {
       ...common,
-      body: `${inr(spent)} of ${inr(limit)} spent this month \u00b7 ${inr(-left)} over`,
+      body: translate('reminders.budget.overBody', { spent: inr(spent), limit: inr(limit), over: inr(-left) }),
       tag: `budget-${categoryName}`,
     })
   } else if (percentage >= 80) {
-    sendNativeNotification(`${categoryName} \u00b7 ${pct}% of budget used`, {
+    sendNativeNotification(translate('reminders.budget.nearTitle', { category: categoryName, pct }), {
       ...common,
-      body: `${inr(spent)} of ${inr(limit)} spent \u00b7 ${inr(left)} left this month`,
+      body: translate('reminders.budget.nearBody', { spent: inr(spent), limit: inr(limit), left: inr(left) }),
       tag: `budget-${categoryName}`,
     })
   }
@@ -202,9 +203,9 @@ export function saveDailyReminderSettings({ enabled, times = DEFAULT_REMINDER_TI
 /** Reminder state as the server sees it: { enabled, times, timezone, devices, next_reminder }. */
 export async function getServerReminderStatus() {
   const idToken = await auth.currentUser?.getIdToken()
-  if (!idToken) throw new Error('Not signed in')
+  if (!idToken) throw new Error(translate('reminders.errors.notSignedIn'))
   const res = await fetch(`${API_BASE}/api/v1/notifications/status`, { headers: { Authorization: `Bearer ${idToken}` } })
-  if (!res.ok) throw new Error(`Server error ${res.status}`)
+  if (!res.ok) throw new Error(translate('reminders.errors.serverError', { status: res.status }))
   return res.json()
 }
 
@@ -222,22 +223,22 @@ export async function getServerReminderStatus() {
 export async function enableDailyReminder(times = DEFAULT_REMINDER_TIMES) {
   const fail = (code, message) => Object.assign(new Error(message), { code })
   if (!('Notification' in window) || !('serviceWorker' in navigator)) {
-    throw fail('unsupported', 'This device doesn’t support notifications.')
+    throw fail('unsupported', translate('reminders.errors.unsupported'))
   }
   if (Notification.permission === 'denied') {
-    throw fail('blocked', 'Notifications are blocked. Allow them in phone Settings → Apps → ArthaLedger → Notifications.')
+    throw fail('blocked', translate('reminders.errors.blockedSettings'))
   }
   const perm = await requestNotificationPermission()
-  if (perm === 'denied') throw fail('blocked', 'Notifications were blocked. You can allow them later in phone Settings → Apps → ArthaLedger.')
-  if (perm !== 'granted') throw fail('not-granted', 'Notification permission is needed for reminders.')
+  if (perm === 'denied') throw fail('blocked', translate('reminders.errors.blockedLater'))
+  if (perm !== 'granted') throw fail('not-granted', translate('reminders.errors.needed'))
 
   try {
     await saveDailyReminderSettings({ enabled: true, times })
   } catch {
-    throw fail('save-failed', 'Couldn’t save the reminder. Check your connection and try again.')
+    throw fail('save-failed', translate('reminders.errors.saveFailed'))
   }
   const token = await ensurePushRegistration()
-  if (!token) throw fail('no-device', 'Reminder saved, but this device couldn’t register for notifications.')
+  if (!token) throw fail('no-device', translate('reminders.errors.noDevice'))
 
   let status = null
   try { status = await getServerReminderStatus() } catch { /* server waking up; settings are saved */ }
@@ -253,8 +254,8 @@ export async function testMobileNotification() {
   try {
     const token = await ensurePushRegistration()
     const idToken = await auth.currentUser?.getIdToken()
-    if (!token) throw new Error('This device is not registered for push yet. Allow notifications first.')
-    if (!idToken) throw new Error('Please sign in again.')
+    if (!token) throw new Error(translate('reminders.errors.notRegistered'))
+    if (!idToken) throw new Error(translate('reminders.errors.signInAgain'))
     // Send to THIS device only, so a test on the phone arrives on the phone
     const res = await fetch(`${API_BASE}/api/v1/notifications/test`, {
       method: 'POST',
@@ -262,21 +263,21 @@ export async function testMobileNotification() {
       body: JSON.stringify({ token }),
     })
     const body = await res.json().catch(() => ({}))
-    if (!res.ok) throw new Error(body.detail || `Server error ${res.status}`)
+    if (!res.ok) throw new Error(body.detail || translate('reminders.errors.serverError', { status: res.status }))
     const sent = Number(body.result?.success_count || 0)
     if (sent === 0) {
-      const why = body.result?.errors?.[0]?.error || 'unknown error'
-      throw new Error(`The server couldn't reach this device (${why}). Turn notifications off and on again.`)
+      const why = body.result?.errors?.[0]?.error || translate('reminders.errors.unknownError')
+      throw new Error(translate('reminders.errors.unreachableDevice', { why }))
     }
-    return { ok: true, sent, message: 'Sent to this device. Lock the phone or close the app to see it arrive.' }
+    return { ok: true, sent, message: translate('reminders.test.sentOk') }
   } catch (err) {
     // Fall back to a local notification so the user still sees something
     if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-      navigator.serviceWorker.controller.postMessage({ type: 'TEST_NOTIFICATION' })
+      navigator.serviceWorker.controller.postMessage({ type: 'TEST_NOTIFICATION', title: translate('reminders.test.title'), body: translate('reminders.test.body') })
     } else {
-      sendNativeNotification('Notifications are on', { body: 'This is how ArthaLedger reminders will look on this device.' })
+      sendNativeNotification(translate('reminders.test.title'), { body: translate('reminders.test.body') })
     }
-    return { ok: false, sent: 0, message: err?.message || 'Push server unreachable' }
+    return { ok: false, sent: 0, message: err?.message || translate('reminders.errors.pushUnreachable') }
   }
 }
 
@@ -293,20 +294,20 @@ export async function remindIn(minutes) {
   const perm = await requestNotificationPermission()
   if (perm !== 'granted') {
     throw new Error(perm === 'denied'
-      ? 'Notifications are blocked. Allow them in phone Settings → Apps → ArthaLedger → Notifications.'
-      : 'Notification permission is needed.')
+      ? translate('reminders.errors.blockedSettings')
+      : translate('reminders.errors.permissionNeeded'))
   }
   const token = await ensurePushRegistration()
-  if (!token) throw new Error('This device couldn’t register for notifications.')
+  if (!token) throw new Error(translate('reminders.errors.cantRegister'))
   const idToken = await auth.currentUser?.getIdToken()
-  if (!idToken) throw new Error('Please sign in again.')
+  if (!idToken) throw new Error(translate('reminders.errors.signInAgain'))
   const res = await fetch(`${API_BASE}/api/v1/notifications/remind-in`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
     body: JSON.stringify({ minutes }),
   })
   const body = await res.json().catch(() => ({}))
-  if (!res.ok) throw new Error(body.detail || `Server error ${res.status} (it may be waking up — try again)`)
+  if (!res.ok) throw new Error(body.detail || translate('reminders.errors.serverWaking', { status: res.status }))
   const at = Number(body.at)
   return { at, minutesLeft: Math.max(1, Math.ceil((at - Date.now()) / 60000)) }
 }
@@ -327,12 +328,12 @@ export function nextReminderInfo(times = [], now = new Date()) {
 
 /** "in 5 min" / "in 2 h 10 min" / "in 1 day" */
 export function formatTimeLeft(minutes) {
-  if (minutes <= 0) return 'now'
-  if (minutes < 60) return `in ${minutes} min`
+  if (minutes <= 0) return translate('reminders.timeLeft.now')
+  if (minutes < 60) return translate('reminders.timeLeft.minutes', { count: minutes })
   const h = Math.floor(minutes / 60)
   const m = minutes % 60
-  if (h >= 24) return 'in 1 day'
-  return m ? `in ${h} h ${m} min` : `in ${h} h`
+  if (h >= 24) return translate('reminders.timeLeft.day')
+  return m ? translate('reminders.timeLeft.hoursMinutes', { hours: h, minutes: m }) : translate('reminders.timeLeft.hours', { count: h })
 }
 
 // App-open hook: refreshes this device's push registration

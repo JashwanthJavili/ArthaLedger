@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { APK_URL, CONTACT, scrollToSection } from './constants'
 import { Logo } from './ui'
+import { useI18n } from '../../i18n/core'
 
 function FooterCol({ title, children }) {
   return (
@@ -19,6 +20,7 @@ function FooterLink({ to, href, download, children }) {
 }
 
 export default function SiteFooter() {
+  const { t } = useI18n()
   const [year] = useState(() => new Date().getFullYear())
   const onHome = useLocation().pathname === '/'
   // Section links scroll on the landing page and navigate there from elsewhere
@@ -31,29 +33,29 @@ export default function SiteFooter() {
             <Logo size={34} />
             <span className="font-serif-luxury text-[18px] font-semibold" style={{ color: 'var(--text-main)' }}>ArthaLedger</span>
           </div>
-          <p className="font-serif-luxury mt-2 text-[14px] italic" style={{ color: 'var(--text-muted)' }}>Where every rupee has meaning.</p>
+          <p className="font-serif-luxury mt-2 text-[14px] italic" style={{ color: 'var(--text-muted)' }}>{t('site.footer.tagline')}</p>
         </div>
-        <FooterCol title="Product">
-          <FooterLink {...sec('how')}>How it works</FooterLink>
-          <FooterLink {...sec('features')}>Features</FooterLink>
-          <FooterLink to="/pricing">Pricing</FooterLink>
-          <FooterLink {...sec('faq')}>FAQ</FooterLink>
-          <FooterLink href={APK_URL} download>Android app</FooterLink>
+        <FooterCol title={t('site.footer.product')}>
+          <FooterLink {...sec('how')}>{t('site.nav.how')}</FooterLink>
+          <FooterLink {...sec('features')}>{t('site.nav.features')}</FooterLink>
+          <FooterLink to="/pricing">{t('site.nav.pricing')}</FooterLink>
+          <FooterLink {...sec('faq')}>{t('site.nav.faq')}</FooterLink>
+          <FooterLink href={APK_URL} download>{t('common.androidApp')}</FooterLink>
         </FooterCol>
-        <FooterCol title="Account">
-          <FooterLink to="/register">Sign up</FooterLink>
-          <FooterLink to="/login">Sign in</FooterLink>
+        <FooterCol title={t('site.footer.account')}>
+          <FooterLink to="/register">{t('site.footer.signUp')}</FooterLink>
+          <FooterLink to="/login">{t('common.signIn')}</FooterLink>
         </FooterCol>
-        <FooterCol title="Company">
-          <FooterLink to="/privacy">Privacy</FooterLink>
-          <FooterLink href={`mailto:${CONTACT}`}>Contact</FooterLink>
-          <FooterLink href={`mailto:${CONTACT}?subject=Collaboration%20with%20ArthaLedger`}>Collaborate</FooterLink>
+        <FooterCol title={t('site.footer.company')}>
+          <FooterLink to="/privacy">{t('site.footer.privacy')}</FooterLink>
+          <FooterLink href={`mailto:${CONTACT}`}>{t('site.footer.contact')}</FooterLink>
+          <FooterLink href={`mailto:${CONTACT}?subject=Collaboration%20with%20ArthaLedger`}>{t('site.footer.collaborate')}</FooterLink>
         </FooterCol>
       </div>
       <div style={{ borderTop: '1px solid var(--border-subtle)', paddingBottom: 'env(safe-area-inset-bottom)' }}>
         <div className="mx-auto flex max-w-6xl flex-col items-center gap-1 px-4 py-4 text-[12.5px] sm:flex-row sm:justify-between sm:px-6" style={{ color: 'var(--text-subtle)' }}>
-          <span>© {year} ArthaLedger. All rights reserved.</span>
-          <span>Made with care in India</span>
+          <span>{t('site.footer.rights', { year })}</span>
+          <span>{t('site.footer.madeIn')}</span>
         </div>
       </div>
     </footer>

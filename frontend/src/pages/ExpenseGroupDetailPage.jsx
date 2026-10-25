@@ -13,6 +13,7 @@ import ConfirmDialog from '../components/common/ConfirmDialog'
 import SummaryCard from '../components/cards/SummaryCard'
 import { formatAmount, getCurrencySymbol } from '../lib/format'
 import { compareNewestFirst } from '../lib/entryOrder'
+import { useI18n } from '../i18n/core'
 
 const card = 'rounded-2xl border border-[var(--border-card)] bg-[var(--bg-card)]'
 const sectionTitle = 'text-[11px] font-semibold uppercase tracking-[0.1em] text-[var(--text-subtle)]'
@@ -34,6 +35,7 @@ function entryVisual(entry) {
 export default function ExpenseGroupDetailPage() {
   const { tripId } = useParams()
   const navigate = useNavigate()
+  const { t, locale } = useI18n()
   const { loading, error, trips, projects, booksByProject, entriesByBook, unlinkEntryFromTrip, deleteTrip } = useAppData()
   const [deleteGroupConfirm, setDeleteGroupConfirm] = useState(false)
   const [unlinkTarget, setUnlinkTarget] = useState(null)
@@ -45,20 +47,20 @@ export default function ExpenseGroupDetailPage() {
 
   useEffect(() => {
     if (!loading) return undefined
-    const t = setTimeout(() => setStalled(true), 3500)
+    const timer = setTimeout(() => setStalled(true), 3500)
     return () => {
-      clearTimeout(t)
+      clearTimeout(timer)
       setStalled(false)
     }
   }, [loading])
 
   const showToast = (msg, type = 'success') => {
     setToast({ msg, type, visible: true })
-    setTimeout(() => setToast((t) => ({ ...t, visible: false })), 2200)
+    setTimeout(() => setToast((prev) => ({ ...prev, visible: false })), 2200)
   }
 
   // Find current group
-  const group = trips.find((t) => t.id === tripId)
+  const group = trips.find((g) => g.id === tripId)
 
   // Resolve linked entries with full context details
   const resolvedItems = useMemo(() => {
@@ -68,12 +70,12 @@ export default function ExpenseGroupDetailPage() {
       .map(({ projectId, bookId, entryId, addedAt }) => {
         // Resolve project name
         const project = projects.find((p) => p.id === projectId)
-        const projectName = project ? project.name : 'Unknown Project'
+        const projectName = project ? project.name : t('groups.detail.unknownProject')
 
         // Resolve book name
         const books = booksByProject[projectId] || []
         const book = books.find((b) => b.id === bookId)
-        const bookName = book ? book.name : 'Unknown Book'
+        const bookName = book ? book.name : t('groups.detail.unknownBook')
 
         // Resolve entry details
         const bookEntries = entriesByBook[bookId] || []
@@ -92,7 +94,7 @@ export default function ExpenseGroupDetailPage() {
       })
       .filter(Boolean)
       .sort((a, b) => compareNewestFirst(a.entry, b.entry)) // Sort by transaction date descending
-  }, [group, projects, booksByProject, entriesByBook])
+  }, [group, projects, booksByProject, entriesByBook, t])
 
   // Get unique categories for dropdown filter
   const uniqueCategories = useMemo(() => {
@@ -154,9 +156,9 @@ export default function ExpenseGroupDetailPage() {
   const handleUnlink = async (projectId, bookId, entryId) => {
     try {
       await unlinkEntryFromTrip(tripId, projectId, bookId, entryId)
-      showToast('Unlinked from group')
+      showToast(t('groups.detail.unlinked'))
     } catch (err) {
-      showToast(err?.message || 'Failed to unlink item', 'error')
+      showToast(err?.message || t('groups.detail.unlinkFailed'), 'error')
     }
   }
 
@@ -165,7 +167,7 @@ export default function ExpenseGroupDetailPage() {
       await deleteTrip(tripId)
       navigate('/trips')
     } catch (err) {
-      showToast(err?.message || 'Failed to delete group', 'error')
+      showToast(err?.message || t('groups.detail.deleteFailed'), 'error')
     }
   }
 
@@ -174,14 +176,14 @@ export default function ExpenseGroupDetailPage() {
       <LayoutShell>
         <div className="flex flex-col items-center justify-center py-20 gap-4 text-center px-4">
           <div className="rounded-2xl border border-rose-500/20 bg-rose-500/10 p-5 max-w-sm">
-            <p className="text-sm font-semibold text-rose-600 dark:text-rose-400">Unable to Load Data</p>
+            <p className="text-sm font-semibold text-rose-600 dark:text-rose-400">{t('groups.loadError')}</p>
             <p className="text-xs text-[var(--text-muted)] mt-1">{error}</p>
           </div>
           <button
             onClick={() => window.location.reload()}
             className="rounded-xl bg-[var(--gold-primary)] px-5 py-2.5 text-xs font-semibold text-white hover:bg-[var(--gold-hover)] transition-colors cursor-pointer"
           >
-            Retry Loading
+            {t('groups.retryLoading')}
           </button>
         </div>
       </LayoutShell>
@@ -189,7 +191,7 @@ export default function ExpenseGroupDetailPage() {
   }
 
   if (!group) {
-    if (loading) return <PageSkeleton slow={stalled} label="Loading group" />
+    if (loading) return <PageSkeleton slow={stalled} label={t('groups.detail.loading')} />
 
     return (
       <LayoutShell>
@@ -198,12 +200,12 @@ export default function ExpenseGroupDetailPage() {
             <FolderX size={20} />
           </span>
           <div>
-            <p className="text-sm font-semibold text-[var(--text-main)]">Group not found</p>
-            <p className="mt-1 text-xs text-[var(--text-subtle)]">It may have been deleted on another device.</p>
+            <p className="text-sm font-semibold text-[var(--text-main)]">{t('groups.detail.notFoundTitle')}</p>
+            <p className="mt-1 text-xs text-[var(--text-subtle)]">{t('groups.detail.notFoundText')}</p>
           </div>
           <Link to="/trips"
             className="mt-1 rounded-xl bg-[var(--gold-primary)] px-4 py-2.5 text-xs font-semibold text-white hover:bg-[var(--gold-hover)] transition-colors">
-            Back to groups
+            {t('groups.detail.backToGroups')}
           </Link>
         </div>
       </LayoutShell>
@@ -217,13 +219,13 @@ export default function ExpenseGroupDetailPage() {
       <div className="mx-auto max-w-2xl space-y-6">
         {loading && stalled && (
           <div className="rounded-2xl border border-[var(--border-card)] bg-[var(--bg-card)] px-4 py-3 text-[11px] text-[var(--text-muted)]">
-            Still syncing — your connection seems slow.
+            {t('groups.slowSync')}
           </div>
         )}
 
         {/* ── Header ── */}
         <header className="flex items-center gap-3 pt-1">
-          <Link to="/trips" aria-label="Back to groups" className={iconBtn + ' !text-[var(--text-main)]'}>
+          <Link to="/trips" aria-label={t('groups.detail.backToGroups')} className={iconBtn + ' !text-[var(--text-main)]'}>
             <ArrowLeft size={17} />
           </Link>
           <div className="min-w-0 flex-1">
@@ -231,14 +233,14 @@ export default function ExpenseGroupDetailPage() {
               {group.name}
             </h1>
             <p className="font-serif-luxury mt-0.5 truncate text-[13.5px] italic text-[var(--text-muted)]">
-              {group.description || `${itemCount} linked ${itemCount === 1 ? 'transaction' : 'transactions'}`}
+              {group.description || t('groups.detail.linkedCount', { count: itemCount })}
             </p>
           </div>
           <button
             onClick={() => setDeleteGroupConfirm(true)}
             className={iconBtn + ' hover:!text-rose-500 hover:!border-rose-500/40'}
-            title="Delete group"
-            aria-label="Delete group"
+            title={t('groups.deleteGroup')}
+            aria-label={t('groups.deleteGroup')}
           >
             <Trash2 size={16} />
           </button>
@@ -246,7 +248,7 @@ export default function ExpenseGroupDetailPage() {
 
         {/* ── Overview ── */}
         <section>
-          <h2 className={`${sectionTitle} mb-2 px-1`}>Overview</h2>
+          <h2 className={`${sectionTitle} mb-2 px-1`}>{t('groups.overview')}</h2>
           <SummaryCard
             net={stats.net}
             totalIn={stats.totalIncome}
@@ -259,8 +261,8 @@ export default function ExpenseGroupDetailPage() {
         {categoryStats.length > 0 && (
           <section>
             <div className="mb-2 flex items-center justify-between px-1">
-              <h2 className={sectionTitle}>Spending by category</h2>
-              <span className="text-[10.5px] text-[var(--text-subtle)]">Tap to filter</span>
+              <h2 className={sectionTitle}>{t('groups.detail.spendingByCategory')}</h2>
+              <span className="text-[10.5px] text-[var(--text-subtle)]">{t('groups.detail.tapToFilter')}</span>
             </div>
             <div className={`${card} divide-y divide-[var(--border-subtle)]`}>
               {categoryStats.map((cat, idx) => {
@@ -300,13 +302,17 @@ export default function ExpenseGroupDetailPage() {
         {/* ── Transactions ── */}
         <section className="space-y-2.5">
           <h2 className={`${sectionTitle} px-1`}>
-            Transactions{itemCount > 0 ? ` · ${selectedCategoryFilter === 'all' ? itemCount : `${filteredItems.length} of ${itemCount}`}` : ''}
+            {itemCount === 0
+              ? t('groups.detail.transactions')
+              : selectedCategoryFilter === 'all'
+                ? t('groups.detail.transactionsCount', { count: itemCount })
+                : t('groups.detail.transactionsFiltered', { shown: filteredItems.length, total: itemCount })}
           </h2>
 
           {uniqueCategories.length > 1 && (
             <div className="wheel-scroll -mx-1 flex gap-1.5 overflow-x-auto px-1 pb-0.5">
               <button type="button" onClick={() => setSelectedCategoryFilter('all')} className={chip(selectedCategoryFilter === 'all')}>
-                All
+                {t('common.all')}
               </button>
               {uniqueCategories.map((cat) => (
                 <button type="button" key={cat} onClick={() => setSelectedCategoryFilter(cat)} className={chip(selectedCategoryFilter === cat)}>
@@ -323,11 +329,11 @@ export default function ExpenseGroupDetailPage() {
               </span>
               <div>
                 <p className="text-sm font-semibold text-[var(--text-main)]">
-                  {loading ? 'Retrieving transactions…' : 'No transactions linked yet'}
+                  {loading ? t('groups.detail.retrieving') : t('groups.detail.noLinked')}
                 </p>
                 {!loading && (
                   <p className="mx-auto mt-1 max-w-xs text-xs text-[var(--text-subtle)]">
-                    Open any book, select transactions and choose “Add to group”.
+                    {t('groups.detail.noLinkedHint')}
                   </p>
                 )}
               </div>
@@ -337,12 +343,12 @@ export default function ExpenseGroupDetailPage() {
               <span className="flex h-11 w-11 items-center justify-center rounded-full bg-[var(--gold-light)] text-[var(--gold-primary)]">
                 <Hash size={20} />
               </span>
-              <p className="text-sm font-semibold text-[var(--text-main)]">No items in this category</p>
+              <p className="text-sm font-semibold text-[var(--text-main)]">{t('groups.detail.noItemsInCategory')}</p>
               <button
                 onClick={() => setSelectedCategoryFilter('all')}
                 className="rounded-xl bg-[var(--gold-primary)] px-4 py-2.5 text-xs font-semibold text-white hover:bg-[var(--gold-hover)] transition-colors cursor-pointer"
               >
-                Show all
+                {t('groups.detail.showAll')}
               </button>
             </div>
           ) : (
@@ -365,18 +371,18 @@ export default function ExpenseGroupDetailPage() {
                     <Link
                       to={`/projects/${projectId}/books/${bookId}?focusedEntryId=${entry.id}`}
                       className="flex min-w-0 flex-1 items-center gap-3 py-3 pl-4 pr-2"
-                      title="View in original book"
+                      title={t('groups.detail.viewInBook')}
                     >
                       <span className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full ${visual.chip}`}>
                         <Icon size={16} strokeWidth={2.2} />
                       </span>
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-[13.5px] font-semibold text-[var(--text-main)]">
-                          {entry.description || entry.category || 'Transaction'}
+                          {entry.description || entry.category || t('groups.detail.transactionFallback')}
                         </p>
                         <p className="mt-0.5 truncate text-[11.5px] text-[var(--text-muted)]">{meta}</p>
                         <p className="mt-0.5 truncate text-[10.5px] text-[var(--text-subtle)]">
-                          {projectName} / {bookName} · {format(new Date(entry.timestamp), 'dd MMM, h:mm a')}
+                          {projectName} / {bookName} · {format(new Date(entry.timestamp), 'dd MMM, h:mm a', { locale })}
                         </p>
                       </div>
                       <p className={`flex-shrink-0 text-[13.5px] font-semibold tabular-nums ${visual.amount}`}>
@@ -386,8 +392,8 @@ export default function ExpenseGroupDetailPage() {
                     <button
                       onClick={() => setUnlinkTarget({ projectId, bookId, entryId: entry.id, description: entry.description })}
                       className="mr-2 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full text-[var(--text-subtle)] hover:bg-rose-500/10 hover:text-rose-600 dark:hover:text-rose-400 transition-colors cursor-pointer"
-                      title="Remove from group"
-                      aria-label="Remove from group"
+                      title={t('groups.detail.removeFromGroup')}
+                      aria-label={t('groups.detail.removeFromGroup')}
                     >
                       <Link2Off size={15} />
                     </button>
@@ -399,7 +405,7 @@ export default function ExpenseGroupDetailPage() {
 
           {resolvedItems.length > 0 && (
             <p className="px-1 text-[10.5px] text-[var(--text-subtle)]">
-              Tap a transaction to open it in its book. Removing it from this group doesn’t delete it.
+              {t('groups.detail.footnote')}
             </p>
           )}
         </section>
@@ -409,8 +415,8 @@ export default function ExpenseGroupDetailPage() {
         open={Boolean(unlinkTarget)}
         onClose={() => setUnlinkTarget(null)}
         onConfirm={() => handleUnlink(unlinkTarget.projectId, unlinkTarget.bookId, unlinkTarget.entryId)}
-        title="Remove from group?"
-        message={`${unlinkTarget?.description ? `"${unlinkTarget.description}"` : 'This transaction'} will be removed from this group. It stays in its original book.`}
+        title={t('groups.detail.unlinkTitle')}
+        message={unlinkTarget?.description ? t('groups.detail.unlinkMessageNamed', { name: unlinkTarget.description }) : t('groups.detail.unlinkMessage')}
         danger={false}
       />
 
@@ -418,8 +424,8 @@ export default function ExpenseGroupDetailPage() {
         open={deleteGroupConfirm}
         onClose={() => setDeleteGroupConfirm(false)}
         onConfirm={handleDeleteGroup}
-        title="Delete Group?"
-        message={`"${group.name}" will be deleted. The original transactions will NOT be affected.`}
+        title={t('groups.detail.deleteTitle')}
+        message={t('groups.detail.deleteMessage', { name: group.name })}
         danger
       />
 

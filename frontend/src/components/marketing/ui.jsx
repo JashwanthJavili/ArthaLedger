@@ -41,9 +41,9 @@ export function SectionTitle({ eyebrow, title, sub, center = true, subClassName 
   )
 }
 
-export function PrimaryLink({ to, href, download, children, icon: Icon = ArrowRight, className = '' }) {
+export function PrimaryLink({ to, href, download, children, icon: Icon = ArrowRight, className = '', iconClassName = '' }) {
   const cls = `group inline-flex min-h-12 items-center justify-center gap-2 rounded-full px-6 text-[15px] font-semibold transition-[filter,transform] duration-200 active:scale-[0.98] hover:brightness-105 ${className}`
-  const inner = <>{children}<Icon size={17} className="transition-transform duration-200 group-hover:translate-x-0.5" /></>
+  const inner = <>{children}<Icon size={17} className={`transition-transform duration-200 group-hover:translate-x-0.5 ${iconClassName}`} /></>
   return href
     ? <a href={href} download={download} className={cls} style={goldBtn}>{inner}</a>
     : <Link to={to} className={cls} style={goldBtn}>{inner}</Link>

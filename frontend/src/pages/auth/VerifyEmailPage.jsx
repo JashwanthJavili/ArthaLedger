@@ -3,18 +3,21 @@ import { useNavigate, Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Mail, ArrowLeft, RefreshCw, Clock, Sparkles } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
+import { useI18n } from '../../i18n/core'
+import { Trans } from '../../i18n/Trans'
 
 const RESEND_COOLDOWN_S = 60
 
 export default function VerifyEmailPage() {
   const { user, logout, sendVerificationEmail, isEmailVerified, pendingVerificationEmail } = useAuth()
   const navigate = useNavigate()
+  const { t } = useI18n()
 
   const [resendCooldown, setResendCooldown] = useState(0)
   const [resending, setResending] = useState(false)
   const [resendMsg, setResendMsg] = useState('')
 
-  const displayEmail = user?.email || pendingVerificationEmail || 'your email address'
+  const displayEmail = user?.email || pendingVerificationEmail || t('auth.verify.yourEmail')
 
   // Cooldown countdown
   useEffect(() => {
@@ -30,9 +33,9 @@ export default function VerifyEmailPage() {
     try {
       await sendVerificationEmail()
       setResendCooldown(RESEND_COOLDOWN_S)
-      setResendMsg('Sent! Check your inbox and spam folder.')
+      setResendMsg(t('auth.verify.sent'))
     } catch (err) {
-      setResendMsg(err.message || 'Failed to send. Please try again.')
+      setResendMsg(err.message || t('auth.verify.failed'))
     } finally {
       setResending(false)
     }
@@ -54,7 +57,7 @@ export default function VerifyEmailPage() {
         <img src="/L.png" alt="ArthaLedger" className="h-16 w-16 rounded-2xl shadow-md object-contain bg-amber-50 p-1" />
         <div className="text-center">
           <h1 className="font-serif text-2xl font-semibold text-stone-800">ArthaLedger</h1>
-          <p className="mt-0.5 text-xs text-stone-400 tracking-wide">Where every rupee has meaning</p>
+          <p className="mt-0.5 text-xs text-stone-400 tracking-wide">{t('auth.verify.tagline')}</p>
         </div>
       </motion.div>
 
@@ -78,13 +81,13 @@ export default function VerifyEmailPage() {
 
         {/* Message */}
         <div className="text-center mb-5">
-          <h2 className="font-serif text-xl font-semibold text-stone-800 mb-2">Check your email</h2>
+          <h2 className="font-serif text-xl font-semibold text-stone-800 mb-2">{t('auth.verify.title')}</h2>
           <p className="text-sm text-stone-500 leading-relaxed">
-            We sent a verification link to
+            {t('auth.verify.sentTo')}
           </p>
           <p className="mt-1 text-sm font-semibold text-amber-700 break-all">{displayEmail}</p>
           <p className="mt-3 text-sm text-stone-600 leading-relaxed">
-            Click the link in that email to verify your account, then come back here and sign in again using the same email and password.
+            {t('auth.verify.instructions')}
           </p>
         </div>
 
@@ -92,9 +95,7 @@ export default function VerifyEmailPage() {
         <div className="mb-5 flex items-start gap-2 rounded-xl bg-amber-50 border border-amber-100 px-3 py-2.5">
           <span className="text-base leading-none mt-0.5 flex-shrink-0">📬</span>
           <p className="text-xs text-amber-800 leading-relaxed">
-            <span className="font-semibold">Don't see it?</span> Check your{' '}
-            <span className="font-semibold">Spam</span> or{' '}
-            <span className="font-semibold">Junk</span> folder.
+            <Trans k="auth.verify.spam" components={{ b: <span className="font-semibold" /> }} />
           </p>
         </div>
 
@@ -112,14 +113,14 @@ export default function VerifyEmailPage() {
             className="w-full flex items-center justify-center gap-2 rounded-xl bg-amber-700 py-3 text-sm font-semibold text-white hover:bg-amber-800 transition-colors shadow-sm"
           >
             <ArrowLeft size={15} />
-            Back to Sign In
+            {t('auth.verify.backToSignIn')}
           </button>
 
           {/* Resend — only if signed in */}
           {user && (
             <div className="rounded-2xl border border-amber-100 bg-amber-50/70 px-3 py-3">
               <p className="text-center text-[11px] text-stone-500">
-                Didn't receive the mail?
+                {t('auth.verify.notReceived')}
               </p>
               <button
                 onClick={handleResend}
@@ -127,24 +128,24 @@ export default function VerifyEmailPage() {
                 className="mt-2 w-full flex items-center justify-center gap-2 rounded-xl border border-amber-200 bg-white py-2.5 text-sm font-medium text-amber-700 hover:bg-amber-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {resending ? (
-                  <><RefreshCw size={13} className="animate-spin" /> Sending...</>
+                  <><RefreshCw size={13} className="animate-spin" /> {t('auth.verify.sending')}</>
                 ) : resendCooldown > 0 ? (
-                  <><Clock size={13} /> Available in {resendCooldown}s</>
+                  <><Clock size={13} /> {t('auth.verify.availableIn', { seconds: resendCooldown })}</>
                 ) : (
-                  <><Mail size={13} /> Resend mail</>
+                  <><Mail size={13} /> {t('auth.verify.resend')}</>
                 )}
               </button>
               <p className="mt-2 text-center text-[10px] text-stone-400">
                 {resendCooldown > 0
-                  ? 'Enabled after 1 minute to prevent duplicate emails.'
-                  : 'Tap resend to send the verification email again.'}
+                  ? t('auth.verify.cooldownHint')
+                  : t('auth.verify.resendHint')}
               </p>
             </div>
           )}
         </div>
 
         <p className="mt-5 text-center text-[10px] text-stone-300 italic">
-          ArthaLedger — Where every rupee has meaning
+          ArthaLedger — {t('auth.verify.tagline')}
         </p>
       </motion.div>
     </main>

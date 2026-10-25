@@ -10,6 +10,7 @@ import ConfirmDialog from '../components/common/ConfirmDialog'
 import { formatAmount, getCurrencySymbol } from '../lib/format'
 import Loader from '../components/common/Loader'
 import GroupsHelpSheet from '../components/common/GroupsHelpSheet'
+import { useI18n } from '../i18n/core'
 
 const card = 'rounded-2xl border border-[var(--border-card)] bg-[var(--bg-card)]'
 const sectionTitle = 'text-[11px] font-semibold uppercase tracking-[0.1em] text-[var(--text-subtle)]'
@@ -18,6 +19,7 @@ const label = 'mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.08em
 
 export default function ExpenseGroupsPage() {
   const { loading, error, trips, entriesByBook, createTrip, deleteTrip } = useAppData()
+  const { t } = useI18n()
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showHelp, setShowHelp] = useState(false)
   const [name, setName] = useState('')
@@ -31,16 +33,16 @@ export default function ExpenseGroupsPage() {
 
   useEffect(() => {
     if (!loading) return undefined
-    const t = setTimeout(() => setStalled(true), 3500)
+    const timer = setTimeout(() => setStalled(true), 3500)
     return () => {
-      clearTimeout(t)
+      clearTimeout(timer)
       setStalled(false)
     }
   }, [loading])
 
   const showToast = (msg, type = 'success') => {
     setToast({ msg, type, visible: true })
-    setTimeout(() => setToast((t) => ({ ...t, visible: false })), 2200)
+    setTimeout(() => setToast((prev) => ({ ...prev, visible: false })), 2200)
   }
 
   // Calculate statistics for each group
@@ -80,14 +82,14 @@ export default function ExpenseGroupsPage() {
       <LayoutShell>
         <div className="flex flex-col items-center justify-center py-20 gap-4 text-center px-4">
           <div className="rounded-2xl border border-rose-500/20 bg-rose-500/10 p-5 max-w-sm">
-            <p className="text-sm font-semibold text-rose-600 dark:text-rose-400">Unable to Load Data</p>
+            <p className="text-sm font-semibold text-rose-600 dark:text-rose-400">{t('groups.loadError')}</p>
             <p className="text-xs text-[var(--text-muted)] mt-1">{error}</p>
           </div>
           <button
             onClick={() => window.location.reload()}
             className="rounded-xl bg-[var(--gold-primary)] px-5 py-2.5 text-xs font-semibold text-white hover:bg-[var(--gold-hover)] transition-colors cursor-pointer"
           >
-            Retry Loading
+            {t('groups.retryLoading')}
           </button>
         </div>
       </LayoutShell>
@@ -95,7 +97,7 @@ export default function ExpenseGroupsPage() {
   }
 
   if (loading && !stalled) {
-    return <Loader text="Loading expense groups..." />
+    return <Loader text={t('groups.list.loading')} />
   }
 
   const closeCreate = () => {
@@ -110,12 +112,12 @@ export default function ExpenseGroupsPage() {
     setCreating(true)
     try {
       await createTrip({ name: name.trim(), description: description.trim() })
-      showToast('Expense Group created ✓')
+      showToast(t('groups.list.created'))
       setName('')
       setDescription('')
       setShowCreateModal(false)
     } catch (err) {
-      showToast(err?.message || 'Failed to create group', 'error')
+      showToast(err?.message || t('groups.list.createFailed'), 'error')
     } finally {
       setCreating(false)
     }
@@ -125,10 +127,10 @@ export default function ExpenseGroupsPage() {
     if (!deleteTarget) return
     try {
       await deleteTrip(deleteTarget.id)
-      showToast('Group deleted', 'info')
+      showToast(t('groups.list.deleted'), 'info')
       setDeleteTarget(null)
     } catch (err) {
-      showToast(err?.message || 'Failed to delete group', 'error')
+      showToast(err?.message || t('groups.list.deleteFailed'), 'error')
     }
   }
 
@@ -142,7 +144,7 @@ export default function ExpenseGroupsPage() {
       <div className="mx-auto max-w-2xl space-y-6">
         {loading && (
           <div className="rounded-2xl border border-[var(--border-card)] bg-[var(--bg-card)] px-4 py-3 text-[11px] text-[var(--text-muted)]">
-            Still syncing — your connection seems slow.
+            {t('groups.slowSync')}
           </div>
         )}
 
@@ -150,20 +152,20 @@ export default function ExpenseGroupsPage() {
         <motion.header initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} className="flex items-start justify-between gap-3 pt-1">
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <h1 className="font-serif-luxury text-[28px] font-semibold leading-tight tracking-[-0.01em] text-[var(--text-main)]">Groups</h1>
-              <button type="button" onClick={() => setShowHelp(true)} aria-label="How groups work"
+              <h1 className="font-serif-luxury text-[28px] font-semibold leading-tight tracking-[-0.01em] text-[var(--text-main)]">{t('groups.list.title')}</h1>
+              <button type="button" onClick={() => setShowHelp(true)} aria-label={t('groups.list.howItWorks')}
                 className="flex h-8 w-8 items-center justify-center rounded-full border border-[var(--border-card)] bg-[var(--bg-card)] text-[var(--text-muted)] hover:text-[var(--gold-primary)] transition-colors cursor-pointer">
                 <Info size={15} />
               </button>
             </div>
-            <p className="font-serif-luxury mt-0.5 text-[14px] italic text-[var(--text-muted)]">Expenses gathered across books</p>
+            <p className="font-serif-luxury mt-0.5 text-[14px] italic text-[var(--text-muted)]">{t('groups.list.subtitle')}</p>
           </div>
           {groupsWithStats.length > 0 && (
             <button
               onClick={() => setShowCreateModal(true)}
               className="mt-1 inline-flex h-10 flex-shrink-0 items-center gap-1.5 rounded-xl bg-[var(--gold-primary)] px-3.5 text-[13px] font-semibold text-white hover:bg-[var(--gold-hover)] transition-colors cursor-pointer"
             >
-              <Plus size={15} /> New group
+              <Plus size={15} /> {t('groups.list.newGroup')}
             </button>
           )}
         </motion.header>
@@ -176,24 +178,24 @@ export default function ExpenseGroupsPage() {
             </span>
             <div>
               <p className="text-sm font-semibold text-[var(--text-main)]">
-                {loading ? 'Retrieving expense groups…' : 'No groups yet'}
+                {loading ? t('groups.list.retrieving') : t('groups.list.emptyTitle')}
               </p>
               <p className="mx-auto mt-1 max-w-xs text-xs text-[var(--text-subtle)]">
                 {loading
-                  ? 'Connecting to database…'
-                  : 'Collect spending from different books in one place, like everything for a trip or a wedding.'}
+                  ? t('groups.list.connecting')
+                  : t('groups.list.emptyText')}
               </p>
             </div>
             {!loading && (
               <button onClick={() => setShowCreateModal(true)}
                 className="mt-1 inline-flex items-center gap-1.5 rounded-xl bg-[var(--gold-primary)] px-4 py-2.5 text-xs font-semibold text-white hover:bg-[var(--gold-hover)] transition-colors cursor-pointer">
-                <Plus size={14} /> Create group
+                <Plus size={14} /> {t('groups.list.createGroup')}
               </button>
             )}
             {!loading && (
               <button type="button" onClick={() => setShowHelp(true)}
                 className="inline-flex min-h-10 items-center gap-1.5 text-[12.5px] font-semibold text-[var(--gold-primary)] hover:underline cursor-pointer">
-                <Info size={13} /> How groups work
+                <Info size={13} /> {t('groups.list.howItWorks')}
               </button>
             )}
           </motion.div>
@@ -201,19 +203,19 @@ export default function ExpenseGroupsPage() {
           <>
             {/* ── Overview ── */}
             <section>
-              <h2 className={`${sectionTitle} mb-2 px-1`}>Overview</h2>
+              <h2 className={`${sectionTitle} mb-2 px-1`}>{t('groups.overview')}</h2>
               <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }}
                 className={`${card} grid grid-cols-3 divide-x divide-[var(--border-subtle)]`}>
                 <div className="min-w-0 px-4 py-3">
-                  <p className="text-[10px] text-[var(--text-subtle)]">Groups</p>
+                  <p className="text-[10px] text-[var(--text-subtle)]">{t('groups.list.statGroups')}</p>
                   <p className="mt-0.5 truncate text-[15px] font-semibold tabular-nums text-[var(--text-main)]">{groupsWithStats.length}</p>
                 </div>
                 <div className="min-w-0 px-4 py-3">
-                  <p className="text-[10px] text-[var(--text-subtle)]">Spent</p>
+                  <p className="text-[10px] text-[var(--text-subtle)]">{t('groups.list.statSpent')}</p>
                   <p className="mt-0.5 truncate text-[15px] font-semibold tabular-nums text-[var(--text-main)]">{symbol}{formatAmount(totals.spent)}</p>
                 </div>
                 <div className="min-w-0 px-4 py-3">
-                  <p className="text-[10px] text-[var(--text-subtle)]">Received</p>
+                  <p className="text-[10px] text-[var(--text-subtle)]">{t('groups.list.statReceived')}</p>
                   <p className="mt-0.5 truncate text-[15px] font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">{symbol}{formatAmount(totals.income)}</p>
                 </div>
               </motion.div>
@@ -221,7 +223,7 @@ export default function ExpenseGroupsPage() {
 
             {/* ── Groups list ── */}
             <section>
-              <h2 className={`${sectionTitle} mb-2 px-1`}>All groups · {groupsWithStats.length}</h2>
+              <h2 className={`${sectionTitle} mb-2 px-1`}>{t('groups.list.allGroups', { count: groupsWithStats.length })}</h2>
               <div className={`${card} divide-y divide-[var(--border-subtle)]`}>
                 {groupsWithStats.map((group) => (
                   <div key={group.id} className="group flex items-center first:rounded-t-2xl last:rounded-b-2xl hover:bg-[var(--border-subtle)]/60 transition-colors">
@@ -232,7 +234,7 @@ export default function ExpenseGroupsPage() {
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-[14px] font-semibold text-[var(--text-main)]">{group.name}</p>
                         <p className="mt-0.5 truncate text-[11.5px] text-[var(--text-subtle)]">
-                          {group.entryCount} item{group.entryCount !== 1 ? 's' : ''}
+                          {t('groups.list.items', { count: group.entryCount })}
                           {group.description ? ` · ${group.description}` : ''}
                         </p>
                       </div>
@@ -245,7 +247,7 @@ export default function ExpenseGroupsPage() {
                             +{symbol}{formatAmount(group.totalIncome)}
                           </p>
                         ) : (
-                          <p className="mt-0.5 text-[11px] text-[var(--text-subtle)]">spent</p>
+                          <p className="mt-0.5 text-[11px] text-[var(--text-subtle)]">{t('groups.list.spent')}</p>
                         )}
                       </div>
                       <ChevronRight size={15} className="flex-shrink-0 text-[var(--text-subtle)]" />
@@ -253,8 +255,8 @@ export default function ExpenseGroupsPage() {
                     <button
                       onClick={() => setDeleteTarget(group)}
                       className="mr-2 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full text-[var(--text-subtle)] hover:bg-rose-500/10 hover:text-rose-600 dark:hover:text-rose-400 transition-colors cursor-pointer"
-                      title="Delete group"
-                      aria-label={`Delete ${group.name}`}
+                      title={t('groups.deleteGroup')}
+                      aria-label={t('groups.list.deleteNamed', { name: group.name })}
                     >
                       <Trash2 size={15} />
                     </button>
@@ -262,7 +264,7 @@ export default function ExpenseGroupsPage() {
                 ))}
               </div>
               <p className="mt-2 px-1 text-[10.5px] text-[var(--text-subtle)]">
-                Groups only reference transactions — deleting a group never changes your books.
+                {t('groups.list.footnote')}
               </p>
             </section>
           </>
@@ -280,7 +282,7 @@ export default function ExpenseGroupsPage() {
             >
               <div className="absolute inset-0 bg-black/50" onClick={closeCreate} />
               <motion.form
-                role="dialog" aria-modal="true" aria-label="New group"
+                role="dialog" aria-modal="true" aria-label={t('groups.list.newGroup')}
                 initial={{ y: 28, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 28, opacity: 0 }}
                 transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}
                 onSubmit={handleCreate}
@@ -289,10 +291,10 @@ export default function ExpenseGroupsPage() {
               >
                 <div className="flex flex-shrink-0 items-start justify-between gap-3 border-b border-[var(--border-subtle)] px-5 pt-5 pb-4">
                   <div className="min-w-0">
-                    <h3 className="truncate text-[15px] font-semibold text-[var(--text-main)]">New group</h3>
-                    <p className="mt-0.5 text-[11px] text-[var(--text-subtle)]">Collect related spending from any book</p>
+                    <h3 className="truncate text-[15px] font-semibold text-[var(--text-main)]">{t('groups.list.newGroup')}</h3>
+                    <p className="mt-0.5 text-[11px] text-[var(--text-subtle)]">{t('groups.create.subtitle')}</p>
                   </div>
-                  <button type="button" onClick={closeCreate} aria-label="Close"
+                  <button type="button" onClick={closeCreate} aria-label={t('common.close')}
                     className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-[var(--border-subtle)] text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors cursor-pointer">
                     <X size={15} />
                   </button>
@@ -300,24 +302,24 @@ export default function ExpenseGroupsPage() {
 
                 <div className="space-y-4 overflow-y-auto px-5 py-5">
                   <div>
-                    <label htmlFor="group-name" className={label}>Name</label>
+                    <label htmlFor="group-name" className={label}>{t('common.name')}</label>
                     <input
                       id="group-name"
                       value={name}
                       onChange={(e) => setName(e.target.value)}
-                      placeholder="e.g. Europe Trip 2026, Office Refurbish"
+                      placeholder={t('groups.create.namePlaceholder')}
                       className={field}
                       required
                       autoFocus
                     />
                   </div>
                   <div>
-                    <label htmlFor="group-desc" className={label}>Description <span className="normal-case tracking-normal font-normal">(optional)</span></label>
+                    <label htmlFor="group-desc" className={label}>{t('groups.create.description')} <span className="normal-case tracking-normal font-normal">{t('groups.create.optional')}</span></label>
                     <textarea
                       id="group-desc"
                       value={description}
                       onChange={(e) => setDescription(e.target.value)}
-                      placeholder="Context or dates…"
+                      placeholder={t('groups.create.descPlaceholder')}
                       className={`${field} resize-none`}
                       rows={3}
                     />
@@ -330,7 +332,7 @@ export default function ExpenseGroupsPage() {
                     onClick={closeCreate}
                     className="flex-1 rounded-xl border border-[var(--border-card)] px-4 py-2.5 text-[13px] font-medium text-[var(--text-main)] hover:bg-[var(--border-subtle)] transition-colors cursor-pointer"
                   >
-                    Cancel
+                    {t('common.cancel')}
                   </button>
                   <button
                     type="submit"
@@ -338,7 +340,7 @@ export default function ExpenseGroupsPage() {
                     className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-[var(--gold-primary)] px-4 py-2.5 text-[13px] font-semibold text-white hover:bg-[var(--gold-hover)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
                   >
                     {creating && <Loader2 size={14} className="animate-spin" />}
-                    Create group
+                    {t('groups.list.createGroup')}
                   </button>
                 </div>
               </motion.form>
@@ -353,8 +355,8 @@ export default function ExpenseGroupsPage() {
         open={Boolean(deleteTarget)}
         onClose={() => setDeleteTarget(null)}
         onConfirm={handleDelete}
-        title="Delete Expense Group?"
-        message={`"${deleteTarget?.name}" will be deleted. The original transactions will NOT be affected.`}
+        title={t('groups.list.confirmTitle')}
+        message={t('groups.list.confirmMessage', { name: deleteTarget?.name })}
         danger
       />
 

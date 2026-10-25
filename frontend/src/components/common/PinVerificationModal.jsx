@@ -1,6 +1,7 @@
 import { ShieldAlert } from 'lucide-react'
 import PinDialog from './PinDialog'
 import PinEntry from './PinEntry'
+import { useI18n } from '../../i18n/core'
 
 /**
  * Confirm a destructive action (delete) on a PIN-protected book or project.
@@ -13,13 +14,15 @@ import PinEntry from './PinEntry'
  *   itemType, itemName      for display
  */
 export default function PinVerificationModal({ open, onClose, storedHash, pinLength, guardId, onVerified, itemType = 'book', itemName = '' }) {
+  const { t } = useI18n()
   if (!open) return null
+  const noun = itemType === 'project' ? 'project' : 'book'
   return (
     <PinDialog
       icon={ShieldAlert}
       iconTone="danger"
-      title={`Delete ${itemType}?`}
-      subtitle={`Enter the PIN to permanently delete${itemName ? ` "${itemName}"` : ` this ${itemType}`}. This can't be undone.`}
+      title={t(`dialogs.delete.${noun}.title`)}
+      subtitle={itemName ? t('pin.verify.bodyNamed', { name: itemName }) : t(`pin.verify.${noun}Body`)}
       onClose={onClose}
     >
       <PinEntry

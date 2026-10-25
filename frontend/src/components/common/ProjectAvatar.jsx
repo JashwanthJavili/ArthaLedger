@@ -1,5 +1,6 @@
 import { Lock } from 'lucide-react'
 import { projectIcon, tintStyle } from '../../lib/projectIcons'
+import { useI18n } from '../../i18n/core'
 
 /**
  * A project's picture: its chosen icon on a soft tint, or its first letter.
@@ -9,6 +10,7 @@ import { projectIcon, tintStyle } from '../../lib/projectIcons'
 export default function ProjectAvatar({ project, className = 'h-10 w-10 rounded-xl', iconSize = 18 }) {
   const icon = projectIcon(project?.icon)
   const locked = Boolean(project?.pinHash)
+  const { t } = useI18n()
   return (
     <span className={`relative flex flex-shrink-0 items-center justify-center ${className} ${icon ? '' : 'bg-[var(--gold-light)] text-[var(--gold-primary)]'}`}
       style={icon ? tintStyle(icon.tint) : undefined}>
@@ -17,7 +19,7 @@ export default function ProjectAvatar({ project, className = 'h-10 w-10 rounded-
       )}
       {locked && (
         <span className="absolute -bottom-1 -right-1 flex h-[18px] w-[18px] items-center justify-center rounded-full border-2 border-[var(--bg-page)] bg-[var(--text-main)] text-[var(--bg-page)]"
-          aria-label="Locked">
+          aria-label={t('project.locked')}>
           <Lock size={9} strokeWidth={2.75} />
         </span>
       )}

@@ -1,6 +1,7 @@
 import { motion, useReducedMotion } from 'framer-motion'
 import { Check, ArrowUpRight } from 'lucide-react'
 import { EASE, card } from './constants'
+import { useI18n } from '../../i18n/core'
 
 /*
  * Hero photo: two friends sharing ArthaLedger on a phone. The photo is a
@@ -42,6 +43,7 @@ function Chip({ children, className, delay }) {
 }
 
 export default function HeroPhoto() {
+  const { t } = useI18n()
   const reduce = useReducedMotion()
   return (
     <motion.div className="relative mx-auto w-full max-w-[560px] pt-12 sm:pt-14"
@@ -59,7 +61,7 @@ export default function HeroPhoto() {
         srcSet="/hero/couple-900.webp 900w, /hero/couple-1536.webp 1536w"
         sizes="(min-width: 1024px) 560px, 92vw"
         width="1536" height="1024"
-        alt="Two young friends smiling as they look at ArthaLedger on a phone"
+        alt={t('landing.hero.photo.alt')}
         draggable="false"
         fetchPriority="high"
         className="relative block h-auto w-full select-none"
@@ -67,16 +69,16 @@ export default function HeroPhoto() {
         initial={reduce ? false : { scale: 1.04 }} animate={{ scale: 1 }} transition={{ duration: 1.4, delay: 0.2, ease: EASE }}
       />
 
-      <Bubble className="right-[3%] top-[2%]" delay={0.9} tail="left-6">It&rsquo;s this easy!</Bubble>
+      <Bubble className="right-[3%] top-[2%]" delay={0.9} tail="left-6">{t('landing.hero.photo.easy')}</Bubble>
       <Bubble className="left-[2%] top-[8%]" delay={1.3} tail="right-6">
-        <span className="flex items-center gap-1.5"><Check size={15} className="text-emerald-600" /> Every rupee, sorted.</span>
+        <span className="flex items-center gap-1.5"><Check size={15} className="text-emerald-600" /> {t('landing.hero.photo.sorted')}</span>
       </Bubble>
 
       <Chip className="bottom-[-2%] right-[0%] sm:bottom-auto sm:-right-[4%] sm:top-[50%]" delay={1.7}>
         <span className="flex h-7 w-7 items-center justify-center rounded-full bg-rose-500/12 text-rose-600"><ArrowUpRight size={14} /></span>
         <span>
-          <span className="block font-semibold">Vegetables</span>
-          <span className="flex items-center gap-1 text-[11px]"><span className="text-rose-600">− ₹480</span><span style={{ color: 'var(--text-subtle)' }}>· Saved</span></span>
+          <span className="block font-semibold">{t('landing.cats.vegetables')}</span>
+          <span className="flex items-center gap-1 text-[11px]"><span className="text-rose-600">− ₹480</span><span style={{ color: 'var(--text-subtle)' }}>{t('landing.hero.photo.saved')}</span></span>
         </span>
       </Chip>
       <Chip className="bottom-[-2%] left-[0%] sm:-left-[4%] sm:bottom-[10%]" delay={2.1}>
@@ -84,7 +86,7 @@ export default function HeroPhoto() {
           <circle cx="18" cy="18" r="14" fill="none" stroke="var(--border-subtle)" strokeWidth="5" />
           <circle cx="18" cy="18" r="14" fill="none" stroke="#059669" strokeWidth="5" strokeLinecap="round" strokeDasharray="53 88" />
         </svg>
-        <span><span className="block font-semibold">Saved this month</span><span className="block text-[11px]" style={{ color: 'var(--text-subtle)' }}>60% of the goal</span></span>
+        <span><span className="block font-semibold">{t('landing.hero.photo.savedMonth')}</span><span className="block text-[11px]" style={{ color: 'var(--text-subtle)' }}>{t('landing.hero.photo.goal')}</span></span>
       </Chip>
     </motion.div>
   )

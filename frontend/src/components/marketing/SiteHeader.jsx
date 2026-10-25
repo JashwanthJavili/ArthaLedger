@@ -5,6 +5,8 @@ import { Download, Menu, X, ArrowRight } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { EASE, APK_URL, NAV, goldBtn, scrollToSection } from './constants'
 import { Logo } from './ui'
+import { useI18n } from '../../i18n/core'
+import LanguageMenu from '../common/LanguageMenu'
 
 /** Tracks which landing section is on screen, for the nav highlight. */
 function useActiveSection(enabled) {
@@ -26,10 +28,11 @@ function useActiveSection(enabled) {
 }
 
 function NavItem({ item, onHome, current, mobile, onClick }) {
+  const { t } = useI18n()
   const isActive = item.page ? current === item.page : current === item.id
   const base = mobile
     ? 'flex min-h-12 items-center justify-between rounded-2xl px-4 text-[15px] font-medium'
-    : 'relative rounded-full px-4 py-1.5 text-[14px] font-medium leading-6 transition-colors'
+    : 'relative rounded-full px-3.5 py-1 text-[13.5px] font-medium leading-6 transition-colors'
   const style = { color: isActive ? 'var(--text-main)' : mobile ? 'var(--text-main)' : 'var(--text-muted)', background: mobile && isActive ? 'var(--border-subtle)' : undefined }
   const inner = (
     <>
@@ -37,7 +40,7 @@ function NavItem({ item, onHome, current, mobile, onClick }) {
         <motion.span layoutId="nav-pill" className="absolute inset-0 -z-10 rounded-full" style={{ background: 'var(--border-subtle)' }}
           transition={{ type: 'spring', stiffness: 380, damping: 32 }} />
       )}
-      {item.label}
+      {t(item.label)}
       {mobile && <ArrowRight size={16} style={{ color: 'var(--text-subtle)' }} />}
     </>
   )
@@ -50,6 +53,7 @@ function NavItem({ item, onHome, current, mobile, onClick }) {
 }
 
 export default function SiteHeader() {
+  const { t } = useI18n()
   const { pathname } = useLocation()
   const { user, isEmailVerified } = useAuth()
   const signedIn = Boolean(user && isEmailVerified)
@@ -86,37 +90,41 @@ export default function SiteHeader() {
           borderBottom: `1px solid ${solid ? 'var(--border-subtle)' : 'transparent'}`,
         }}
       >
-        <div className="mx-auto grid h-16 max-w-6xl grid-cols-[1fr_auto] items-center gap-3 px-4 sm:px-6 lg:grid-cols-[1fr_auto_1fr]">
-          <Link to="/" className="flex min-h-11 items-center gap-2.5 justify-self-start" aria-label="ArthaLedger home" onClick={close}>
-            <Logo size={34} />
-            <span className="font-serif-luxury text-[18px] font-semibold tracking-tight" style={{ color: 'var(--text-main)' }}>ArthaLedger</span>
+        {/* logo · nav centred in the space between · actions */}
+        <div className="mx-auto flex h-16 max-w-6xl items-center gap-3 px-4 sm:px-6">
+          <Link to="/" className="flex min-h-10 shrink-0 items-center gap-2" aria-label={t('site.header.home')} onClick={close}>
+            <Logo size={30} />
+            <span className="font-serif-luxury text-[17px] font-semibold tracking-tight" style={{ color: 'var(--text-main)' }}>ArthaLedger</span>
           </Link>
 
-          <nav className="isolate hidden items-center gap-0.5 rounded-full p-1 lg:flex" aria-label="Main"
-            style={{ background: solid ? 'transparent' : 'color-mix(in srgb, var(--bg-card) 70%, transparent)', border: `1px solid ${solid ? 'transparent' : 'var(--border-card)'}`, backdropFilter: solid ? 'none' : 'blur(10px)' }}>
-            {NAV.map(item => <NavItem key={item.label} item={item} onHome={onHome} current={current} />)}
-          </nav>
+          <div className="hidden min-w-0 flex-1 justify-center lg:flex">
+            <nav className="isolate flex items-center gap-0.5 rounded-full p-[3px]" aria-label={t('site.header.mainNav')}
+              style={{ background: solid ? 'transparent' : 'color-mix(in srgb, var(--bg-card) 70%, transparent)', border: `1px solid ${solid ? 'transparent' : 'var(--border-card)'}`, backdropFilter: solid ? 'none' : 'blur(10px)' }}>
+              {NAV.map(item => <NavItem key={item.label} item={item} onHome={onHome} current={current} />)}
+            </nav>
+          </div>
 
-          <div className="flex items-center gap-2 justify-self-end">
+          <div className="ml-auto flex shrink-0 items-center gap-2 lg:ml-0">
+            <LanguageMenu full size="sm" />
             {signedIn ? (
-              <Link to="/dashboard" className="hidden min-h-11 items-center gap-1.5 rounded-full px-5 text-[14px] font-semibold hover:brightness-105 min-[420px]:inline-flex" style={goldBtn}>
-                Open app <ArrowRight size={15} />
+              <Link to="/dashboard" className="hidden min-h-9 items-center whitespace-nowrap gap-1.5 rounded-full px-4 text-[13.5px] font-semibold hover:brightness-105 min-[420px]:inline-flex" style={goldBtn}>
+                {t('common.openApp')} <ArrowRight size={15} />
               </Link>
             ) : (
               <>
-                <Link to="/login" className="hidden min-h-11 items-center rounded-full px-4 text-[14px] font-semibold transition-colors hover:bg-[var(--border-subtle)] min-[420px]:inline-flex" style={{ color: 'var(--text-main)' }}>
-                  Sign in
+                <Link to="/login" className="hidden min-h-9 items-center whitespace-nowrap rounded-full px-3 text-[13.5px] font-semibold transition-colors hover:bg-[var(--border-subtle)] min-[420px]:inline-flex" style={{ color: 'var(--text-main)' }}>
+                  {t('common.signIn')}
                 </Link>
-                <Link to="/register" className="hidden min-h-11 items-center rounded-full px-5 text-[14px] font-semibold hover:brightness-105 sm:inline-flex" style={goldBtn}>
-                  Get started
+                <Link to="/register" className="hidden min-h-9 items-center whitespace-nowrap rounded-full px-4 text-[13.5px] font-semibold hover:brightness-105 sm:inline-flex" style={goldBtn}>
+                  {t('common.getStarted')}
                 </Link>
               </>
             )}
-            <button type="button" onClick={() => setOpen(v => !v)} aria-label={open ? 'Close menu' : 'Open menu'} aria-expanded={open} aria-controls="site-menu"
-              className="flex h-11 w-11 items-center justify-center rounded-full lg:hidden" style={{ color: 'var(--text-main)', border: '1px solid var(--border-card)', background: 'var(--bg-card)' }}>
+            <button type="button" onClick={() => setOpen(v => !v)} aria-label={open ? t('site.header.closeMenu') : t('site.header.openMenu')} aria-expanded={open} aria-controls="site-menu"
+              className="flex h-9 w-9 items-center justify-center rounded-full lg:hidden" style={{ color: 'var(--text-main)', border: '1px solid var(--border-card)', background: 'var(--bg-card)' }}>
               <AnimatePresence mode="wait" initial={false}>
                 <motion.span key={open ? 'x' : 'm'} initial={{ rotate: -90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: 90, opacity: 0 }} transition={{ duration: 0.18 }}>
-                  {open ? <X size={19} /> : <Menu size={19} />}
+                  {open ? <X size={17} /> : <Menu size={17} />}
                 </motion.span>
               </AnimatePresence>
             </button>
@@ -127,7 +135,7 @@ export default function SiteHeader() {
           {open && (
             <motion.nav
               id="site-menu"
-              aria-label="Menu"
+              aria-label={t('site.header.menu')}
               initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}
               transition={{ duration: 0.28, ease: EASE }}
               className="overflow-hidden lg:hidden"
@@ -140,17 +148,17 @@ export default function SiteHeader() {
                 ))}
                 <div className="grid grid-cols-2 gap-2 pt-3">
                   {signedIn ? (
-                    <Link to="/dashboard" onClick={close} className="col-span-2 flex min-h-12 items-center justify-center gap-1.5 rounded-full text-[15px] font-semibold" style={goldBtn}>Open app <ArrowRight size={16} /></Link>
+                    <Link to="/dashboard" onClick={close} className="col-span-2 flex min-h-12 items-center justify-center gap-1.5 rounded-full text-[15px] font-semibold" style={goldBtn}>{t('common.openApp')} <ArrowRight size={16} /></Link>
                   ) : (
                     <>
                       <Link to="/login" onClick={close} className="flex min-h-12 items-center justify-center rounded-full text-[15px] font-semibold"
-                        style={{ color: 'var(--text-main)', border: '1px solid var(--border-card)', background: 'var(--bg-card)' }}>Sign in</Link>
-                      <Link to="/register" onClick={close} className="flex min-h-12 items-center justify-center rounded-full text-[15px] font-semibold" style={goldBtn}>Get started</Link>
+                        style={{ color: 'var(--text-main)', border: '1px solid var(--border-card)', background: 'var(--bg-card)' }}>{t('common.signIn')}</Link>
+                      <Link to="/register" onClick={close} className="flex min-h-12 items-center justify-center rounded-full text-[15px] font-semibold" style={goldBtn}>{t('common.getStarted')}</Link>
                     </>
                   )}
                 </div>
                 <a href={APK_URL} download className="mt-1 flex min-h-12 items-center justify-center gap-2 rounded-full text-[14px] font-semibold" style={{ color: 'var(--text-muted)' }}>
-                  <Download size={16} /> Download the Android app
+                  <Download size={16} /> {t('site.header.downloadApp')}
                 </a>
               </div>
             </motion.nav>
@@ -160,7 +168,7 @@ export default function SiteHeader() {
       {/* Tap outside to close */}
       <AnimatePresence>
         {open && (
-          <motion.button type="button" aria-label="Close menu" tabIndex={-1} onClick={close}
+          <motion.button type="button" aria-label={t('site.header.closeMenu')} tabIndex={-1} onClick={close}
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             className="fixed inset-0 -z-10 bg-black/20 lg:hidden" />
         )}

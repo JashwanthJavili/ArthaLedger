@@ -1,8 +1,10 @@
 import { motion } from 'framer-motion'
+import { useI18n } from '../../i18n/core'
 
 /** Quote of the day: a quiet, editorial card with a large gold quotation mark. */
 export default function QuoteCard({ quote }) {
-  const today = new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })
+  const { intl } = useI18n()
+  const today = new Date().toLocaleDateString(intl, { weekday: 'long', day: 'numeric', month: 'long' })
 
   return (
     <motion.figure

@@ -9,6 +9,7 @@
  *
  * Never store raw PINs — only hashes go to the database.
  */
+import { translate } from '../i18n/core'
 
 const PBKDF2_ITERATIONS = 150_000
 const PBKDF2_PREFIX = 'pbkdf2'
@@ -16,22 +17,22 @@ const PBKDF2_PREFIX = 'pbkdf2'
 export const PIN_LENGTHS = [4, 6]
 
 export function validatePin(pin, length) {
-  if (!pin || typeof pin !== 'string') return { valid: false, error: 'PIN is required' }
-  if (length && pin.length !== length) return { valid: false, error: `PIN must be ${length} digits` }
-  if (!/^\d{4}$/.test(pin) && !/^\d{6}$/.test(pin)) return { valid: false, error: 'PIN must be exactly 4 or 6 digits' }
+  if (!pin || typeof pin !== 'string') return { valid: false, error: translate('pin.lib.required') }
+  if (length && pin.length !== length) return { valid: false, error: translate('pin.lib.mustBe', { length }) }
+  if (!/^\d{4}$/.test(pin) && !/^\d{6}$/.test(pin)) return { valid: false, error: translate('pin.lib.exact') }
   return { valid: true }
 }
 
 /** Reject PINs that are trivially guessable (repeats, straight sequences, common picks). */
 export function weakPinReason(pin) {
-  if (/^(\d)\1+$/.test(pin)) return 'Avoid repeating the same digit.'
+  if (/^(\d)\1+$/.test(pin)) return translate('pin.lib.repeat')
   const digits = pin.split('').map(Number)
   const asc = digits.every((d, i) => i === 0 || d === (digits[i - 1] + 1) % 10)
   const desc = digits.every((d, i) => i === 0 || d === (digits[i - 1] + 9) % 10)
-  if (asc || desc) return 'Avoid simple sequences like 1234.'
+  if (asc || desc) return translate('pin.lib.sequence')
   const common = ['1212', '1122', '2580', '0852', '6969', '1004', '2000', '121212', '112233', '159753', '696969', '123123', '010203']
-  if (common.includes(pin)) return 'This PIN is too common. Choose another.'
-  if (pin.length === 6 && pin.slice(0, 3) === pin.slice(3)) return 'Avoid repeating a pattern.'
+  if (common.includes(pin)) return translate('pin.lib.common')
+  if (pin.length === 6 && pin.slice(0, 3) === pin.slice(3)) return translate('pin.lib.pattern')
   return null
 }
 

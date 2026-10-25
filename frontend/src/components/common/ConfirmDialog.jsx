@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { AlertTriangle, X, Loader } from 'lucide-react'
+import { useI18n } from '../../i18n/core'
 
 /**
  * Confirm dialog with async-safe handling.
@@ -12,6 +13,7 @@ import { AlertTriangle, X, Loader } from 'lucide-react'
  */
 export default function ConfirmDialog({ open, onClose, onConfirm, title, message, danger = true }) {
   const [confirming, setConfirming] = useState(false)
+  const { t } = useI18n()
 
   // Reset confirming state when dialog closes
   if (!open) return null
@@ -57,7 +59,7 @@ export default function ConfirmDialog({ open, onClose, onConfirm, title, message
             <button
               onClick={handleClose}
               className="absolute right-4 top-4 rounded-full p-1.5 text-[var(--text-subtle)] hover:bg-[var(--border-subtle)] hover:text-[var(--text-main)] transition-colors"
-              aria-label="Close"
+              aria-label={t('common.close')}
             >
               <X size={15} />
             </button>
@@ -72,7 +74,7 @@ export default function ConfirmDialog({ open, onClose, onConfirm, title, message
               <p className="mt-1.5 text-[13px] text-[var(--text-muted)] leading-relaxed">{message}</p>
             </div>
             {danger && (
-              <p className="text-[11px] font-medium text-rose-500">This action cannot be undone.</p>
+              <p className="text-[11px] font-medium text-rose-500">{t('dialogs.confirm.irreversible')}</p>
             )}
           </div>
 
@@ -82,7 +84,7 @@ export default function ConfirmDialog({ open, onClose, onConfirm, title, message
               disabled={confirming}
               className="flex-1 rounded-xl border border-[var(--border-card)] px-4 py-2.5 text-sm font-medium text-[var(--text-main)] hover:bg-[var(--border-subtle)] transition-colors disabled:opacity-50"
             >
-              Cancel
+              {t('common.cancel')}
             </button>
             <button
               onClick={handleConfirm}
@@ -94,10 +96,10 @@ export default function ConfirmDialog({ open, onClose, onConfirm, title, message
               {confirming ? (
                 <>
                   <Loader size={14} className="animate-spin" />
-                  Deleting...
+                  {t('dialogs.confirm.deleting')}
                 </>
               ) : (
-                danger ? 'Yes, Delete' : 'Confirm'
+                danger ? t('dialogs.confirm.yesDelete') : t('common.confirm')
               )}
             </button>
           </div>

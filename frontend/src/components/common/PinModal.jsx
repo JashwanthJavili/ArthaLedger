@@ -7,6 +7,8 @@ import { hashPin, needsRehash } from '../../lib/pin'
 import { clearGuard } from '../../lib/pinGuard'
 import PinDialog from './PinDialog'
 import PinEntry from './PinEntry'
+import { useI18n } from '../../i18n/core'
+import { Trans } from '../../i18n/Trans'
 
 /**
  * Unlock a PIN-protected book or project.
@@ -27,6 +29,7 @@ export default function PinModal(props) {
 
 function PinUnlock({ onClose, onUnlock, storedHash, pinLength, guardId, itemName, onRemovePin, onRehash }) {
   const { user } = useAuth()
+  const { t } = useI18n()
   const [mode, setMode] = useState('pin') // pin | forgot | removed
   const [password, setPassword] = useState('')
   const [showPw, setShowPw] = useState(false)
@@ -56,10 +59,10 @@ function PinUnlock({ onClose, onUnlock, storedHash, pinLength, guardId, itemName
       setMode('removed')
     } catch (err) {
       const code = err?.code || ''
-      if (code === 'auth/wrong-password' || code === 'auth/invalid-credential') setError('Incorrect account password.')
-      else if (code === 'auth/too-many-requests') setError('Too many attempts. Please wait a moment.')
-      else if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') setError('Sign-in was cancelled.')
-      else setError('Verification failed. Please try again.')
+      if (code === 'auth/wrong-password' || code === 'auth/invalid-credential') setError(t('pin.unlock.wrongPassword'))
+      else if (code === 'auth/too-many-requests') setError(t('pin.unlock.tooMany'))
+      else if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') setError(t('pin.unlock.cancelled'))
+      else setError(t('pin.unlock.failed'))
     } finally {
       setBusy(false)
     }
@@ -67,12 +70,12 @@ function PinUnlock({ onClose, onUnlock, storedHash, pinLength, guardId, itemName
 
   if (mode === 'removed') {
     return (
-      <PinDialog icon={ShieldCheck} iconTone="success" title="PIN removed"
-        subtitle={`${itemName ? `"${itemName}"` : 'This item'} is no longer locked. You can set a new PIN any time.`}
+      <PinDialog icon={ShieldCheck} iconTone="success" title={t('pin.unlock.removedTitle')}
+        subtitle={itemName ? t('pin.unlock.removedNamed', { name: itemName }) : t('pin.unlock.removedItem')}
         onClose={onClose}>
         <button type="button" onClick={onClose}
           className="w-full rounded-2xl bg-[var(--gold-primary)] py-3 text-[13px] font-semibold text-white hover:bg-[var(--gold-hover)] transition-colors cursor-pointer">
-          Done
+          {t('common.done')}
         </button>
       </PinDialog>
     )
@@ -80,13 +83,13 @@ function PinUnlock({ onClose, onUnlock, storedHash, pinLength, guardId, itemName
 
   if (mode === 'forgot') {
     return (
-      <PinDialog icon={KeyRound} title="Forgot PIN?" subtitle="Verify your account to remove this PIN lock. Your data stays as it is."
+      <PinDialog icon={KeyRound} title={t('pin.unlock.forgotTitle')} subtitle={t('pin.unlock.forgotBody')}
         onClose={onClose} onBack={() => { setMode('pin'); setError('') }}>
         {isPasswordUser ? (
           <form
             onSubmit={(e) => {
               e.preventDefault()
-              if (!password) { setError('Enter your account password.'); return }
+              if (!password) { setError(t('pin.unlock.enterPassword')); return }
               removeAfterReauth(() => reauthenticateWithCredential(auth.currentUser, EmailAuthProvider.credential(user.email, password)))
             }}
             className="space-y-3"
@@ -96,12 +99,12 @@ function PinUnlock({ onClose, onUnlock, storedHash, pinLength, guardId, itemName
                 type={showPw ? 'text' : 'password'}
                 value={password}
                 onChange={(e) => { setPassword(e.target.value); setError('') }}
-                placeholder="Account password"
+                placeholder={t('pin.unlock.passwordPlaceholder')}
                 autoComplete="current-password"
                 autoFocus
                 className="min-w-0 flex-1 bg-transparent py-3 text-[13px] text-[var(--text-main)] placeholder-[var(--text-subtle)] outline-none"
               />
-              <button type="button" onClick={() => setShowPw((v) => !v)} aria-label={showPw ? 'Hide password' : 'Show password'}
+              <button type="button" onClick={() => setShowPw((v) => !v)} aria-label={showPw ? t('dialogs.hidePassword') : t('dialogs.showPassword')}
                 className="text-[var(--text-subtle)] hover:text-[var(--text-main)] cursor-pointer">
                 {showPw ? <EyeOff size={15} /> : <Eye size={15} />}
               </button>
@@ -109,7 +112,7 @@ function PinUnlock({ onClose, onUnlock, storedHash, pinLength, guardId, itemName
             {error && <p className="text-center text-xs text-rose-600 dark:text-rose-400">{error}</p>}
             <button type="submit" disabled={busy || !password}
               className="w-full rounded-2xl bg-[var(--gold-primary)] py-3 text-[13px] font-semibold text-white hover:bg-[var(--gold-hover)] disabled:opacity-40 transition-colors cursor-pointer">
-              {busy ? 'Verifying…' : 'Verify & remove PIN'}
+              {busy ? t('pin.unlock.verifying') : t('pin.unlock.verifyRemove')}
             </button>
           </form>
         ) : isGoogleUser ? (
@@ -118,11 +121,11 @@ function PinUnlock({ onClose, onUnlock, storedHash, pinLength, guardId, itemName
             <button type="button" disabled={busy}
               onClick={() => removeAfterReauth(() => reauthenticateWithPopup(auth.currentUser, new GoogleAuthProvider()))}
               className="w-full rounded-2xl bg-[var(--gold-primary)] py-3 text-[13px] font-semibold text-white hover:bg-[var(--gold-hover)] disabled:opacity-40 transition-colors cursor-pointer">
-              {busy ? 'Verifying…' : 'Continue with Google'}
+              {busy ? t('pin.unlock.verifying') : t('pin.unlock.google')}
             </button>
           </div>
         ) : (
-          <p className="text-center text-xs text-[var(--text-subtle)]">Sign out and sign back in, then try again.</p>
+          <p className="text-center text-xs text-[var(--text-subtle)]">{t('pin.unlock.signOutHint')}</p>
         )}
       </PinDialog>
     )
@@ -131,13 +134,15 @@ function PinUnlock({ onClose, onUnlock, storedHash, pinLength, guardId, itemName
   return (
     <PinDialog
       icon={Lock}
-      title="Enter PIN"
-      subtitle={<>{itemName ? <span className="font-semibold text-[var(--text-main)]">{itemName}</span> : 'This item'} is locked</>}
+      title={t('pin.unlock.title')}
+      subtitle={itemName
+        ? <Trans k="pin.unlock.lockedNamed" vars={{ name: itemName }} components={{ b: <span className="font-semibold text-[var(--text-main)]" /> }} />
+        : t('pin.unlock.lockedItem')}
       onClose={onClose}
       footer={
         <button type="button" onClick={() => { setMode('forgot'); setError('') }}
           className="w-full text-center text-xs font-semibold text-[var(--gold-primary)] hover:underline cursor-pointer">
-          Forgot PIN?
+          {t('pin.unlock.forgotTitle')}
         </button>
       }
     >

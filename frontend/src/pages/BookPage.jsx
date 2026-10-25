@@ -29,6 +29,8 @@ import PinModal from '../components/common/PinModal'
 import SendToTripModal from '../components/forms/SendToTripModal'
 import TransferModal from '../components/forms/TransferModal'
 import { compareNewestFirst, compareOldestFirst } from '../lib/entryOrder'
+import { useI18n } from '../i18n/core'
+import { Trans } from '../i18n/Trans'
 
 const defaultCategories = []
 
@@ -70,6 +72,7 @@ function DropdownMotion({ children, className }) {
 function EntryMenu({ variant = 'normal', sourceName, onEdit, onDelete, onOpenSource }) {
   const [open, setOpen] = useState(false)
   const ref = useDismiss(setOpen)
+  const { t } = useI18n()
   const isLinkedIn = variant === 'transfer_in'
 
   return (
@@ -77,7 +80,7 @@ function EntryMenu({ variant = 'normal', sourceName, onEdit, onDelete, onOpenSou
       <button
         onClick={() => setOpen((v) => !v)}
         className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--text-subtle)] hover:bg-[var(--border-subtle)] hover:text-[var(--text-main)] transition-colors cursor-pointer"
-        aria-label="Entry options"
+        aria-label={t('book.menu.entryOptions')}
       >
         {isLinkedIn ? <Link2 size={14} /> : <MoreVertical size={15} />}
       </button>
@@ -89,14 +92,14 @@ function EntryMenu({ variant = 'normal', sourceName, onEdit, onDelete, onOpenSou
                 <div className="flex items-start gap-2.5 px-3.5 py-2.5">
                   <Lock size={13} className="mt-0.5 flex-shrink-0 text-[var(--text-subtle)]" />
                   <p className="text-[11px] leading-relaxed text-[var(--text-muted)]">
-                    Received from <span className="font-semibold text-[var(--text-main)]">{sourceName || 'another book'}</span>. Only the sending book can edit or delete it.
+                    <Trans k="book.menu.receivedFrom" vars={{ name: sourceName || t('book.menu.anotherBook') }} components={{ b: <span className="font-semibold text-[var(--text-main)]" /> }} />
                   </p>
                 </div>
                 {onOpenSource && (
                   <>
                     <div className="my-1 h-px bg-[var(--border-subtle)]" />
                     <button onClick={() => { onOpenSource(); setOpen(false) }} className={menuItem}>
-                      <ArrowUpRight size={13} className="text-[var(--text-muted)]" /> Open {sourceName || 'sending book'}
+                      <ArrowUpRight size={13} className="text-[var(--text-muted)]" /> {t('book.menu.openSource', { name: sourceName || t('book.menu.sendingBook') })}
                     </button>
                   </>
                 )}
@@ -105,11 +108,11 @@ function EntryMenu({ variant = 'normal', sourceName, onEdit, onDelete, onOpenSou
               <>
                 {variant !== 'orphan_in' && (
                   <button onClick={() => { onEdit(); setOpen(false) }} className={menuItem}>
-                    <Pencil size={13} className="text-[var(--text-muted)]" /> {variant === 'transfer_out' ? 'Edit transfer' : 'Edit'}
+                    <Pencil size={13} className="text-[var(--text-muted)]" /> {variant === 'transfer_out' ? t('book.menu.editTransfer') : t('common.edit')}
                   </button>
                 )}
                 <button onClick={() => { onDelete(); setOpen(false) }} className={`${menuItem} !text-rose-600 dark:!text-rose-400`}>
-                  <Trash2 size={13} /> {variant === 'transfer_out' ? 'Delete transfer' : 'Delete'}
+                  <Trash2 size={13} /> {variant === 'transfer_out' ? t('book.menu.deleteTransfer') : t('common.delete')}
                 </button>
               </>
             )}
@@ -124,13 +127,14 @@ function EntryMenu({ variant = 'normal', sourceName, onEdit, onDelete, onOpenSou
 function BookHeaderMenu({ onEdit, onDelete, onSetPin, onManageCategories, onTransfer, hasPin }) {
   const [open, setOpen] = useState(false)
   const ref = useDismiss(setOpen)
+  const { t } = useI18n()
 
   return (
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen((v) => !v)}
         className="flex h-10 w-10 items-center justify-center rounded-full border border-[var(--border-card)] bg-[var(--bg-card)] text-[var(--text-muted)] hover:text-[var(--text-main)] hover:border-[var(--text-subtle)] transition-colors cursor-pointer"
-        aria-label="Book options"
+        aria-label={t('book.menu.bookOptions')}
       >
         <MoreVertical size={16} />
       </button>
@@ -139,23 +143,23 @@ function BookHeaderMenu({ onEdit, onDelete, onSetPin, onManageCategories, onTran
           <DropdownMotion className={`${menuPanel} mt-2 w-52`}>
             {onTransfer && (
               <button onClick={() => { onTransfer(); setOpen(false) }} className={menuItem}>
-                <ArrowLeftRight size={14} className="text-[var(--text-muted)]" /> Transfer money
+                <ArrowLeftRight size={14} className="text-[var(--text-muted)]" /> {t('book.menu.transferMoney')}
               </button>
             )}
             <button onClick={() => { onManageCategories(); setOpen(false) }} className={menuItem}>
-              <Tags size={14} className="text-[var(--text-muted)]" /> Manage categories
+              <Tags size={14} className="text-[var(--text-muted)]" /> {t('book.menu.manageCategories')}
             </button>
             <button onClick={() => { onSetPin(); setOpen(false) }} className={menuItem}>
               {hasPin
-                ? <><Unlock size={14} className="text-[var(--text-muted)]" /> Change PIN</>
-                : <><Lock size={14} className="text-[var(--text-muted)]" /> Set PIN lock</>}
+                ? <><Unlock size={14} className="text-[var(--text-muted)]" /> {t('book.menu.changePin')}</>
+                : <><Lock size={14} className="text-[var(--text-muted)]" /> {t('book.menu.setPinLock')}</>}
             </button>
             <button onClick={() => { onEdit(); setOpen(false) }} className={menuItem}>
-              <Pencil size={14} className="text-[var(--text-muted)]" /> Edit book
+              <Pencil size={14} className="text-[var(--text-muted)]" /> {t('book.menu.editBook')}
             </button>
             <div className="my-1 h-px bg-[var(--border-subtle)]" />
             <button onClick={() => { onDelete(); setOpen(false) }} className={`${menuItem} !text-rose-600 dark:!text-rose-400`}>
-              <Trash2 size={14} /> Delete book
+              <Trash2 size={14} /> {t('book.menu.deleteBook')}
             </button>
           </DropdownMotion>
         )}
@@ -172,6 +176,7 @@ const roundMoney = (n) => Math.round(n * 100) / 100
 export default function BookPage() {
   const { projectId, bookId } = useParams()
   const navigate = useNavigate()
+  const { t, locale } = useI18n()
   const {
     loading,
     error,
@@ -258,11 +263,11 @@ export default function BookPage() {
         entryId: id
       }))
       await linkEntriesToTrip(tripId, refs)
-      showToast('Added to Group ✓')
+      showToast(t('book.toast.addedToGroup'))
       setIsMultiSelectMode(false)
       setSelectedEntryIds([])
     } catch (err) {
-      showToast(err?.message || 'Failed to link entries', 'error')
+      showToast(err?.message || t('book.toast.linkFailed'), 'error')
     }
   }
 
@@ -422,9 +427,9 @@ export default function BookPage() {
   }, [filteredEntries])
 
   const formatGroupDate = (date) => {
-    if (isToday(date))     return 'Today'
-    if (isYesterday(date)) return 'Yesterday'
-    return format(date, 'dd MMM yyyy')
+    if (isToday(date))     return t('common.today')
+    if (isYesterday(date)) return t('common.yesterday')
+    return format(date, 'dd MMM yyyy', { locale })
   }
 
   const summary = useMemo(() => {
@@ -461,7 +466,7 @@ export default function BookPage() {
 
   const showToast = (msg, type = 'success') => {
     setToast({ msg, type, visible: true })
-    setTimeout(() => setToast((t) => ({ ...t, visible: false })), 2200)
+    setTimeout(() => setToast((prev) => ({ ...prev, visible: false })), 2200)
   }
 
   const clearFilters = () => setFilters({ type: 'all', mode: 'all', category: 'all', enteredBy: 'all', from: '', to: '' })
@@ -471,14 +476,14 @@ export default function BookPage() {
       <LayoutShell>
         <div className="flex flex-col items-center justify-center py-20 gap-4 text-center px-4">
           <div className="rounded-2xl bg-red-50 border border-red-100 p-4 max-w-sm">
-            <p className="text-sm font-semibold text-red-800">Unable to Load Data</p>
+            <p className="text-sm font-semibold text-red-800">{t('book.loadError')}</p>
             <p className="text-xs text-red-600 mt-1">{error}</p>
           </div>
           <button 
             onClick={() => window.location.reload()}
             className="rounded-xl bg-amber-600 px-4 py-2 text-xs font-semibold text-white hover:bg-amber-700 cursor-pointer"
           >
-            Retry Loading
+            {t('book.retryLoading')}
           </button>
         </div>
       </LayoutShell>
@@ -486,13 +491,13 @@ export default function BookPage() {
   }
 
   if (!(project && book)) {
-    if (loading) return <PageSkeleton slow={stalled} hideHeader label="Opening book" />
+    if (loading) return <PageSkeleton slow={stalled} hideHeader label={t('book.opening')} />
 
     return (
       <LayoutShell>
         <div className="flex flex-col items-center justify-center py-16 gap-3">
-          <p className="text-sm text-stone-500">Book not found.</p>
-          <Link to={`/projects/${projectId}`} className="text-xs text-amber-700 hover:underline">Go back</Link>
+          <p className="text-sm text-stone-500">{t('book.notFound')}</p>
+          <Link to={`/projects/${projectId}`} className="text-xs text-amber-700 hover:underline">{t('book.goBack')}</Link>
         </div>
       </LayoutShell>
     )
@@ -511,9 +516,9 @@ export default function BookPage() {
           <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--gold-light)] text-[var(--gold-primary)]">
             <Lock size={24} />
           </span>
-          <p className="text-sm font-semibold text-[var(--text-main)]">{target.name} is locked</p>
+          <p className="text-sm font-semibold text-[var(--text-main)]">{t('book.locked', { name: target.name })}</p>
           <Link to={projectLocked ? '/dashboard' : `/projects/${projectId}`} className="text-xs text-[var(--text-subtle)] hover:text-[var(--text-main)]">
-            Go back
+            {t('book.goBack')}
           </Link>
         </div>
         <PinModal
@@ -553,11 +558,11 @@ export default function BookPage() {
     return 'transfer_in'
   }
   const categoryNames = categories.map((c) => (typeof c === 'string' ? c : c?.name)).filter(Boolean)
-  const TYPE_LABELS = { income: 'Cash in', expense: 'Cash out', transfer_in: 'Transfer in', transfer_out: 'Transfer out' }
+  const TYPE_LABELS = { income: t('book.cashIn'), expense: t('book.cashOut'), transfer_in: t('book.transferIn'), transfer_out: t('book.transferOut') }
   const dateLabel = describeDateRange(filters.from, filters.to)
   const activeFilterChips = [
     filters.type !== 'all' && { key: 'type', label: TYPE_LABELS[filters.type] || filters.type, clear: () => setFilters((p) => ({ ...p, type: 'all' })) },
-    filters.mode !== 'all' && { key: 'mode', label: filters.mode, clear: () => setFilters((p) => ({ ...p, mode: 'all' })) },
+    filters.mode !== 'all' && { key: 'mode', label: filters.mode === 'Cash' ? t('entry.mode.cash') : filters.mode, clear: () => setFilters((p) => ({ ...p, mode: 'all' })) },
     filters.category !== 'all' && { key: 'category', label: filters.category, clear: () => setFilters((p) => ({ ...p, category: 'all' })) },
     filters.enteredBy !== 'all' && { key: 'enteredBy', label: filters.enteredBy, clear: () => setFilters((p) => ({ ...p, enteredBy: 'all' })) },
     dateLabel && { key: 'date', label: dateLabel, clear: () => setFilters((p) => ({ ...p, from: '', to: '' })) },
@@ -568,7 +573,7 @@ export default function BookPage() {
       <div className="mx-auto max-w-2xl space-y-4 pb-36">
         {loading && stalled && (
           <div className="rounded-2xl border border-amber-500/30 bg-amber-500/[0.08] p-3.5 text-xs font-medium leading-relaxed text-amber-700 dark:text-amber-400">
-            Connection is taking longer than expected. Please check your internet connection.
+            {t('book.slowConnection')}
           </div>
         )}
 
@@ -576,7 +581,7 @@ export default function BookPage() {
         <header className="flex items-center gap-3">
           <Link
             to={`/projects/${projectId}`}
-            aria-label="Back to project"
+            aria-label={t('book.backToProject')}
             className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border border-[var(--border-card)] bg-[var(--bg-card)] text-[var(--text-main)] hover:border-[var(--text-subtle)] transition-colors"
           >
             <ArrowLeft size={17} />
@@ -594,12 +599,12 @@ export default function BookPage() {
               summary,
               entries: entries.map((e) => ({ ...e, balanceAfter: balanceById.get(e.id) ?? e.balanceAfter })),
             })}
-            title="Export PDF"
-            aria-label="Export PDF"
+            title={t('book.exportPdf')}
+            aria-label={t('book.exportPdf')}
             className="flex h-10 flex-shrink-0 items-center gap-2 rounded-full border border-[var(--border-card)] bg-[var(--bg-card)] px-3 sm:px-4 text-xs font-semibold text-[var(--text-main)] hover:border-[var(--text-subtle)] transition-colors cursor-pointer"
           >
             <Download size={15} />
-            <span className="hidden sm:inline">Export</span>
+            <span className="hidden sm:inline">{t('book.export')}</span>
           </button>
           <BookHeaderMenu
             onEdit={() => setEditingBook(true)}
@@ -623,11 +628,11 @@ export default function BookPage() {
         <section className="space-y-3">
           <div className="flex items-end justify-between gap-3">
             <div>
-              <h2 className="text-[15px] font-semibold text-[var(--text-main)]">Transactions</h2>
+              <h2 className="text-[15px] font-semibold text-[var(--text-main)]">{t('book.transactions')}</h2>
               <p className="mt-0.5 text-[11px] text-[var(--text-subtle)]">
                 {filteredEntries.length === entries.length
-                  ? `${entries.length} entr${entries.length !== 1 ? 'ies' : 'y'}`
-                  : `${filteredEntries.length} of ${entries.length} entries`}
+                  ? t('book.count', { count: entries.length })
+                  : t('book.filteredCount', { shown: filteredEntries.length, total: entries.length })}
               </p>
             </div>
             {entries.length > 0 && (
@@ -642,7 +647,7 @@ export default function BookPage() {
                     : 'text-[var(--gold-primary)] hover:bg-[var(--gold-light)]'
                 }`}
               >
-                {isMultiSelectMode ? 'Cancel' : 'Select'}
+                {isMultiSelectMode ? t('common.cancel') : t('book.select')}
               </button>
             )}
           </div>
@@ -654,18 +659,18 @@ export default function BookPage() {
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search description, category, person"
+                placeholder={t('book.searchPlaceholder')}
                 className="w-full bg-transparent text-[13px] text-[var(--text-main)] placeholder-[var(--text-subtle)] outline-none"
               />
               {search && (
-                <button onClick={() => setSearch('')} aria-label="Clear search" className="text-[var(--text-subtle)] hover:text-[var(--text-main)] cursor-pointer">
+                <button onClick={() => setSearch('')} aria-label={t('book.clearSearch')} className="text-[var(--text-subtle)] hover:text-[var(--text-main)] cursor-pointer">
                   <X size={14} />
                 </button>
               )}
             </div>
             <button
               onClick={() => setShowFilters((v) => !v)}
-              aria-label="Filters"
+              aria-label={t('book.filters')}
               aria-expanded={showFilters}
               className={`relative flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl border transition-colors cursor-pointer ${
                 showFilters || hasActiveFilters
@@ -685,7 +690,7 @@ export default function BookPage() {
                 <span key={key}
                   className="inline-flex items-center gap-1 rounded-full border border-[var(--gold-primary)]/40 bg-[var(--gold-light)] py-1 pl-3 pr-1 text-[11px] font-medium text-[var(--text-main)]">
                   {label}
-                  <button onClick={clear} aria-label={`Remove ${label} filter`}
+                  <button onClick={clear} aria-label={t('book.removeFilter', { label })}
                     className="flex h-5 w-5 items-center justify-center rounded-full text-[var(--text-subtle)] hover:bg-[var(--border-subtle)] hover:text-[var(--text-main)] cursor-pointer">
                     <X size={11} />
                   </button>
@@ -693,7 +698,7 @@ export default function BookPage() {
               ))}
               <button onClick={clearFilters}
                 className="px-1.5 text-[11px] font-semibold text-[var(--gold-primary)] hover:underline cursor-pointer">
-                Clear all
+                {t('book.clearAll')}
               </button>
             </div>
           )}
@@ -706,18 +711,18 @@ export default function BookPage() {
               </span>
               <div>
                 <p className="text-sm font-medium text-[var(--text-main)]">
-                  {loading ? 'Retrieving transactions…' : (search || hasActiveFilters ? 'No matching transactions' : 'No transactions yet')}
+                  {loading ? t('book.empty.loading') : (search || hasActiveFilters ? t('book.empty.noMatch') : t('book.empty.none'))}
                 </p>
                 <p className="mt-1 text-xs text-[var(--text-subtle)]">
                   {loading
-                    ? 'Connecting to database…'
-                    : (search || hasActiveFilters ? 'Try a different search or reset the filters.' : 'Use Cash In or Cash Out below to record your first entry.')}
+                    ? t('book.empty.loadingHint')
+                    : (search || hasActiveFilters ? t('book.empty.noMatchHint') : t('book.empty.noneHint'))}
                 </p>
               </div>
               {(search || hasActiveFilters) && !loading && (
                 <button onClick={() => { setSearch(''); clearFilters() }}
                   className="text-xs font-semibold text-[var(--gold-primary)] hover:underline cursor-pointer">
-                  Clear search & filters
+                  {t('book.empty.clearBoth')}
                 </button>
               )}
             </div>
@@ -809,7 +814,7 @@ export default function BookPage() {
         onTransfer={async ({ destinationProjectId, destinationBookId, amount, note }) => {
           if (editingTransfer) {
             await updateTransfer(projectId, bookId, editingTransfer.id, { amount, note })
-            showToast('Transfer updated in both books')
+            showToast(t('book.toast.transferUpdated'))
           } else {
             await transferBetweenBooks({
               sourceProjectId: projectId,
@@ -819,7 +824,7 @@ export default function BookPage() {
               amount,
               note,
             })
-            showToast(`${symbol}${formatAmount(amount)} sent to ${bookNameById(destinationBookId) || 'book'}`)
+            showToast(t('book.toast.transferSent', { amount: `${symbol}${formatAmount(amount)}`, book: bookNameById(destinationBookId) || t('book.toast.bookFallback') }))
           }
         }}
       />
@@ -844,7 +849,7 @@ export default function BookPage() {
         onSave={async (cats) => {
           setCategories(cats)
           await updateCategories(projectId, bookId, cats)
-          showToast('Categories saved')
+          showToast(t('entry.categoriesSaved'))
           setShowCatManager(false)
         }}
       />
@@ -854,7 +859,7 @@ export default function BookPage() {
         {isMultiSelectMode ? (
           <div className="flex items-center justify-between gap-3 rounded-2xl border border-[var(--border-card)] bg-[var(--bg-page)]/95 p-2 pl-4 shadow-[0_16px_40px_-12px_rgba(0,0,0,0.35)] backdrop-blur-xl">
             <p className="text-xs font-semibold text-[var(--text-main)]">
-              {selectedEntryIds.length === 0 ? 'Select entries' : `${selectedEntryIds.length} selected`}
+              {selectedEntryIds.length === 0 ? t('book.selectEntries') : t('book.selected', { count: selectedEntryIds.length })}
             </p>
             <div className="flex gap-2">
               <button
@@ -864,14 +869,14 @@ export default function BookPage() {
                 }}
                 className="rounded-xl border border-[var(--border-card)] px-3.5 py-2.5 text-xs font-semibold text-[var(--text-muted)] hover:bg-[var(--border-subtle)] cursor-pointer"
               >
-                Cancel
+                {t('common.cancel')}
               </button>
               <button
                 disabled={selectedEntryIds.length === 0}
                 onClick={() => setOpenSendToTripModal(true)}
                 className="rounded-xl bg-[var(--gold-primary)] px-4 py-2.5 text-xs font-semibold text-white hover:bg-[var(--gold-hover)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
               >
-                Add to group
+                {t('book.addToGroup')}
               </button>
             </div>
           </div>
@@ -882,14 +887,14 @@ export default function BookPage() {
               onClick={() => setModalType('income')}
               className="flex items-center justify-center gap-2 rounded-xl bg-emerald-600 py-3 text-[13px] font-semibold text-white hover:bg-emerald-700 transition-colors cursor-pointer"
             >
-              <ArrowDownLeft size={16} strokeWidth={2.4} /> Cash In
+              <ArrowDownLeft size={16} strokeWidth={2.4} /> {t('entry.type.income')}
             </motion.button>
             <motion.button
               whileTap={{ scale: 0.97 }}
               onClick={() => setModalType('expense')}
               className="flex items-center justify-center gap-2 rounded-xl bg-rose-600 py-3 text-[13px] font-semibold text-white hover:bg-rose-700 transition-colors cursor-pointer"
             >
-              <ArrowUpRight size={16} strokeWidth={2.4} /> Cash Out
+              <ArrowUpRight size={16} strokeWidth={2.4} /> {t('entry.type.expense')}
             </motion.button>
           </div>
         )}
@@ -916,11 +921,11 @@ export default function BookPage() {
         spentByCategory={currentMonthSpentByCategory}
         onSaveTemplate={async (tpl) => {
           await saveTemplate(projectId, bookId, tpl)
-          showToast('Saved to Quick Add ⚡')
+          showToast(t('book.toast.templateSaved'))
         }}
         onDeleteTemplate={async (templateId) => {
           await deleteTemplate(projectId, bookId, templateId)
-          showToast('Quick Add template removed', 'info')
+          showToast(t('book.toast.templateRemoved'), 'info')
         }}
         onClose={() => { setModalType(null); setEditingEntry(null) }}
         onSaveCategories={async (cats) => {
@@ -934,7 +939,7 @@ export default function BookPage() {
           const { tripId, ...entryData } = payload
           if (editingEntry) {
             const entryId = editingEntry.id
-            const oldTrip = trips?.find(t => t.entries && t.entries[`${projectId}_${bookId}_${entryId}`])
+            const oldTrip = trips?.find(trip => trip.entries && trip.entries[`${projectId}_${bookId}_${entryId}`])
             const oldTripId = oldTrip ? oldTrip.id : ''
             const newTripId = tripId || ''
             updateEntry(projectId, bookId, entryId, entryData)
@@ -944,17 +949,17 @@ export default function BookPage() {
                   if (newTripId) await linkEntriesToTrip(newTripId, [{ projectId, bookId, entryId }])
                 }
               })
-              .catch(err => showToast(err?.message || 'Failed to update entry', 'error'))
-            showToast('Entry updated ✓')
+              .catch(err => showToast(err?.message || t('book.toast.updateFailed'), 'error'))
+            showToast(t('book.toast.entryUpdated'))
           } else {
             try {
               const { id: newEntryId, saved } = addEntry(projectId, bookId, entryData)
               saved
                 .then(() => (tripId ? linkEntriesToTrip(tripId, [{ projectId, bookId, entryId: newEntryId }]) : null))
-                .catch(err => showToast(err?.message || 'Failed to save entry', 'error'))
-              showToast(entryData.type === 'income' ? 'Cash in recorded ✓' : 'Cash out recorded ✓')
+                .catch(err => showToast(err?.message || t('book.toast.saveFailed'), 'error'))
+              showToast(entryData.type === 'income' ? t('book.toast.cashInRecorded') : t('book.toast.cashOutRecorded'))
             } catch (err) {
-              showToast(err?.message || 'Failed to save entry', 'error')
+              showToast(err?.message || t('book.toast.saveFailed'), 'error')
             }
           }
         }}
@@ -967,7 +972,7 @@ export default function BookPage() {
         initial={book}
         onSubmit={async (payload) => {
           await updateBook(projectId, bookId, payload)
-          showToast('Book updated')
+          showToast(t('book.toast.bookUpdated'))
         }}
       />
 
@@ -981,16 +986,16 @@ export default function BookPage() {
           // the write itself finishes in the background.
           const pending = deleteEntry(projectId, bookId, target.id)
           await Promise.race([pending, new Promise(r => setTimeout(r, 60))]).catch(err => {
-            showToast(err?.message || 'Failed to delete', 'error')
+            showToast(err?.message || t('book.toast.deleteFailed'), 'error')
             throw err
           })
-          pending.catch(err => showToast(err?.message || 'Failed to delete', 'error'))
-          showToast(target?.transferId ? 'Transfer deleted from both books' : 'Entry deleted', 'info')
+          pending.catch(err => showToast(err?.message || t('book.toast.deleteFailed'), 'error'))
+          showToast(target?.transferId ? t('book.toast.transferDeleted') : t('book.toast.entryDeleted'), 'info')
         }}
-        title={deleteEntryTarget?.transferId ? 'Delete transfer?' : 'Delete entry?'}
+        title={deleteEntryTarget?.transferId ? t('book.confirm.deleteTransferTitle') : t('book.confirm.deleteEntryTitle')}
         message={deleteEntryTarget?.transferId && deleteEntryTarget?.type === 'transfer_out'
-          ? `${symbol}${formatAmount(deleteEntryTarget?.amount)} sent to ${bookNameById(deleteEntryTarget?.toBookId) || 'the other book'} will be removed from both books.`
-          : `"${deleteEntryTarget?.description}" (${symbol}${formatAmount(deleteEntryTarget?.amount || 0)}) will be permanently deleted.`}
+          ? t('book.confirm.deleteTransferMsg', { amount: `${symbol}${formatAmount(deleteEntryTarget?.amount)}`, book: bookNameById(deleteEntryTarget?.toBookId) || t('book.confirm.otherBook') })
+          : t('book.confirm.deleteEntryMsg', { description: deleteEntryTarget?.description, amount: `${symbol}${formatAmount(deleteEntryTarget?.amount || 0)}` })}
         danger
       />
 
@@ -1001,14 +1006,14 @@ export default function BookPage() {
         kind="book"
         name={book.name}
         stats={[
-          { label: 'Transactions', value: String(entries.length) },
-          { label: 'Balance', value: `${summary.net < 0 ? "−" : ""}${symbol}${formatAmount(Math.abs(summary.net))}` },
+          { label: t('book.transactions'), value: String(entries.length) },
+          { label: t('common.balance'), value: `${summary.net < 0 ? "−" : ""}${symbol}${formatAmount(Math.abs(summary.net))}` },
         ]}
         pin={book?.pinHash ? { storedHash: book.pinHash, length: book.pinLength, guardId: bookId } : null}
         onConfirm={async () => {
           await deleteBook(projectId, bookId)
           navigate(`/projects/${projectId}`)
-          showToast('Book deleted', 'info')
+          showToast(t('book.toast.bookDeleted'), 'info')
         }}
       />
 
@@ -1027,12 +1032,12 @@ export default function BookPage() {
           // Keep this session unlocked under the new PIN so the gate doesn't pop up immediately
           setUnlocked(bookId, hash)
           await setPinForBook(projectId, bookId, hash, length)
-          showToast(`${length}-digit PIN set`)
+          showToast(t('book.toast.pinSet', { length }))
         }}
         onRemove={async () => {
           await setPinForBook(projectId, bookId, null)
           lockItem(bookId)
-          showToast('PIN removed')
+          showToast(t('book.toast.pinRemoved'))
         }}
       />
     </LayoutShell>

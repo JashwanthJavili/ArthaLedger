@@ -3,16 +3,19 @@ import { createPortal } from 'react-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Bell, Check, Loader2, AlertTriangle, Target, Sunrise, Sun, Sunset, Moon } from 'lucide-react'
 import { enableDailyReminder, setBudgetAlertsEnabled, DEFAULT_REMINDER_TIMES } from '../../lib/notifications'
+import { useI18n } from '../../i18n/core'
+import { Trans } from '../../i18n/Trans'
 
 const STORE_KEY = 'al_reminder_prompt'
 const SESSION_KEY = 'al_reminder_prompt_shown'
 // Shows just after the launch screen has faded
 const SHOW_DELAY_MS = 2000
+// Text: reminders.prompt.slots.<key>.label / .hint
 const SLOTS = [
-  { key: 'morning', label: 'Morning', hint: 'Plan the day’s spends', Icon: Sunrise },
-  { key: 'afternoon', label: 'Afternoon', hint: 'Quick lunch-time check', Icon: Sun },
-  { key: 'evening', label: 'Evening', hint: 'Wrap up the day', Icon: Sunset },
-  { key: 'night', label: 'Night', hint: 'Log it before bed', Icon: Moon },
+  { key: 'morning', Icon: Sunrise },
+  { key: 'afternoon', Icon: Sun },
+  { key: 'evening', Icon: Sunset },
+  { key: 'night', Icon: Moon },
 ]
 
 const fmt12 = (t) => {
@@ -70,6 +73,7 @@ export default function ReminderPrompt() {
 }
 
 function PromptSheet({ onClose, onNever }) {
+  const { t } = useI18n()
   const [slots, setSlots] = useState(() => SLOTS.map((sl, i) => ({ ...sl, time: DEFAULT_REMINDER_TIMES[i], on: true })))
   const [alerts, setAlerts] = useState(true)
   const chosen = slots.filter(sl => sl.on).map(sl => sl.time).sort()
@@ -86,7 +90,7 @@ function PromptSheet({ onClose, onNever }) {
       setNext(status?.next_reminder || chosen.map(fmt12).join(', '))
       setStep('done')
     } catch (err) {
-      setError({ message: err?.message || 'Something went wrong.', code: err?.code })
+      setError({ message: err?.message || t('reminders.prompt.errorFallback'), code: err?.code })
       setStep('error')
     }
   }
@@ -98,7 +102,7 @@ function PromptSheet({ onClose, onNever }) {
     >
       <div className="absolute inset-0 bg-black/50" onClick={step === 'working' ? undefined : onClose} />
       <motion.div
-        role="dialog" aria-modal="true" aria-label="Daily reminders"
+        role="dialog" aria-modal="true" aria-label={t('reminders.prompt.aria')}
         initial={{ y: 48, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 48, opacity: 0 }}
         transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
         className="relative max-h-[92vh] w-full overflow-y-auto sm:max-w-[420px] rounded-t-3xl sm:rounded-3xl border border-[var(--border-card)] bg-[var(--bg-page)] px-5 pt-6 shadow-[0_30px_80px_-20px_rgba(0,0,0,0.5)]"
@@ -114,12 +118,12 @@ function PromptSheet({ onClose, onNever }) {
               >
                 <Check size={30} strokeWidth={2.6} />
               </motion.span>
-              <h2 className="mt-4 text-[18px] font-semibold text-[var(--text-main)]">You’re all set</h2>
-              <p className="mt-1 text-[13px] text-[var(--text-muted)]">Next reminder · <span className="font-semibold text-[var(--text-main)]">{next}</span></p>
-              <p className="mt-1 text-[12px] text-[var(--text-subtle)]">It arrives even when ArthaLedger is closed.</p>
+              <h2 className="mt-4 text-[18px] font-semibold text-[var(--text-main)]">{t('reminders.prompt.doneTitle')}</h2>
+              <p className="mt-1 text-[13px] text-[var(--text-muted)]"><Trans k="reminders.prompt.next" vars={{ next }} components={{ b: <span className="font-semibold text-[var(--text-main)]" /> }} /></p>
+              <p className="mt-1 text-[12px] text-[var(--text-subtle)]">{t('reminders.prompt.closedNote')}</p>
               <button type="button" onClick={onClose}
                 className="mt-6 w-full rounded-2xl bg-[var(--gold-primary)] py-3.5 text-[14px] font-semibold text-white hover:bg-[var(--gold-hover)] transition-colors cursor-pointer">
-                Done
+                {t('common.done')}
               </button>
             </motion.div>
           ) : step === 'error' ? (
@@ -129,17 +133,17 @@ function PromptSheet({ onClose, onNever }) {
                 <AlertTriangle size={24} />
               </span>
               <h2 className="mt-4 text-[17px] font-semibold text-[var(--text-main)]">
-                {error?.code === 'blocked' ? 'Notifications are blocked' : 'Couldn’t turn on reminders'}
+                {error?.code === 'blocked' ? t('reminders.prompt.blockedTitle') : t('reminders.prompt.failedTitle')}
               </h2>
               <p className="mt-1.5 text-[13px] leading-relaxed text-[var(--text-muted)]">{error?.message}</p>
               <div className="mt-6 grid w-full grid-cols-2 gap-2">
                 <button type="button" onClick={onClose}
                   className="rounded-2xl border border-[var(--border-card)] py-3 text-[14px] font-medium text-[var(--text-main)] hover:bg-[var(--border-subtle)] transition-colors cursor-pointer">
-                  Close
+                  {t('common.close')}
                 </button>
                 <button type="button" onClick={() => setStep('ask')} disabled={error?.code === 'blocked' || error?.code === 'unsupported'}
                   className="rounded-2xl bg-[var(--gold-primary)] py-3 text-[14px] font-semibold text-white hover:bg-[var(--gold-hover)] disabled:opacity-40 transition-colors cursor-pointer">
-                  Try again
+                  {t('common.retry')}
                 </button>
               </div>
             </motion.div>
@@ -156,9 +160,9 @@ function PromptSheet({ onClose, onNever }) {
                     <Bell size={26} />
                   </motion.span>
                 </span>
-                <h2 className="mt-4 font-serif-luxury text-[22px] font-semibold text-[var(--text-main)]">Never miss a day</h2>
+                <h2 className="mt-4 font-serif-luxury text-[22px] font-semibold text-[var(--text-main)]">{t('reminders.prompt.title')}</h2>
                 <p className="mt-1 max-w-[290px] text-[13px] leading-relaxed text-[var(--text-muted)]">
-                  Four friendly nudges a day, even when the app is closed. Change them anytime.
+                  {t('reminders.prompt.body')}
                 </p>
               </div>
 
@@ -172,19 +176,19 @@ function PromptSheet({ onClose, onNever }) {
                       <sl.Icon size={15} />
                     </span>
                     <span className="min-w-0 flex-1">
-                      <span className={`block text-[13px] font-medium ${sl.on ? 'text-[var(--text-main)]' : 'text-[var(--text-subtle)]'}`}>{sl.label}</span>
-                      <span className="block truncate text-[11px] text-[var(--text-subtle)]">{sl.hint}</span>
+                      <span className={`block text-[13px] font-medium ${sl.on ? 'text-[var(--text-main)]' : 'text-[var(--text-subtle)]'}`}>{t(`reminders.prompt.slots.${sl.key}.label`)}</span>
+                      <span className="block truncate text-[11px] text-[var(--text-subtle)]">{t(`reminders.prompt.slots.${sl.key}.hint`)}</span>
                     </span>
                     {/* Tap the time to change it with the phone's clock picker */}
                     <label className={`relative flex-shrink-0 rounded-lg border px-2 py-1 text-[12px] font-semibold tabular-nums cursor-pointer ${
                       sl.on ? 'border-[var(--border-card)] text-[var(--text-main)]' : 'border-transparent text-[var(--text-subtle)]'
                     }`}>
                       {fmt12(sl.time)}
-                      <input type="time" value={sl.time} aria-label={`${sl.label} reminder time`} disabled={!sl.on}
+                      <input type="time" value={sl.time} aria-label={t('reminders.prompt.slotTimeAria', { slot: t(`reminders.prompt.slots.${sl.key}.label`) })} disabled={!sl.on}
                         onChange={(e) => { if (e.target.value) update(sl.key, { time: e.target.value }) }}
                         className="absolute inset-0 h-full w-full cursor-pointer opacity-0" />
                     </label>
-                    <button type="button" role="switch" aria-checked={sl.on} aria-label={`${sl.label} reminder`}
+                    <button type="button" role="switch" aria-checked={sl.on} aria-label={t('reminders.prompt.slotAria', { slot: t(`reminders.prompt.slots.${sl.key}.label`) })}
                       onClick={() => update(sl.key, { on: !sl.on })}
                       className={`relative h-6 w-10 flex-shrink-0 rounded-full transition-colors cursor-pointer ${sl.on ? 'bg-[var(--gold-primary)]' : 'bg-[var(--border-card)]'}`}>
                       <motion.span initial={false} animate={{ x: sl.on ? 16 : 0 }} transition={{ type: 'spring', stiffness: 600, damping: 35 }}
@@ -201,8 +205,8 @@ function PromptSheet({ onClose, onNever }) {
                   <Target size={15} />
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block text-[13px] font-medium text-[var(--text-main)]">Budget alerts too</span>
-                  <span className="block truncate text-[11px] text-[var(--text-subtle)]">When a category reaches 80% or 100%</span>
+                  <span className="block text-[13px] font-medium text-[var(--text-main)]">{t('reminders.prompt.budgetTitle')}</span>
+                  <span className="block truncate text-[11px] text-[var(--text-subtle)]">{t('reminders.prompt.budgetHint')}</span>
                 </span>
                 <span className={`relative h-6 w-10 flex-shrink-0 rounded-full transition-colors ${alerts ? 'bg-[var(--gold-primary)]' : 'bg-[var(--border-card)]'}`}>
                   <motion.span initial={false} animate={{ x: alerts ? 16 : 0 }} transition={{ type: 'spring', stiffness: 600, damping: 35 }}
@@ -213,18 +217,18 @@ function PromptSheet({ onClose, onNever }) {
               <button type="button" onClick={turnOn} disabled={step === 'working' || chosen.length === 0}
                 className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl bg-[var(--gold-primary)] py-3.5 text-[14px] font-semibold text-white hover:bg-[var(--gold-hover)] disabled:opacity-80 transition-colors cursor-pointer">
                 {step === 'working'
-                  ? <><Loader2 size={16} className="animate-spin" /> Turning on…</>
-                  : chosen.length ? `Turn on ${chosen.length} daily reminder${chosen.length === 1 ? '' : 's'}` : 'Pick at least one'}
+                  ? <><Loader2 size={16} className="animate-spin" /> {t('reminders.prompt.turningOn')}</>
+                  : chosen.length ? t('reminders.prompt.turnOn', { count: chosen.length }) : t('reminders.prompt.pickOne')}
               </button>
               <button type="button" onClick={onClose} disabled={step === 'working'}
                 className="mt-1 w-full rounded-2xl py-3 text-[13px] font-medium text-[var(--text-muted)] hover:text-[var(--text-main)] disabled:opacity-40 transition-colors cursor-pointer">
-                Not now
+                {t('reminders.prompt.notNow')}
               </button>
               <p className="text-center text-[11px] text-[var(--text-subtle)]">
-                You can change this anytime in Settings.{' '}
+                {t('reminders.prompt.changeAnytime')}{' '}
                 <button type="button" onClick={onNever} disabled={step === 'working'}
                   className="font-medium text-[var(--text-muted)] underline underline-offset-2 hover:text-[var(--text-main)] cursor-pointer">
-                  Don’t ask again
+                  {t('reminders.prompt.dontAsk')}
                 </button>
               </p>
             </motion.div>

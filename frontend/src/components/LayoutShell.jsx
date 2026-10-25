@@ -1,11 +1,12 @@
 import { NavLink } from 'react-router-dom'
 import { Home, BarChart3, Compass, Settings } from 'lucide-react'
+import { useI18n } from '../i18n/core'
 
 const navItems = [
-  { to: '/dashboard', label: 'Home', icon: Home },
-  { to: '/analytics', label: 'Analytics', icon: BarChart3 },
-  { to: '/trips', label: 'Groups', icon: Compass },
-  { to: '/settings', label: 'Settings', icon: Settings },
+  { to: '/dashboard', labelKey: 'nav.home', icon: Home },
+  { to: '/analytics', labelKey: 'nav.analytics', icon: BarChart3 },
+  { to: '/trips', labelKey: 'nav.groups', icon: Compass },
+  { to: '/settings', labelKey: 'nav.settings', icon: Settings },
 ]
 
 /**
@@ -15,6 +16,7 @@ const navItems = [
  */
 // eslint-disable-next-line no-unused-vars
 export default function LayoutShell({ children, hideHeader }) {
+  const { t } = useI18n()
   return (
     <div className="min-h-screen flex flex-col bg-[var(--bg-page)] text-[var(--text-main)] transition-colors duration-300">
       <main
@@ -25,7 +27,7 @@ export default function LayoutShell({ children, hideHeader }) {
       </main>
 
       <nav
-        aria-label="Primary"
+        aria-label={t('nav.primary')}
         className="fixed inset-x-0 bottom-0 z-40 border-t border-[var(--border-card)] bg-[var(--bg-page)]/95 backdrop-blur-xl"
         style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
       >
@@ -45,7 +47,7 @@ export default function LayoutShell({ children, hideHeader }) {
                 {({ isActive }) => (
                   <>
                     <Icon size={20} strokeWidth={isActive ? 2.2 : 1.8} />
-                    <span className={`text-[10px] tracking-wide ${isActive ? 'font-semibold' : 'font-medium'}`}>{item.label}</span>
+                    <span className={`text-[10px] tracking-wide ${isActive ? 'font-semibold' : 'font-medium'}`}>{t(item.labelKey)}</span>
                   </>
                 )}
               </NavLink>

@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronRight, Eye, EyeOff, X } from 'lucide-react'
+import { useI18n } from '../../i18n/core'
 
 // ── Tints for row icon tiles ────────────────────────────────────────────────
 const TINTS = {
@@ -147,13 +148,14 @@ function SheetPanel({ onClose, label, wide, children }) {
 }
 
 export function SheetHeader({ title, subtitle, onClose }) {
+  const { t } = useI18n()
   return (
     <div className="flex flex-shrink-0 items-start justify-between gap-3 border-b border-[var(--border-subtle)] px-5 pt-5 pb-4">
       <div className="min-w-0">
         <h3 className="truncate text-[15px] font-semibold text-[var(--text-main)]">{title}</h3>
         {subtitle && <p className="mt-0.5 text-[12px] text-[var(--text-subtle)]">{subtitle}</p>}
       </div>
-      <button type="button" onClick={onClose} aria-label="Close"
+      <button type="button" onClick={onClose} aria-label={t('common.close')}
         className="flex h-8 w-8 flex-shrink-0 cursor-pointer items-center justify-center rounded-full bg-[var(--border-subtle)] text-[var(--text-muted)] transition-colors hover:text-[var(--text-main)]">
         <X size={15} />
       </button>
@@ -191,13 +193,14 @@ export function TextArea({ className = '', ...props }) {
 }
 
 export function PasswordInput({ show, onToggleShow, className = '', ...props }) {
+  const { t } = useI18n()
   const [localShow, setLocalShow] = useState(false)
   const visible = show ?? localShow
   const toggle = onToggleShow ?? (() => setLocalShow(v => !v))
   return (
     <div className="relative">
       <input {...props} type={visible ? 'text' : 'password'} className={`${INPUT_CLS} pr-10 ${className}`} />
-      <button type="button" onClick={toggle} aria-label={visible ? 'Hide password' : 'Show password'}
+      <button type="button" onClick={toggle} aria-label={visible ? t('dialogs.hidePassword') : t('dialogs.showPassword')}
         className="absolute right-2 top-1/2 flex h-7 w-7 -translate-y-1/2 cursor-pointer items-center justify-center rounded-lg text-[var(--text-subtle)] transition-colors hover:text-[var(--text-main)]">
         {visible ? <EyeOff size={15} /> : <Eye size={15} />}
       </button>

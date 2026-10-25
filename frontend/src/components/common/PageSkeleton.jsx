@@ -1,5 +1,6 @@
 import { WifiOff } from 'lucide-react'
 import LayoutShell from '../LayoutShell'
+import { useI18n } from '../../i18n/core'
 
 function Bone({ className = '' }) {
   return <div className={`skeleton rounded-lg ${className}`} />
@@ -9,16 +10,17 @@ function Bone({ className = '' }) {
  * Placeholder that mirrors a detail page (header, summary card, grouped list)
  * while data loads. `slow` adds a gentle connection notice.
  */
-export default function PageSkeleton({ slow = false, hideHeader = false, label = 'Loading' }) {
+export default function PageSkeleton({ slow = false, hideHeader = false, label }) {
+  const { t } = useI18n()
   return (
     <LayoutShell hideHeader={hideHeader}>
-      <div className="mx-auto max-w-2xl space-y-4 pb-36" aria-busy="true" aria-label={label}>
+      <div className="mx-auto max-w-2xl space-y-4 pb-36" aria-busy="true" aria-label={label || t('dialogs.skeleton.loading')}>
         {slow && (
           <div className="flex items-start gap-3 rounded-2xl border border-[var(--border-card)] bg-[var(--bg-card)] px-4 py-3">
             <WifiOff size={16} className="mt-0.5 flex-shrink-0 text-[var(--gold-primary)]" />
             <div>
-              <p className="text-xs font-semibold text-[var(--text-main)]">Still loading…</p>
-              <p className="mt-0.5 text-[11px] text-[var(--text-subtle)]">Your connection seems slow. We'll show your data as soon as it arrives.</p>
+              <p className="text-xs font-semibold text-[var(--text-main)]">{t('dialogs.skeleton.stillLoading')}</p>
+              <p className="mt-0.5 text-[11px] text-[var(--text-subtle)]">{t('dialogs.skeleton.slow')}</p>
             </div>
           </div>
         )}

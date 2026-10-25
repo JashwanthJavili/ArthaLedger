@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { FieldPath, deleteField, doc, getDoc, getDocs, onSnapshot, setDoc, updateDoc, writeBatch } from 'firebase/firestore'
 import { db } from '../lib/firebase'
 import { useAuth } from './AuthContext'
+import { translate, useI18n } from '../i18n/core'
 import { compareNewestFirst, compareOldestFirst } from '../lib/entryOrder'
 import {
   bookDoc, booksCol, commitAll, docsOf, entriesCol, entryDoc, forCreate, forUpdate, migrateFromRealtimeDb,
@@ -19,6 +20,7 @@ function sanitiseEntry(entry) {
 
 export function AppDataProvider({ children }) {
   const { user } = useAuth()
+  const { lang, setLang } = useI18n()
   const [projects, setProjects] = useState([])
   const [booksByProject, setBooksByProject] = useState({})
   const [entriesByBook, setEntriesByBook] = useState({})
@@ -37,6 +39,20 @@ export function AppDataProvider({ children }) {
   useEffect(() => { booksNowRef.current = booksByProject }, [booksByProject])
   useEffect(() => { templatesNowRef.current = templatesByBook }, [templatesByBook])
 
+  // The language saved in the account (profile.language, set from Settings).
+  // When it differs from this device's choice, follow the account. Only a
+  // change in the saved value is applied, so a pending local write is never
+  // undone by an older snapshot.
+  const [savedLang, setSavedLang] = useState(null)
+  const appliedLangRef = useRef(null)
+  const langRef = useRef(lang)
+  useEffect(() => { langRef.current = lang }, [lang])
+  useEffect(() => {
+    if (!savedLang || savedLang === appliedLangRef.current) return
+    appliedLangRef.current = savedLang
+    if (savedLang !== langRef.current) setLang(savedLang)
+  }, [savedLang, setLang])
+
   useEffect(() => {
     if (!user?.uid) {
       setProjects([])
@@ -45,6 +61,8 @@ export function AppDataProvider({ children }) {
       setTemplatesByBook({})
       setTrips([])
       setCategories([])
+      setSavedLang(null)
+      appliedLangRef.current = null
       setLoading(false)
       setError(null)
       return undefined
@@ -139,6 +157,8 @@ export function AppDataProvider({ children }) {
       subs.set('trips', onSnapshot(tripsCol(uid), (snap) => { setTrips(docsOf(snap)); setError(null) }, fail('trips')))
       subs.set('user', onSnapshot(userDoc(uid), (snap) => {
         setCategories(normaliseCategories(snap.exists() ? snap.data().categories : null))
+        const language = snap.exists() ? snap.data().profile?.language : null
+        if (typeof language === 'string') setSavedLang(language)
       }, () => {}))
     }
 
@@ -257,7 +277,7 @@ export function AppDataProvider({ children }) {
 
   const deleteEntry = useCallback(async (projectId, bookId, entryId) => {
     const entry = localEntriesAsc(bookId).find((e) => e.id === entryId)
-    if (!entry) throw new Error('Entry not found')
+    if (!entry) throw new Error(translate('app.errors.entryNotFound'))
 
     const ops = [{ type: 'delete', ref: entryDoc(user.uid, projectId, bookId, entryId) }, touchBook(projectId, bookId)]
 
@@ -266,7 +286,7 @@ export function AppDataProvider({ children }) {
     if (entry.transferId) {
       const counterpart = findTransferCounterpartLocal(entriesNowRef.current, entry)
       if (entry.type === 'transfer_in' && counterpart) {
-        throw new Error('This transfer is managed by the sending book. Delete it there.')
+        throw new Error(translate('app.errors.transferDeleteFromSource'))
       }
       if (counterpart) {
         ops.push({ type: 'delete', ref: entryDoc(user.uid, counterpart.projectId, counterpart.bookId, counterpart.entryId) })
@@ -285,8 +305,8 @@ export function AppDataProvider({ children }) {
   const updateEntry = useCallback(async (projectId, bookId, entryId, payload) => {
     const arr = localEntriesAsc(bookId)
     const existing = arr.find((e) => e.id === entryId)
-    if (!existing) throw new Error('Entry not found')
-    if (existing.transferId) throw new Error('Transfers can only be changed from the sending book.')
+    if (!existing) throw new Error(translate('app.errors.entryNotFound'))
+    if (existing.transferId) throw new Error(translate('app.errors.transferEditFromSource'))
 
     // Strip internal-only keys before writing
     // eslint-disable-next-line no-unused-vars
@@ -385,13 +405,13 @@ export function AppDataProvider({ children }) {
     const uid = user.uid
     const numericAmount = Number(amount)
     if (!Number.isFinite(numericAmount) || numericAmount <= 0) {
-      throw new Error('Enter a valid transfer amount.')
+      throw new Error(translate('app.errors.transferAmount'))
     }
     if (!sourceProjectId || !sourceBookId || !destinationProjectId || !destinationBookId) {
-      throw new Error('Select both source and destination books.')
+      throw new Error(translate('app.errors.transferBooks'))
     }
     if (sourceProjectId === destinationProjectId && sourceBookId === destinationBookId) {
-      throw new Error('Source and destination books must be different.')
+      throw new Error(translate('app.errors.transferSameBook'))
     }
 
     const [sourceProjectSnap, destinationProjectSnap, sourceBookSnap, destinationBookSnap] = await Promise.all([
@@ -400,10 +420,10 @@ export function AppDataProvider({ children }) {
       getDoc(bookDoc(uid, sourceProjectId, sourceBookId)),
       getDoc(bookDoc(uid, destinationProjectId, destinationBookId)),
     ])
-    if (!sourceProjectSnap.exists()) throw new Error('Source project not found.')
-    if (!destinationProjectSnap.exists()) throw new Error('Destination project not found.')
-    if (!sourceBookSnap.exists()) throw new Error('Source book not found.')
-    if (!destinationBookSnap.exists()) throw new Error('Destination book not found.')
+    if (!sourceProjectSnap.exists()) throw new Error(translate('app.errors.sourceProjectMissing'))
+    if (!destinationProjectSnap.exists()) throw new Error(translate('app.errors.destinationProjectMissing'))
+    if (!sourceBookSnap.exists()) throw new Error(translate('app.errors.sourceBookMissing'))
+    if (!destinationBookSnap.exists()) throw new Error(translate('app.errors.destinationBookMissing'))
 
     const sourceProject = sourceProjectSnap.data()
     const destinationProject = destinationProjectSnap.data()
@@ -420,7 +440,7 @@ export function AppDataProvider({ children }) {
     const calculateBookBalance = (entriesList) => roundMoney(entriesList.reduce((acc, e) => acc + signedAmountOf(e), 0))
     const sourceBalance = calculateBookBalance(sourceEntries)
     if (numericAmount > sourceBalance) {
-      throw new Error(`Insufficient balance. Available: ${sourceBalance.toFixed(2)}`)
+      throw new Error(translate('app.errors.insufficientBalance', { available: sourceBalance.toFixed(2) }))
     }
 
     const timestamp = Date.now()
@@ -479,20 +499,20 @@ export function AppDataProvider({ children }) {
     const uid = user.uid
     const numericAmount = Number(amount)
     if (!Number.isFinite(numericAmount) || numericAmount <= 0) {
-      throw new Error('Enter a valid transfer amount.')
+      throw new Error(translate('app.errors.transferAmount'))
     }
 
     const entrySnap = await getDoc(entryDoc(uid, projectId, bookId, entryId))
     const entry = entrySnap.exists() ? entrySnap.data() : null
-    if (!entry?.transferId) throw new Error('Transfer not found.')
-    if (entry.type !== 'transfer_out') throw new Error('Transfers can only be changed from the sending book.')
+    if (!entry?.transferId) throw new Error(translate('app.errors.transferNotFound'))
+    if (entry.type !== 'transfer_out') throw new Error(translate('app.errors.transferEditFromSource'))
 
     const sourceEntries = docsOf(await getDocs(entriesCol(uid, projectId, bookId)))
     const balanceWithoutThis = roundMoney(
       sourceEntries.filter((e) => e.id !== entryId).reduce((acc, e) => acc + signedAmountOf(e), 0)
     )
     if (numericAmount > balanceWithoutThis) {
-      throw new Error(`Insufficient balance. Available: ${balanceWithoutThis.toFixed(2)}`)
+      throw new Error(translate('app.errors.insufficientBalance', { available: balanceWithoutThis.toFixed(2) }))
     }
 
     const counterpart = await findTransferCounterpart(uid, entry)
@@ -694,8 +714,8 @@ function roundMoney(n) {
 function friendlyDbError(err) {
   const msg = err?.message || String(err)
   const code = err?.code || ''
-  if (code === 'permission-denied' || msg.includes('permission')) return 'Permission denied. Please sign in again.'
-  if (code === 'unavailable' || msg.includes('network') || msg.includes('offline')) return 'Network error. Please check your connection.'
+  if (code === 'permission-denied' || msg.includes('permission')) return translate('app.errors.permissionDenied')
+  if (code === 'unavailable' || msg.includes('network') || msg.includes('offline')) return translate('app.errors.network')
   return msg
 }
 

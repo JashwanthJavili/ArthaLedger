@@ -20,12 +20,14 @@ import { useAppData } from '../context/AppDataContext'
 import { isUnlocked, setUnlocked, lockItem } from '../lib/pin'
 import { formatAmount, getCurrencySymbol } from '../lib/format'
 import ProjectAvatar from '../components/common/ProjectAvatar'
+import { useI18n } from '../i18n/core'
 
 /**
  * 3-dot menu for each book card.
  * Delete is blocked if the book is PIN-locked and not yet unlocked.
  */
 function BookMenu({ book, onEdit, onDelete, onDeleteBlocked }) {
+  const { t } = useI18n()
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
   const locked = Boolean(book.pinHash) && !isUnlocked(book.id, book.pinHash)
@@ -47,7 +49,7 @@ function BookMenu({ book, onEdit, onDelete, onDeleteBlocked }) {
       <button
         onClick={(e) => { e.stopPropagation(); setOpen((v) => !v) }}
         className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--text-subtle)] hover:bg-[var(--border-subtle)] hover:text-[var(--text-main)] transition-colors cursor-pointer"
-        aria-label="Book options"
+        aria-label={t('project.bookOptions')}
       >
         <MoreVertical size={15} />
       </button>
@@ -61,7 +63,7 @@ function BookMenu({ book, onEdit, onDelete, onDeleteBlocked }) {
             className="absolute right-0 top-9 z-50 w-44 overflow-hidden rounded-2xl border border-[var(--border-card)] bg-[var(--bg-page)] py-1 shadow-[0_16px_40px_-12px_rgba(0,0,0,0.3)]"
           >
             <button onClick={(e) => { e.stopPropagation(); onEdit(); setOpen(false) }} className={item}>
-              <Pencil size={13} className="text-[var(--text-muted)]" /> Edit book
+              <Pencil size={13} className="text-[var(--text-muted)]" /> {t('project.editBook')}
             </button>
             <div className="my-1 h-px bg-[var(--border-subtle)]" />
             <button
@@ -73,7 +75,7 @@ function BookMenu({ book, onEdit, onDelete, onDeleteBlocked }) {
               }}
               className={`${item} !text-rose-600 dark:!text-rose-400`}
             >
-              {locked ? <Lock size={13} /> : <Trash2 size={13} />} Delete book
+              {locked ? <Lock size={13} /> : <Trash2 size={13} />} {t('project.deleteBook')}
             </button>
           </motion.div>
         )}
@@ -96,6 +98,7 @@ export default function ProjectDetailPage() {
     setPinForBook, setPinForProject,
     transferBetweenBooks,
   } = useAppData()
+  const { t, locale } = useI18n()
   const [modalOpen, setModalOpen] = useState(false)
   const [editingBook, setEditingBook] = useState(null)
   const [deleteTarget, setDeleteTarget] = useState(null)
@@ -107,8 +110,8 @@ export default function ProjectDetailPage() {
   useEffect(() => {
     // `stalled` is only read while loading, so it never needs resetting here
     if (!loading) return
-    const t = setTimeout(() => setStalled(true), 3500)
-    return () => clearTimeout(t)
+    const timer = setTimeout(() => setStalled(true), 3500)
+    return () => clearTimeout(timer)
   }, [loading])
 
   // Transfer state
@@ -218,7 +221,7 @@ export default function ProjectDetailPage() {
 
   const showToast = (msg, type = 'success') => {
     setToast({ msg, type, visible: true })
-    setTimeout(() => setToast((t) => ({ ...t, visible: false })), 2200)
+    setTimeout(() => setToast((s) => ({ ...s, visible: false })), 2200)
   }
 
   if (error) {
@@ -226,14 +229,14 @@ export default function ProjectDetailPage() {
       <LayoutShell>
         <div className="flex flex-col items-center justify-center py-20 gap-4 text-center px-4">
           <div className="rounded-2xl bg-red-50 border border-red-100 p-4 max-w-sm">
-            <p className="text-sm font-semibold text-red-800">Unable to Load Data</p>
+            <p className="text-sm font-semibold text-red-800">{t('dashboard.loadError')}</p>
             <p className="text-xs text-red-600 mt-1">{error}</p>
           </div>
           <button 
             onClick={() => window.location.reload()}
             className="rounded-xl bg-amber-600 px-4 py-2 text-xs font-semibold text-white hover:bg-amber-700 cursor-pointer"
           >
-            Retry Loading
+            {t('dashboard.retryLoading')}
           </button>
         </div>
       </LayoutShell>
@@ -241,13 +244,13 @@ export default function ProjectDetailPage() {
   }
 
   if (!project) {
-    if (loading) return <PageSkeleton slow={stalled} hideHeader label="Opening project" />
+    if (loading) return <PageSkeleton slow={stalled} hideHeader label={t('project.opening')} />
 
     return (
       <LayoutShell>
         <div className="flex flex-col items-center justify-center py-16 gap-3">
-          <p className="text-sm text-stone-500">Project not found.</p>
-          <Link to="/dashboard" className="text-xs text-amber-700 hover:underline">Back to dashboard</Link>
+          <p className="text-sm text-stone-500">{t('project.notFound')}</p>
+          <Link to="/dashboard" className="text-xs text-amber-700 hover:underline">{t('project.backToDashboard')}</Link>
         </div>
       </LayoutShell>
     )
@@ -263,10 +266,10 @@ export default function ProjectDetailPage() {
           </span>
           <div>
             <h2 className="text-lg font-semibold text-[var(--text-main)]">{project.name}</h2>
-            <p className="mt-1 text-xs text-[var(--text-subtle)]">This project is PIN-protected</p>
+            <p className="mt-1 text-xs text-[var(--text-subtle)]">{t('project.pinProtected')}</p>
           </div>
           <Link to="/dashboard" className="text-xs text-[var(--text-subtle)] hover:text-[var(--text-main)] transition-colors">
-            ← Back to dashboard
+            ← {t('project.backToDashboard')}
           </Link>
         </div>
 
@@ -287,7 +290,7 @@ export default function ProjectDetailPage() {
           onRehash={(hash, length) => setPinForProject(projectId, hash, length)}
           onRemovePin={async () => {
             await setPinForProject(projectId, null)
-            showToast('PIN removed')
+            showToast(t('project.toast.pinRemoved'))
           }}
         />
       </LayoutShell>
@@ -314,27 +317,27 @@ export default function ProjectDetailPage() {
       <div className="mx-auto max-w-2xl space-y-5 pb-28">
         {loading && stalled && (
           <div className="rounded-2xl border border-[var(--border-card)] bg-[var(--bg-card)] px-4 py-3 text-[11px] text-[var(--text-muted)]">
-            Still syncing — your connection seems slow.
+            {t('dashboard.stillSyncing')}
           </div>
         )}
 
         {/* ── Header ── */}
         <header className="flex items-center gap-3">
-          <Link to="/dashboard" aria-label="Back to home" className={iconBtn + ' !text-[var(--text-main)]'}>
+          <Link to="/dashboard" aria-label={t('project.backToHome')} className={iconBtn + ' !text-[var(--text-main)]'}>
             <ArrowLeft size={17} />
           </Link>
           <ProjectAvatar project={project} className="h-11 w-11 rounded-2xl" iconSize={20} />
           <div className="min-w-0 flex-1">
             <h1 className="font-serif-luxury truncate text-[23px] font-semibold leading-[1.15] tracking-[-0.01em] text-[var(--text-main)]">{project.name}</h1>
             <p className="font-serif-luxury mt-0.5 truncate text-[13.5px] italic text-[var(--text-muted)]">
-              {project.description || `${books.length} ${books.length === 1 ? 'book' : 'books'}`}
+              {project.description || t('dashboard.books', { count: books.length })}
             </p>
           </div>
           <button
             onClick={() => setSetPinOpen(true)}
             className={iconBtn}
-            title={project.pinHash ? 'Change or remove PIN' : 'Set PIN lock'}
-            aria-label={project.pinHash ? 'Change or remove PIN' : 'Set PIN lock'}
+            title={project.pinHash ? t('project.changePin') : t('project.setPin')}
+            aria-label={project.pinHash ? t('project.changePin') : t('project.setPin')}
           >
             {project.pinHash ? <Lock size={16} className="text-[var(--gold-primary)]" /> : <Unlock size={16} />}
           </button>
@@ -344,8 +347,8 @@ export default function ProjectDetailPage() {
               else setDeleteProjectConfirm(true)
             }}
             className={iconBtn + ' hover:!text-rose-500 hover:!border-rose-500/40'}
-            title="Delete project"
-            aria-label="Delete project"
+            title={t('dashboard.deleteProject')}
+            aria-label={t('dashboard.deleteProject')}
           >
             <Trash2 size={16} />
           </button>
@@ -354,7 +357,7 @@ export default function ProjectDetailPage() {
         {hasLockedBooks && (
           <div className="flex items-center gap-2.5 rounded-xl border border-[var(--border-card)] bg-[var(--bg-card)] px-3.5 py-2.5">
             <ShieldAlert size={14} className="flex-shrink-0 text-[var(--gold-primary)]" />
-            <p className="text-[11px] text-[var(--text-muted)]">Some books in this project are PIN-protected.</p>
+            <p className="text-[11px] text-[var(--text-muted)]">{t('project.someLocked')}</p>
           </div>
         )}
 
@@ -362,12 +365,12 @@ export default function ProjectDetailPage() {
         {books.length > 0 && (
           <section>
             <div className="mb-2 flex items-center justify-between px-1">
-              <h2 className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[var(--text-subtle)]">Overview</h2>
+              <h2 className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[var(--text-subtle)]">{t('project.overview')}</h2>
               <button
                 onClick={toggleSummary}
                 className="flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-medium text-[var(--text-subtle)] hover:text-[var(--text-main)] hover:bg-[var(--border-subtle)] transition-colors cursor-pointer"
               >
-                {showSummary ? <><EyeOff size={13} /> Hide</> : <><Eye size={13} /> Show</>}
+                {showSummary ? <><EyeOff size={13} /> {t('project.hide')}</> : <><Eye size={13} /> {t('project.show')}</>}
               </button>
             </div>
             {showSummary ? (
@@ -380,7 +383,7 @@ export default function ProjectDetailPage() {
                 />
                 {projectSummary.internalMoved > 0 && (
                   <p className="mt-1.5 px-1 text-[10px] text-[var(--text-subtle)]">
-                    Excludes {symbol}{formatAmount(projectSummary.internalMoved)} moved between books in this project.
+                    {t('project.excludesInternal', { amount: `${symbol}${formatAmount(projectSummary.internalMoved)}` })}
                   </p>
                 )}
               </>
@@ -396,14 +399,14 @@ export default function ProjectDetailPage() {
         <section>
           <div className="mb-2 flex items-center justify-between px-1">
             <h2 className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[var(--text-subtle)]">
-              Books{books.length > 0 ? ` · ${books.length}` : ''}
+              {t('project.books')}{books.length > 0 ? ` · ${books.length}` : ''}
             </h2>
             {books.length > 0 && (
               <button
                 onClick={toggleBookAmounts}
                 className="flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-medium text-[var(--text-subtle)] hover:text-[var(--text-main)] hover:bg-[var(--border-subtle)] transition-colors cursor-pointer"
               >
-                {showBookAmounts ? <><EyeOff size={13} /> Hide amounts</> : <><Eye size={13} /> Show amounts</>}
+                {showBookAmounts ? <><EyeOff size={13} /> {t('project.hideAmounts')}</> : <><Eye size={13} /> {t('project.showAmounts')}</>}
               </button>
             )}
           </div>
@@ -415,12 +418,12 @@ export default function ProjectDetailPage() {
                 <BookOpen size={20} />
               </span>
               <div>
-                <p className="text-sm font-semibold text-[var(--text-main)]">No books yet</p>
-                <p className="mt-1 text-xs text-[var(--text-subtle)]">Create a book to start recording cash in and cash out.</p>
+                <p className="text-sm font-semibold text-[var(--text-main)]">{t('project.empty.title')}</p>
+                <p className="mt-1 text-xs text-[var(--text-subtle)]">{t('project.empty.body')}</p>
               </div>
               <button onClick={() => { setEditingBook(null); setModalOpen(true) }}
                 className="mt-1 rounded-xl bg-[var(--gold-primary)] px-4 py-2.5 text-xs font-semibold text-white hover:bg-[var(--gold-hover)] transition-colors cursor-pointer">
-                Create book
+                {t('project.createBook')}
               </button>
             </motion.div>
           ) : (
@@ -429,7 +432,7 @@ export default function ProjectDetailPage() {
                 const stats = bookStats(book)
                 const isBookLocked = Boolean(book.pinHash) && !isUnlocked(book.id, book.pinHash)
                 const subline = book.description
-                  || `${stats.count} ${stats.count === 1 ? 'entry' : 'entries'}${book.updatedAt ? ` · Updated ${format(new Date(book.updatedAt), 'd MMM')}` : ''}`
+                  || `${t('project.entries', { count: stats.count })}${book.updatedAt ? ` · ${t('dashboard.updated', { date: format(new Date(book.updatedAt), 'd MMM', { locale }) })}` : ''}`
                 return (
                   <motion.div
                     key={book.id}
@@ -474,8 +477,8 @@ export default function ProjectDetailPage() {
                         <button
                           onClick={() => setTransferSource(book)}
                           className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--text-subtle)] hover:bg-[var(--gold-light)] hover:text-[var(--gold-primary)] transition-colors cursor-pointer"
-                          title="Transfer money"
-                          aria-label={`Transfer money from ${book.name}`}
+                          title={t('project.transferMoney')}
+                          aria-label={t('project.transferFrom', { name: book.name })}
                         >
                           <ArrowLeftRight size={15} />
                         </button>
@@ -501,7 +504,7 @@ export default function ProjectDetailPage() {
           onClick={() => { setEditingBook(null); setModalOpen(true) }}
           className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] right-4 sm:right-6 z-30 inline-flex items-center gap-2 rounded-full bg-[var(--gold-primary)] px-5 py-3.5 text-[13px] font-semibold text-white shadow-[0_12px_30px_-8px_rgba(197,160,89,0.6)] hover:bg-[var(--gold-hover)] transition-colors cursor-pointer">
           <Plus size={17} strokeWidth={2.4} />
-          New book
+          {t('project.newBook')}
         </motion.button>
       )}
 
@@ -513,10 +516,10 @@ export default function ProjectDetailPage() {
         onSubmit={async (payload) => {
           if (editingBook) {
             await updateBook(projectId, editingBook.id, payload)
-            showToast('Book updated')
+            showToast(t('project.toast.bookUpdated'))
           } else {
             await createBook(projectId, payload)
-            showToast('Book created 🙏')
+            showToast(t('project.toast.bookCreated'))
           }
         }}
       />
@@ -528,15 +531,15 @@ export default function ProjectDetailPage() {
         kind="book"
         name={deleteTarget?.name}
         stats={deleteTarget ? [
-          { label: 'Transactions', value: String((entriesByBook[deleteTarget.id] || []).length) },
-          { label: 'Balance', value: `${bookStats(deleteTarget).balance < 0 ? "−" : ""}${symbol}${formatAmount(Math.abs(bookStats(deleteTarget).balance))}` },
+          { label: t('dashboard.delete.transactions'), value: String((entriesByBook[deleteTarget.id] || []).length) },
+          { label: t('common.balance'), value: `${bookStats(deleteTarget).balance < 0 ? "−" : ""}${symbol}${formatAmount(Math.abs(bookStats(deleteTarget).balance))}` },
         ] : []}
         pin={deleteTarget?.pinHash && !isUnlocked(deleteTarget.id, deleteTarget.pinHash)
           ? { storedHash: deleteTarget.pinHash, length: deleteTarget.pinLength, guardId: deleteTarget.id }
           : null}
         onConfirm={async () => {
           await deleteBook(projectId, deleteTarget.id)
-          showToast('Book deleted', 'info')
+          showToast(t('project.toast.bookDeleted'), 'info')
         }}
       />
 
@@ -547,17 +550,17 @@ export default function ProjectDetailPage() {
         kind="project"
         name={project?.name}
         stats={[
-          { label: books.length === 1 ? 'Book' : 'Books', value: String(books.length) },
-          { label: 'Transactions', value: String(books.reduce((n, b) => n + (entriesByBook[b.id] || []).length, 0)) },
+          { label: t('dashboard.delete.books', { count: books.length }), value: String(books.length) },
+          { label: t('dashboard.delete.transactions'), value: String(books.reduce((n, b) => n + (entriesByBook[b.id] || []).length, 0)) },
         ]}
-        note="All books and transactions in this project are removed for good."
+        note={t('dashboard.delete.note')}
         pin={verifyProjectPinForDelete && deletePinSource?.pinHash
           ? { storedHash: deletePinSource.pinHash, length: deletePinSource.pinLength, guardId: deletePinSource.id }
           : null}
         onConfirm={async () => {
           await deleteProject(projectId)
           navigate('/dashboard')
-          showToast('Project deleted', 'info')
+          showToast(t('dashboard.toast.deleted'), 'info')
         }}
       />
 
@@ -575,12 +578,12 @@ export default function ProjectDetailPage() {
         onSet={async (hash, length) => {
           setUnlocked(projectId, hash)
           await setPinForProject(projectId, hash, length)
-          showToast(`${length}-digit project PIN set`)
+          showToast(t('project.toast.pinSet', { length }))
         }}
         onRemove={async () => {
           await setPinForProject(projectId, null)
           lockItem(projectId)
-          showToast('Project PIN removed')
+          showToast(t('project.toast.projectPinRemoved'))
         }}
       />
 
@@ -602,7 +605,7 @@ export default function ProjectDetailPage() {
         }}
         onRemovePin={async () => {
           await setPinForBook(projectId, pinTarget.id, null)
-          showToast('PIN removed')
+          showToast(t('project.toast.pinRemoved'))
         }}
       />
 
@@ -625,7 +628,7 @@ export default function ProjectDetailPage() {
         }}
         onRemovePin={async () => {
           await setPinForBook(projectId, pinForDeleteTarget.id, null)
-          showToast('PIN removed')
+          showToast(t('project.toast.pinRemoved'))
         }}
       />
 
@@ -653,7 +656,7 @@ export default function ProjectDetailPage() {
               amount,
               note,
             })
-            showToast(`${symbol}${formatAmount(amount)} transferred`)
+            showToast(t('project.toast.transferred', { amount: `${symbol}${formatAmount(amount)}` }))
             setTransferSource(null)
           }}
         />

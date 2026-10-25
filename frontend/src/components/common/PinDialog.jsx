@@ -1,9 +1,11 @@
 import { createPortal } from 'react-dom'
 import { motion } from 'framer-motion'
 import { X, ChevronLeft } from 'lucide-react'
+import { useI18n } from '../../i18n/core'
 
 /** Shared shell for PIN screens: portal, backdrop, icon, title, back/close. */
 export default function PinDialog({ icon: Icon, iconTone = 'gold', title, subtitle, onClose, onBack, children, footer }) {
+  const { t } = useI18n()
   const tones = {
     gold: 'bg-[var(--gold-light)] text-[var(--gold-primary)]',
     danger: 'bg-rose-500/10 text-rose-600 dark:text-rose-400',
@@ -29,13 +31,13 @@ export default function PinDialog({ icon: Icon, iconTone = 'gold', title, subtit
       >
         <div className="flex items-center justify-between">
           {onBack ? (
-            <button type="button" onClick={onBack} aria-label="Back"
+            <button type="button" onClick={onBack} aria-label={t('common.back')}
               className="flex h-8 w-8 items-center justify-center rounded-full text-[var(--text-muted)] hover:bg-[var(--border-subtle)] transition-colors cursor-pointer">
               <ChevronLeft size={18} />
             </button>
           ) : <span className="h-8 w-8" />}
           {onClose && (
-            <button type="button" onClick={onClose} aria-label="Close"
+            <button type="button" onClick={onClose} aria-label={t('common.close')}
               className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--border-subtle)] text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors cursor-pointer">
               <X size={15} />
             </button>

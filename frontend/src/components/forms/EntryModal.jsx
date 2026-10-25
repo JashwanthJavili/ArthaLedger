@@ -8,15 +8,17 @@ import {
 } from 'lucide-react'
 import CategoryManager from './CategoryManager'
 import { triggerBudgetAlertNotification } from '../../lib/notifications'
+import { useI18n } from '../../i18n/core'
 
+// Labels are looked up at render (`labelKey`); `id` is the stored value.
 const MODES = [
-  { id: 'Cash', label: 'Cash', icon: Wallet },
+  { id: 'Cash', labelKey: 'entry.mode.cash', icon: Wallet },
   { id: 'UPI',  label: 'UPI',  icon: Smartphone },
 ]
 
 const TYPES = [
-  { id: 'income',  label: 'Cash In',  icon: ArrowDownLeft },
-  { id: 'expense', label: 'Cash Out', icon: ArrowUpRight },
+  { id: 'income',  labelKey: 'entry.type.income',  icon: ArrowDownLeft },
+  { id: 'expense', labelKey: 'entry.type.expense', icon: ArrowUpRight },
 ]
 
 const currencyMap = { INR: '₹', USD: '$', EUR: '€', GBP: '£', JPY: '¥', AED: 'د.إ', SGD: 'S$' }
@@ -39,6 +41,7 @@ export default function EntryModal({
   templates = [], onSaveTemplate, onDeleteTemplate,
   budgets = {}, spentByCategory = {},
 }) {
+  const { t } = useI18n()
   // The entry type lives inside the modal so users can flip between
   // Cash In / Cash Out without losing anything they've typed.
   const [entryType,   setEntryType]   = useState(type || 'income')
@@ -170,7 +173,7 @@ export default function EntryModal({
   const isIncome = entryType === 'income'
   // Savings only applies to Cash In; the toggle value is kept if the user flips back.
   const savingsOn = isIncome && isSavings
-  const matchingTemplates = templates.filter(t => t.type === entryType)
+  const matchingTemplates = templates.filter(tpl => tpl.type === entryType)
 
   const hasBudgets = Object.values(budgets || {}).some(b => b?.soft > 0)
   const budgetHint = (() => {
@@ -201,34 +204,34 @@ export default function EntryModal({
       barColor = '#dc2626'
       textClass = 'text-red-600 dark:text-red-400'
       icon = <ShieldAlert size={14} className="flex-shrink-0" />
-      title = `Hard limit crossed by ${fmt(totalAfterEntry - hard)}`
+      title = t('entry.budget.hardTitle', { amount: fmt(totalAfterEntry - hard) })
       message = currentAmount > 0
-        ? `Total after this entry: ${fmt(totalAfterEntry)} — ${fmt(totalAfterEntry - hard)} over the hard limit of ${fmt(hard)}.`
-        : `Already ${fmt(spent - hard)} over the hard limit.`
+        ? t('entry.budget.hardMsgEntry', { total: fmt(totalAfterEntry), over: fmt(totalAfterEntry - hard), hard: fmt(hard) })
+        : t('entry.budget.hardMsg', { amount: fmt(spent - hard) })
     } else if (overSoft) {
       barColor = '#ea580c'
       textClass = 'text-orange-600 dark:text-orange-400'
       icon = <AlertTriangle size={14} className="flex-shrink-0" />
-      title = `${fmt(totalAfterEntry - soft)} over budget`
+      title = t('entry.budget.overTitle', { amount: fmt(totalAfterEntry - soft) })
       message = currentAmount > 0
-        ? `${fmt(remainingBefore)} was remaining. This entry exceeds the budget by ${fmt(remainingAfter)}.`
-        : `Already over budget by ${fmt(remainingBefore)}.`
+        ? t('entry.budget.overMsgEntry', { remaining: fmt(remainingBefore), over: fmt(remainingAfter) })
+        : t('entry.budget.overMsg', { amount: fmt(remainingBefore) })
     } else if (isWarn) {
       barColor = '#d97706'
       textClass = 'text-amber-600 dark:text-amber-400'
       icon = <AlertTriangle size={14} className="flex-shrink-0" />
-      title = `Near limit · ${fmt(remainingAfter)} left${currentAmount > 0 ? ' after this' : ''}`
+      title = t(currentAmount > 0 ? 'entry.budget.nearTitleAfter' : 'entry.budget.nearTitle', { left: fmt(remainingAfter) })
       message = currentAmount > 0
-        ? `${fmt(remainingBefore)} remaining · ${fmt(remainingAfter)} after this entry`
-        : `${fmt(remainingBefore)} remaining this month`
+        ? t('entry.budget.nearMsgEntry', { remaining: fmt(remainingBefore), left: fmt(remainingAfter) })
+        : t('entry.budget.nearMsg', { remaining: fmt(remainingBefore) })
     } else {
       barColor = '#059669'
       textClass = 'text-emerald-600 dark:text-emerald-400'
       icon = <Check size={14} className="flex-shrink-0" />
-      title = `${fmt(remainingAfter)} left this month${currentAmount > 0 ? ' after this' : ''}`
+      title = t(currentAmount > 0 ? 'entry.budget.okTitleAfter' : 'entry.budget.okTitle', { left: fmt(remainingAfter) })
       message = currentAmount > 0
-        ? `Budget ${fmt(soft)} · Spent ${fmt(spent)} · ${fmt(remainingAfter)} left after this entry`
-        : `Budget ${fmt(soft)} · Spent ${fmt(spent)}`
+        ? t('entry.budget.okMsgEntry', { soft: fmt(soft), spent: fmt(spent), left: fmt(remainingAfter) })
+        : t('entry.budget.okMsg', { soft: fmt(soft), spent: fmt(spent) })
     }
 
     return {
@@ -248,20 +251,20 @@ export default function EntryModal({
         text: 'text-violet-600 dark:text-violet-400',
         hero: 'bg-violet-500/[0.07] border-violet-500/25',
         btn: 'bg-violet-600 hover:bg-violet-700 shadow-violet-600/25',
-        caption: 'Amount to savings',
+        caption: t('entry.caption.savings'),
       }
     : isIncome
       ? {
           text: 'text-emerald-600 dark:text-emerald-400',
           hero: 'bg-emerald-500/[0.07] border-emerald-500/25',
           btn: 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/25',
-          caption: 'Amount received',
+          caption: t('entry.caption.received'),
         }
       : {
           text: 'text-rose-600 dark:text-rose-400',
           hero: 'bg-rose-500/[0.07] border-rose-500/25',
           btn: 'bg-rose-600 hover:bg-rose-700 shadow-rose-600/25',
-          caption: 'Amount paid',
+          caption: t('entry.caption.paid'),
         }
 
   const labelCls = 'flex items-center gap-1.5 text-[11px] font-semibold text-[var(--text-muted)] mb-2'
@@ -279,20 +282,15 @@ export default function EntryModal({
 
   const validate = () => {
     const e = {}
-    const missing = []
 
-    if (!amount || Number(amount) <= 0) {
-      e.amount = 'Enter valid amount'
-      missing.push('Amount')
-    }
-    if (!description.trim()) {
-      e.description = 'Enter description'
-      missing.push('Description')
-    }
+    if (!amount || Number(amount) <= 0) e.amount = t('entry.validation.amount')
+    if (!description.trim()) e.description = t('entry.validation.description')
     setErrors(e)
 
-    if (missing.length > 0) {
-      const msg = `Please fill in the required ${missing.length > 1 ? 'fields' : 'field'}: ${missing.join(' & ')}.`
+    if (e.amount || e.description) {
+      const msg = e.amount && e.description
+        ? t('entry.validation.missingBoth')
+        : t(e.amount ? 'entry.validation.missingAmount' : 'entry.validation.missingDescription')
       setValidationAlert(msg)
 
       if (e.amount) {
@@ -463,7 +461,7 @@ export default function EntryModal({
     <motion.div
       role="dialog"
       aria-modal="true"
-      aria-label={initial ? 'Edit transaction' : 'New transaction'}
+      aria-label={initial ? t('entry.editTitle') : t('entry.newTitle')}
       initial={{ x: '8%', opacity: 0 }}
       animate={{ x: 0, opacity: 1 }}
       transition={{ x: { duration: 0.32, ease: [0.16, 1, 0.3, 1] }, opacity: { duration: 0.16 } }}
@@ -474,13 +472,13 @@ export default function EntryModal({
         {/* Top bar: back + Cash In / Cash Out switch */}
         <div className="flex flex-shrink-0 items-center gap-3 px-4 pt-3 pb-1">
           <button
-            type="button" onClick={onClose} aria-label="Back"
+            type="button" onClick={onClose} aria-label={t('common.back')}
             className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border border-[var(--border-card)] bg-[var(--bg-card)] text-[var(--text-main)] active:scale-95 transition-transform cursor-pointer"
           >
             <ChevronLeft size={20} />
           </button>
           <div className="min-w-0 flex-1">
-          <div role="tablist" aria-label="Entry type" className="relative isolate grid grid-cols-2 rounded-2xl bg-[var(--border-subtle)] p-1">
+          <div role="tablist" aria-label={t('entry.type.tabs')} className="relative isolate grid grid-cols-2 rounded-2xl bg-[var(--border-subtle)] p-1">
             {/* Sliding pill — plain x transform, so nothing flies in when the sheet opens */}
             <motion.span
               aria-hidden
@@ -489,7 +487,7 @@ export default function EntryModal({
               transition={{ type: 'spring', stiffness: 500, damping: 40 }}
               className="absolute inset-y-1 left-1 -z-10 w-[calc(50%-4px)] rounded-xl bg-[var(--bg-card)] shadow-[0_1px_3px_rgba(0,0,0,0.12)]"
             />
-            {TYPES.map(({ id, label, icon: Icon }) => {
+            {TYPES.map(({ id, labelKey, icon: Icon }) => {
               const active = entryType === id
               const activeText = id === 'income' ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'
               return (
@@ -504,7 +502,7 @@ export default function EntryModal({
                   }`}
                 >
                   <Icon size={15} strokeWidth={2.2} />
-                  {label}
+                  {t(labelKey)}
                 </button>
               )
             })}
@@ -566,7 +564,7 @@ export default function EntryModal({
                   <button
                     type="button"
                     onClick={() => setValidationAlert(null)}
-                    aria-label="Dismiss"
+                    aria-label={t('entry.dismiss')}
                     className="text-rose-400 hover:text-rose-600 transition-colors cursor-pointer"
                   >
                     <X size={14} />
@@ -580,13 +578,13 @@ export default function EntryModal({
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <span className={labelCls + ' !mb-0'}>
-                    <Zap size={11} /> Quick add
+                    <Zap size={11} /> {t('entry.quickAdd')}
                   </span>
                   <button
                     type="button" onClick={() => setManageTemplates(v => !v)}
                     className="text-[11px] font-medium text-[var(--text-subtle)] hover:text-[var(--text-main)] transition-colors cursor-pointer"
                   >
-                    {manageTemplates ? 'Done' : 'Manage'}
+                    {manageTemplates ? t('common.done') : t('entry.manage')}
                   </button>
                 </div>
                 <div className="flex gap-2 overflow-x-auto pb-1 snap-x snap-mandatory">
@@ -602,7 +600,7 @@ export default function EntryModal({
                         className="px-3 py-2 text-left disabled:opacity-50 cursor-pointer"
                       >
                         <span className="block text-xs font-medium text-[var(--text-main)] leading-tight">
-                          {quickAdding === tpl.id ? 'Adding…' : (tpl.label || tpl.description)}
+                          {quickAdding === tpl.id ? t('entry.adding') : (tpl.label || tpl.description)}
                         </span>
                         <span className="block mt-0.5 text-[11px] tabular-nums text-[var(--text-subtle)] leading-tight">
                           {symbol}{Number(tpl.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}{tpl.subcategory ? ` · ${tpl.subcategory}` : ''}
@@ -613,7 +611,7 @@ export default function EntryModal({
                           type="button"
                           onClick={() => onDeleteTemplate?.(tpl.id)}
                           className="px-2.5 border-l border-[var(--border-subtle)] text-[var(--text-subtle)] hover:text-rose-500 transition-colors cursor-pointer"
-                          title={`Remove ${tpl.label || tpl.description}`}
+                          title={t('entry.removeTemplate', { name: tpl.label || tpl.description })}
                         >
                           <Trash2 size={12} />
                         </button>
@@ -626,7 +624,7 @@ export default function EntryModal({
 
             {/* Description with autocomplete (suggestions float over the form, so its height never changes) */}
             <div className="relative z-30">
-              <label htmlFor="entry-desc" className={labelCls}>Description</label>
+              <label htmlFor="entry-desc" className={labelCls}>{t('entry.description')}</label>
               <input
                 id="entry-desc"
                 ref={descRef}
@@ -637,7 +635,7 @@ export default function EntryModal({
                 onBlur={() => { setDescFocused(false); setActiveSugg(-1) }}
                 onKeyDown={handleDescKeyDown}
                 enterKeyHint="done"
-                placeholder={isIncome ? 'e.g. Salary, Client payment' : 'e.g. Groceries, Rent'}
+                placeholder={isIncome ? t('entry.descPlaceholderIncome') : t('entry.descPlaceholderExpense')}
                 role="combobox"
                 aria-expanded={showSuggestions}
                 aria-controls="entry-desc-suggestions"
@@ -694,12 +692,12 @@ export default function EntryModal({
             {/* Category & Subcategory */}
             <div>
               <div className="flex items-center justify-between mb-2">
-                <span className={labelCls + ' !mb-0'}>Category</span>
+                <span className={labelCls + ' !mb-0'}>{t('common.category')}</span>
                 <button
                   type="button" onClick={() => setShowCatPanel(true)}
                   className="text-[11px] font-medium text-[var(--gold-primary)] hover:text-[var(--gold-hover)] transition-colors cursor-pointer"
                 >
-                  Manage
+                  {t('entry.manage')}
                 </button>
               </div>
 
@@ -770,8 +768,8 @@ export default function EntryModal({
                       })
                     ) : (
                       <span className="text-[11px] text-[var(--text-subtle)]">
-                        No subcategories{category ? ` for ${category}` : ''} ·{' '}
-                        <button type="button" onClick={() => setShowCatPanel(true)} className="font-medium text-[var(--gold-primary)] cursor-pointer">Add</button>
+                        {category ? t('entry.noSubcatsFor', { category }) : t('entry.noSubcats')} ·{' '}
+                        <button type="button" onClick={() => setShowCatPanel(true)} className="font-medium text-[var(--gold-primary)] cursor-pointer">{t('common.add')}</button>
                       </span>
                     )}
                   </motion.div>
@@ -789,7 +787,7 @@ export default function EntryModal({
                           <span className="truncate" title={budgetHint.message}>{budgetHint.title}</span>
                         </span>
                         <span className="flex-shrink-0 text-[11px] font-medium tabular-nums text-[var(--text-muted)]">
-                          {Math.round(budgetHint.pctAfter)}% used
+                          {t('entry.budget.used', { pct: Math.round(budgetHint.pctAfter) })}
                         </span>
                       </div>
                       <div className="mt-2 h-1 overflow-hidden rounded-full bg-[var(--border-subtle)]">
@@ -804,7 +802,7 @@ export default function EntryModal({
                     </>
                   ) : (
                     <p className="flex h-full items-center text-[11px] text-[var(--text-subtle)]">
-                      No monthly budget for {category || 'this category'}
+                      {category ? t('entry.budget.noneFor', { category }) : t('entry.budget.none')}
                     </p>
                   )}
                 </div>
@@ -830,16 +828,16 @@ export default function EntryModal({
               />
               {catSavedToast && (
                 <p className="mt-2 flex items-center gap-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
-                  <Check size={12} /> Categories saved
+                  <Check size={12} /> {t('entry.categoriesSaved')}
                 </p>
               )}
             </div>
 
             {/* Payment mode */}
             <div>
-              <span className={labelCls}>Payment mode</span>
+              <span className={labelCls}>{t('entry.mode.label')}</span>
               <div className="grid grid-cols-2 gap-1 rounded-xl bg-[var(--border-subtle)] p-1">
-                {MODES.map(({ id, label, icon: Icon }) => {
+                {MODES.map(({ id, label, labelKey, icon: Icon }) => {
                   const active = mode === id
                   return (
                     <button key={id} type="button" onClick={() => setMode(id)}
@@ -850,7 +848,7 @@ export default function EntryModal({
                       }`}
                     >
                       <Icon size={14} strokeWidth={active ? 2.2 : 1.8} />
-                      {label}
+                      {labelKey ? t(labelKey) : label}
                     </button>
                   )
                 })}
@@ -867,9 +865,9 @@ export default function EntryModal({
                 aria-expanded={showMore}
                 className="w-full flex items-center justify-between gap-3 px-4 py-3 text-left cursor-pointer"
               >
-                <span className="text-xs font-semibold text-[var(--text-main)]">More details</span>
+                <span className="text-xs font-semibold text-[var(--text-main)]">{t('entry.more.title')}</span>
                 <span className="flex items-center gap-2 text-[11px] text-[var(--text-subtle)]">
-                  {!showMore && (savingsOn ? 'Savings on' : isIncome ? 'Savings, group, notes' : 'Group, notes, template')}
+                  {!showMore && (savingsOn ? t('entry.more.savingsOn') : isIncome ? t('entry.more.incomeHint') : t('entry.more.expenseHint'))}
                   <ChevronDown size={16} className={`transition-transform ${showMore ? 'rotate-180' : ''}`} />
                 </span>
               </button>
@@ -878,38 +876,38 @@ export default function EntryModal({
                 <div className="px-4 pb-4 pt-3 space-y-4 border-t border-[var(--border-subtle)]">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <label htmlFor="entry-group" className={labelCls}><Compass size={11} /> Expense group</label>
+                      <label htmlFor="entry-group" className={labelCls}><Compass size={11} /> {t('entry.more.group')}</label>
                       <select
                         id="entry-group"
                         value={tripId}
                         onChange={e => setTripId(e.target.value)}
                         className={fieldCls + ' bg-[var(--bg-page)] cursor-pointer'}
                       >
-                        <option value="">None</option>
+                        <option value="">{t('common.none')}</option>
                         {trips.map(g => (
                           <option key={g.id} value={g.id}>{g.name}</option>
                         ))}
                       </select>
                     </div>
                     <div>
-                      <label htmlFor="entry-by" className={labelCls}><User size={11} /> Entered by</label>
+                      <label htmlFor="entry-by" className={labelCls}><User size={11} /> {t('entry.more.enteredBy')}</label>
                       <input
                         id="entry-by"
                         value={enteredBy}
                         onChange={e => setEnteredBy(e.target.value)}
-                        placeholder="Optional"
+                        placeholder={t('common.optional')}
                         className={fieldCls + ' bg-[var(--bg-page)]'}
                       />
                     </div>
                   </div>
 
                   <div>
-                    <label htmlFor="entry-notes" className={labelCls}><FileText size={11} /> Notes</label>
+                    <label htmlFor="entry-notes" className={labelCls}><FileText size={11} /> {t('entry.more.notes')}</label>
                     <textarea
                       id="entry-notes"
                       value={notes}
                       onChange={e => setNotes(e.target.value)}
-                      placeholder="Optional"
+                      placeholder={t('common.optional')}
                       className={fieldCls + ' bg-[var(--bg-page)] resize-none'}
                       rows={2}
                     />
@@ -918,8 +916,8 @@ export default function EntryModal({
                   {isIncome && (
                     <ToggleRow
                       icon={PiggyBank}
-                      title="Mark as savings"
-                      hint="Excluded from spending analytics"
+                      title={t('entry.more.savingsTitle')}
+                      hint={t('entry.more.savingsHint')}
                       checked={isSavings}
                       onChange={() => setIsSavings(v => !v)}
                       activeClass="bg-violet-600"
@@ -930,8 +928,8 @@ export default function EntryModal({
                     <div>
                       <ToggleRow
                         icon={Repeat}
-                        title="Save as recurring template"
-                        hint="Adds this to Quick add (rent, salary, EMI…)"
+                        title={t('entry.more.templateTitle')}
+                        hint={t('entry.more.templateHint')}
                         checked={saveAsTemplate}
                         onChange={() => setSaveAsTemplate(v => !v)}
                         activeClass="bg-[var(--gold-primary)]"
@@ -940,7 +938,7 @@ export default function EntryModal({
                         <input
                           value={templateLabel}
                           onChange={e => setTemplateLabel(e.target.value)}
-                          placeholder={description ? `Label (default: "${description}")` : 'Template label'}
+                          placeholder={description ? t('entry.more.templateLabelDefault', { description }) : t('entry.more.templateLabel')}
                           className={fieldCls + ' bg-[var(--bg-page)] mt-3'}
                         />
                       )}
@@ -956,10 +954,10 @@ export default function EntryModal({
             <button type="submit" disabled={submitting}
                 className={`w-full rounded-2xl py-3.5 text-[13px] font-semibold text-white shadow-lg transition-colors disabled:opacity-60 cursor-pointer ${tone.btn}`}>
                 {submitting
-                  ? 'Saving…'
+                  ? t('common.saving')
                   : initial
-                    ? 'Update Transaction'
-                    : savingsOn ? 'Transfer to Savings' : isIncome ? 'Record Income' : 'Record Expense'}
+                    ? t('entry.submit.update')
+                    : savingsOn ? t('entry.submit.savings') : isIncome ? t('entry.submit.income') : t('entry.submit.expense')}
               </button>
           </div>
         </form>
@@ -995,7 +993,8 @@ function ToggleRow({ icon: Icon, title, hint, checked, onChange, activeClass }) 
 }
 
 const pad2 = n => String(n).padStart(2, '0')
-const WEEKDAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S']
+// Narrow weekday names (Sunday first) in the active locale; 7 Jan 2024 was a Sunday.
+const weekdayNames = intl => Array.from({ length: 7 }, (_, i) => new Date(2024, 0, 7 + i).toLocaleDateString(intl, { weekday: 'narrow' }))
 
 function parseLocal(value) {
   const [datePart = '', timePart = '00:00'] = String(value || '').split('T')
@@ -1015,6 +1014,7 @@ function sameDay(a, b) {
 
 // Separate Date and Time fields; each opens its own inline picker panel.
 function DateTimeField({ value, onChange }) {
+  const { t, intl } = useI18n()
   const selected = parseLocal(value)
   const [panel, setPanel] = useState(null) // 'date' | 'time' | null
   const today = new Date()
@@ -1025,8 +1025,8 @@ function DateTimeField({ value, onChange }) {
   const minutes = selected.getMinutes()
 
   const dateLabel = sameDay(selected, today)
-    ? 'Today'
-    : selected.toLocaleDateString('en-IN', {
+    ? t('common.today')
+    : selected.toLocaleDateString(intl, {
         weekday: 'short', day: 'numeric', month: 'short',
         ...(selected.getFullYear() !== today.getFullYear() ? { year: 'numeric' } : {}),
       })
@@ -1059,13 +1059,13 @@ function DateTimeField({ value, onChange }) {
   return (
     <div>
       <div className="grid grid-cols-2 gap-2">
-        {trigger('date', Calendar, 'Date', dateLabel)}
-        {trigger('time', Clock, 'Time', timeLabel)}
+        {trigger('date', Calendar, t('common.date'), dateLabel)}
+        {trigger('time', Clock, t('common.time'), timeLabel)}
       </div>
 
       <PickerPopup
         open={Boolean(panel)}
-        title={panel === 'date' ? 'Select date' : 'Select time'}
+        title={panel === 'date' ? t('entry.picker.selectDate') : t('entry.picker.selectTime')}
         onClose={() => setPanel(null)}
       >
         {panel === 'date'
@@ -1079,6 +1079,7 @@ function DateTimeField({ value, onChange }) {
 // Rendered in a portal: the entry sheet is transformed by framer-motion,
 // which would otherwise trap `position: fixed` inside it.
 function PickerPopup({ open, title, onClose, children }) {
+  const { t } = useI18n()
   return createPortal(
     <AnimatePresence>
       {open && (
@@ -1113,7 +1114,7 @@ function PickerPopup({ open, title, onClose, children }) {
               <button
                 type="button"
                 onClick={onClose}
-                aria-label="Close"
+                aria-label={t('common.close')}
                 autoFocus
                 className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--border-subtle)] text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors cursor-pointer"
               >
@@ -1130,6 +1131,7 @@ function PickerPopup({ open, title, onClose, children }) {
 }
 
 function PanelFooter({ onNow, nowLabel, onDone }) {
+  const { t } = useI18n()
   return (
     <div className="mt-3 flex items-center justify-between border-t border-[var(--border-subtle)] pt-3">
       <button type="button" onClick={onNow}
@@ -1139,7 +1141,7 @@ function PanelFooter({ onNow, nowLabel, onDone }) {
       {onDone && (
         <button type="button" onClick={onDone}
           className="rounded-xl bg-[var(--text-main)] px-5 py-2 text-xs font-semibold text-[var(--bg-page)] hover:opacity-90 transition-opacity cursor-pointer">
-          Done
+          {t('common.done')}
         </button>
       )}
     </div>
@@ -1147,6 +1149,7 @@ function PanelFooter({ onNow, nowLabel, onDone }) {
 }
 
 function CalendarPanel({ selected, onPick, onDone }) {
+  const { t, intl } = useI18n()
   const [viewMonth, setViewMonth] = useState(() => new Date(selected.getFullYear(), selected.getMonth(), 1))
   const today = new Date()
 
@@ -1173,19 +1176,19 @@ function CalendarPanel({ selected, onPick, onDone }) {
   return (
     <>
       <div className="flex items-center justify-between mb-2">
-        <button type="button" onClick={() => shiftMonth(-1)} aria-label="Previous month" className={navBtn}>
+        <button type="button" onClick={() => shiftMonth(-1)} aria-label={t('entry.picker.prevMonth')} className={navBtn}>
           <ChevronLeft size={16} />
         </button>
         <span className="text-[13px] font-semibold text-[var(--text-main)]">
-          {viewMonth.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })}
+          {viewMonth.toLocaleDateString(intl, { month: 'long', year: 'numeric' })}
         </span>
-        <button type="button" onClick={() => shiftMonth(1)} aria-label="Next month" className={navBtn}>
+        <button type="button" onClick={() => shiftMonth(1)} aria-label={t('entry.picker.nextMonth')} className={navBtn}>
           <ChevronRight size={16} />
         </button>
       </div>
 
       <div className="grid grid-cols-7 text-center">
-        {WEEKDAYS.map((w, i) => (
+        {weekdayNames(intl).map((w, i) => (
           <span key={i} className="py-1 text-[10px] font-semibold text-[var(--text-subtle)]">{w}</span>
         ))}
         {cells.map((day, i) => {
@@ -1212,7 +1215,7 @@ function CalendarPanel({ selected, onPick, onDone }) {
         })}
       </div>
 
-      <PanelFooter onNow={pickToday} nowLabel="Today" />
+      <PanelFooter onNow={pickToday} nowLabel={t('common.today')} />
     </>
   )
 }
@@ -1224,6 +1227,7 @@ const WHEEL_ITEM_H = 40
 const WHEEL_VISIBLE = 5
 
 function TimePanel({ selected, onPick, onDone }) {
+  const { t } = useI18n()
   const hours12 = selected.getHours() % 12 || 12
   const isPM = selected.getHours() >= 12
   const minutes = selected.getMinutes()
@@ -1257,7 +1261,7 @@ function TimePanel({ selected, onPick, onDone }) {
           value={hours12}
           format={h => String(h)}
           onChange={h => setTime(h, minutes, isPM)}
-          label="Hour"
+          label={t('entry.picker.hour')}
         />
         <span className="relative z-10 self-center text-xl font-bold text-[var(--text-subtle)]">:</span>
         <WheelColumn
@@ -1265,18 +1269,18 @@ function TimePanel({ selected, onPick, onDone }) {
           value={minutes}
           format={pad2}
           onChange={m => setTime(hours12, m, isPM)}
-          label="Minute"
+          label={t('entry.picker.minute')}
         />
         <WheelColumn
           items={MERIDIEMS}
           value={isPM ? 'PM' : 'AM'}
           format={v => v}
           onChange={v => setTime(hours12, minutes, v === 'PM')}
-          label="AM or PM"
+          label={t('entry.picker.meridiem')}
         />
       </div>
 
-      <PanelFooter onNow={setNow} nowLabel="Now" onDone={onDone} />
+      <PanelFooter onNow={setNow} nowLabel={t('entry.picker.now')} onDone={onDone} />
     </>
   )
 }

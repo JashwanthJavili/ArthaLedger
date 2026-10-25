@@ -10,12 +10,22 @@ import {
   budgetZone, ZONE_META, ZONE_RANK, topLevelBudgetKeys,
 } from '../../lib/budgets'
 import { compareNewestFirst } from '../../lib/entryOrder'
+import { useI18n } from '../../i18n/core'
+import { Trans } from '../../i18n/Trans'
 
 const card = 'rounded-2xl border border-[var(--border-card)] bg-[var(--bg-card)]'
 const sectionTitle = 'text-[11px] font-semibold uppercase tracking-[0.1em] text-[var(--text-subtle)]'
 const ALERT_STEPS = [70, 80, 90]
 
 const roundSuggestion = (v) => (v >= 1000 ? Math.ceil(v / 100) * 100 : Math.ceil(v / 10) * 10)
+
+const zoneLabel = (t, zone) => ({
+  safe: t('budget.zone.safe'),
+  pace: t('budget.zone.pace'),
+  warning: t('budget.zone.warning'),
+  over: t('budget.zone.over'),
+  hard: t('budget.zone.hard'),
+})[zone]
 
 // ── Small pieces ───────────────────────────────────────────────────────────
 function Ring({ pct, color, size = 58 }) {
@@ -98,13 +108,14 @@ function Sheet({ onClose, label, children, wide = false }) {
 }
 
 function SheetHeader({ title, subtitle, onClose }) {
+  const { t } = useI18n()
   return (
     <div className="flex flex-shrink-0 items-start justify-between gap-3 border-b border-[var(--border-subtle)] px-5 pt-5 pb-4">
       <div className="min-w-0">
         <h3 className="truncate text-[15px] font-semibold text-[var(--text-main)]">{title}</h3>
         {subtitle && <p className="mt-0.5 text-[11px] text-[var(--text-subtle)]">{subtitle}</p>}
       </div>
-      <button type="button" onClick={onClose} aria-label="Close"
+      <button type="button" onClick={onClose} aria-label={t('common.close')}
         className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-[var(--border-subtle)] text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors cursor-pointer">
         <X size={15} />
       </button>
@@ -114,6 +125,7 @@ function SheetHeader({ title, subtitle, onClose }) {
 
 // ── Add / edit dialog ──────────────────────────────────────────────────────
 function BudgetForm({ editingKey, initialCfg, options, usedKeys, expenses, sym, onSave, onClose }) {
+  const { t } = useI18n()
   const [now] = useState(() => new Date())
   const initial = editingKey ? splitBudgetKey(editingKey) : { category: '', sub: null }
   const [category, setCategory] = useState(initial.category)
@@ -129,7 +141,7 @@ function BudgetForm({ editingKey, initialCfg, options, usedKeys, expenses, sym, 
   const key = category ? (sub ? `${category}${SUB_SEP}${sub}` : category) : ''
   const subs = options.find(o => o.name === category)?.subs || []
   const lastMonthKey = offsetMonth(toMonthKey(now), -1)
-  const lastMonthName = monthLabel(lastMonthKey, { month: 'short' })
+  const spentLastMonthLabel = t('budget.spentIn', { month: monthLabel(lastMonthKey, { month: 'short' }) })
 
   // Last month's spend per category, shown next to each option
   const lastMonthByCat = useMemo(() => {
@@ -149,26 +161,26 @@ function BudgetForm({ editingKey, initialCfg, options, usedKeys, expenses, sym, 
 
   const submit = async (e) => {
     e.preventDefault()
-    if (!key) return setErr('Choose a category.')
-    if (INVALID_KEY_RE.test(key)) return setErr('This name has characters (. # $ / [ ]) that can’t be saved. Rename the category first.')
-    if (!editingKey && usedKeys.includes(key)) return setErr(`${key} already has a budget.`)
-    if (softNum <= 0) return setErr('Enter a monthly amount.')
-    if (useHard && hardNum > 0 && hardNum <= softNum) return setErr('The hard limit must be higher than the monthly budget.')
+    if (!key) return setErr(t('budget.errors.chooseCategory'))
+    if (INVALID_KEY_RE.test(key)) return setErr(t('budget.errors.invalidChars'))
+    if (!editingKey && usedKeys.includes(key)) return setErr(t('budget.errors.exists', { name: key }))
+    if (softNum <= 0) return setErr(t('budget.errors.enterAmount'))
+    if (useHard && hardNum > 0 && hardNum <= softNum) return setErr(t('budget.errors.hardTooLow'))
     setSaving(true)
     try {
       await onSave(key, { soft: Math.round(softNum * 100) / 100, hard: hardNum, warnAt: Number(warnAt) || 80 })
       onClose()
     } catch {
-      setErr('Could not save the budget. Check your connection and try again.')
+      setErr(t('budget.errors.saveFailed'))
       setSaving(false)
     }
   }
 
   return (
-    <Sheet onClose={onClose} label={editingKey ? 'Edit budget' : 'New budget'}>
+    <Sheet onClose={onClose} label={editingKey ? t('budget.edit') : t('budget.new')}>
       <SheetHeader
-        title={editingKey ? 'Edit budget' : 'New budget'}
-        subtitle="A monthly spending limit across all your books"
+        title={editingKey ? t('budget.edit') : t('budget.new')}
+        subtitle={t('budget.form.subtitle')}
         onClose={onClose}
       />
       <form onSubmit={submit} className="flex min-h-0 flex-1 flex-col">
@@ -177,7 +189,7 @@ function BudgetForm({ editingKey, initialCfg, options, usedKeys, expenses, sym, 
           {/* ── Amount ── */}
           <div className="text-center">
             <p className="truncate text-[11px] font-medium text-[var(--text-subtle)]">
-              {key ? <>Monthly budget for <span className="font-semibold text-[var(--text-main)]">{key}</span></> : 'Monthly budget'}
+              {key ? <Trans k="budget.form.monthlyBudgetFor" vars={{ name: key }} components={{ b: <span className="font-semibold text-[var(--text-main)]" /> }} /> : t('budget.form.monthlyBudget')}
             </p>
             <label className="mt-1.5 flex items-baseline justify-center gap-1">
               <span className="text-[24px] font-semibold text-[var(--text-subtle)]">{sym}</span>
@@ -185,7 +197,7 @@ function BudgetForm({ editingKey, initialCfg, options, usedKeys, expenses, sym, 
                 type="number" inputMode="decimal" min="0" step="any" value={amount} placeholder="0"
                 onChange={e => { setAmount(e.target.value); setErr('') }}
                 autoFocus={Boolean(editingKey)}
-                aria-label="Monthly budget amount"
+                aria-label={t('budget.form.amountLabel')}
                 style={{ width: `${Math.max(String(amount || '0').length, 1) + 0.6}ch` }}
                 className="no-spin max-w-[70vw] bg-transparent text-center text-[40px] font-bold leading-none tracking-tight tabular-nums text-[var(--text-main)] placeholder:text-[var(--text-subtle)]/50 outline-none"
               />
@@ -193,13 +205,13 @@ function BudgetForm({ editingKey, initialCfg, options, usedKeys, expenses, sym, 
             <div className="mt-2.5 flex min-h-[26px] flex-wrap items-center justify-center gap-2">
               {softNum > 0 && (
                 <span className="text-[12px] text-[var(--text-muted)]">
-                  ≈ <span className="font-semibold text-[var(--text-main)]">{sym}{Math.round(softNum / daysInMonth).toLocaleString('en-IN')}</span> a day
+                  <Trans k="budget.form.perDay" vars={{ amount: `${sym}${Math.round(softNum / daysInMonth).toLocaleString('en-IN')}` }} components={{ b: <span className="font-semibold text-[var(--text-main)]" /> }} />
                 </span>
               )}
               {suggestion > 0 && softNum !== suggestion && (
                 <button type="button" onClick={() => { setAmount(String(suggestion)); setErr('') }}
                   className="rounded-full border border-[var(--border-card)] bg-[var(--bg-card)] px-2.5 py-1 text-[11px] font-medium text-[var(--text-muted)] hover:border-[var(--gold-primary)] hover:text-[var(--text-main)] transition-colors cursor-pointer">
-                  Usually {sym}{suggestion.toLocaleString('en-IN')} · <span className="font-semibold text-[var(--gold-primary)]">Use</span>
+                  <Trans k="budget.form.usually" vars={{ amount: `${sym}${suggestion.toLocaleString('en-IN')}` }} components={{ b: <span className="font-semibold text-[var(--gold-primary)]" /> }} />
                 </button>
               )}
             </div>
@@ -208,8 +220,8 @@ function BudgetForm({ editingKey, initialCfg, options, usedKeys, expenses, sym, 
           {/* ── Category ── */}
           <div className="space-y-2">
             <div className="flex items-center justify-between px-1">
-              <p className={sectionTitle}>Category</p>
-              {!editingKey && options.length > 0 && <span className="text-[11px] text-[var(--text-subtle)]">Spent in {lastMonthName}</span>}
+              <p className={sectionTitle}>{t('common.category')}</p>
+              {!editingKey && options.length > 0 && <span className="text-[11px] text-[var(--text-subtle)]">{spentLastMonthLabel}</span>}
             </div>
 
             {editingKey ? (
@@ -220,13 +232,13 @@ function BudgetForm({ editingKey, initialCfg, options, usedKeys, expenses, sym, 
                 <KeyLabel budgetKey={editingKey} className="text-[13px] font-medium text-[var(--text-main)]" />
               </div>
             ) : options.length === 0 ? (
-              <p className={`${card} px-4 py-4 text-center text-[12px] text-[var(--text-subtle)]`}>Add a category to a book first.</p>
+              <p className={`${card} px-4 py-4 text-center text-[12px] text-[var(--text-subtle)]`}>{t('budget.form.noCategories')}</p>
             ) : (
               <div className={card}>
                 {options.length > 7 && (
                   <div className="border-b border-[var(--border-subtle)] px-4 py-2.5">
                     <input
-                      value={query} onChange={e => setQuery(e.target.value)} placeholder="Search categories"
+                      value={query} onChange={e => setQuery(e.target.value)} placeholder={t('budget.form.searchCategories')}
                       className="w-full bg-transparent text-[13px] text-[var(--text-main)] placeholder:text-[var(--text-subtle)] outline-none"
                     />
                   </div>
@@ -253,7 +265,7 @@ function BudgetForm({ editingKey, initialCfg, options, usedKeys, expenses, sym, 
                           <span className="min-w-0 flex-1">
                             <span className="block truncate text-[13px] font-medium text-[var(--text-main)]">{o.name}</span>
                             <span className="block truncate text-[11px] text-[var(--text-subtle)]">
-                              {taken ? 'Already budgeted' : o.subs.length ? `${o.subs.length} subcategor${o.subs.length === 1 ? 'y' : 'ies'}` : 'No subcategories'}
+                              {taken ? t('budget.form.alreadyBudgeted') : o.subs.length ? t('budget.form.subCount', { count: o.subs.length }) : t('budget.form.noSubs')}
                             </span>
                           </span>
                           <span className="flex-shrink-0 text-[12px] font-medium tabular-nums text-[var(--text-muted)]">
@@ -264,7 +276,7 @@ function BudgetForm({ editingKey, initialCfg, options, usedKeys, expenses, sym, 
                     )
                   })}
                   {filtered.length === 0 && (
-                    <li className="px-4 py-4 text-center text-[12px] text-[var(--text-subtle)]">No category matches “{query}”.</li>
+                    <li className="px-4 py-4 text-center text-[12px] text-[var(--text-subtle)]">{t('budget.form.noMatch', { query })}</li>
                   )}
                 </ul>
               </div>
@@ -277,7 +289,7 @@ function BudgetForm({ editingKey, initialCfg, options, usedKeys, expenses, sym, 
                   initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}
                   transition={{ duration: 0.2 }} className="overflow-hidden"
                 >
-                  <p className="px-1 pt-1 text-[11px] text-[var(--text-subtle)]">Limit to a subcategory (optional)</p>
+                  <p className="px-1 pt-1 text-[11px] text-[var(--text-subtle)]">{t('budget.form.limitToSub')}</p>
                   <div className="flex gap-1.5 overflow-x-auto pt-1.5 pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                     {[null, ...subs].map(s => {
                       const k = s ? `${category}${SUB_SEP}${s}` : category
@@ -290,7 +302,7 @@ function BudgetForm({ editingKey, initialCfg, options, usedKeys, expenses, sym, 
                               ? 'border-[var(--gold-primary)] bg-[var(--gold-light)] font-semibold text-[var(--text-main)]'
                               : 'border-[var(--border-card)] bg-[var(--bg-card)] font-medium text-[var(--text-muted)] hover:text-[var(--text-main)]'
                           }`}>
-                          {s ?? `All of ${category}`}
+                          {s ?? t('budget.form.allOf', { category })}
                         </button>
                       )
                     })}
@@ -302,13 +314,13 @@ function BudgetForm({ editingKey, initialCfg, options, usedKeys, expenses, sym, 
 
           {/* ── Alerts ── */}
           <div className="space-y-2">
-            <p className={`${sectionTitle} px-1`}>Alerts</p>
+            <p className={`${sectionTitle} px-1`}>{t('budget.form.alerts')}</p>
             <div className={`${card} divide-y divide-[var(--border-subtle)]`}>
               <div className="flex items-center justify-between gap-3 px-4 py-3">
                 <div className="min-w-0">
-                  <p className="text-[13px] font-medium text-[var(--text-main)]">Warn me at</p>
+                  <p className="text-[13px] font-medium text-[var(--text-main)]">{t('budget.form.warnAt')}</p>
                   <p className="truncate text-[11px] text-[var(--text-subtle)]">
-                    {softNum > 0 ? `After ${sym}${Math.round(softNum * Number(warnAt) / 100).toLocaleString('en-IN')} is spent` : 'Share of the budget used'}
+                    {softNum > 0 ? t('budget.form.warnAfter', { amount: `${sym}${Math.round(softNum * Number(warnAt) / 100).toLocaleString('en-IN')}` }) : t('budget.form.warnShare')}
                   </p>
                 </div>
                 <div className="relative isolate grid flex-shrink-0 grid-cols-3 rounded-lg bg-[var(--border-subtle)] p-0.5">
@@ -334,9 +346,9 @@ function BudgetForm({ editingKey, initialCfg, options, usedKeys, expenses, sym, 
                   className="flex w-full items-center justify-between gap-3 text-left cursor-pointer">
                   <span className="min-w-0">
                     <span className="flex items-center gap-1.5 text-[13px] font-medium text-[var(--text-main)]">
-                      <ShieldAlert size={13} className="text-[var(--text-subtle)]" /> Hard limit
+                      <ShieldAlert size={13} className="text-[var(--text-subtle)]" /> {t('budget.form.hardLimit')}
                     </span>
-                    <span className="block truncate text-[11px] text-[var(--text-subtle)]">An absolute maximum above the budget</span>
+                    <span className="block truncate text-[11px] text-[var(--text-subtle)]">{t('budget.form.hardHint')}</span>
                   </span>
                   <span className={`relative h-6 w-10 flex-shrink-0 rounded-full transition-colors ${useHard ? 'bg-[var(--gold-primary)]' : 'bg-[var(--border-card)]'}`}>
                     <motion.span
@@ -354,7 +366,7 @@ function BudgetForm({ editingKey, initialCfg, options, usedKeys, expenses, sym, 
                         <span className="text-[13px] text-[var(--text-subtle)]">{sym}</span>
                         <input
                           type="number" inputMode="decimal" min="0" step="any" value={hard}
-                          placeholder={softNum ? `e.g. ${Math.round(softNum * 1.2)}` : 'Amount'}
+                          placeholder={softNum ? t('budget.form.example', { amount: Math.round(softNum * 1.2) }) : t('common.amount')}
                           onChange={e => { setHard(e.target.value); setErr('') }}
                           className="no-spin w-full bg-transparent text-[14px] font-medium tabular-nums text-[var(--text-main)] placeholder:text-[var(--text-subtle)] outline-none"
                         />
@@ -381,8 +393,8 @@ function BudgetForm({ editingKey, initialCfg, options, usedKeys, expenses, sym, 
             className="flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--gold-primary)] py-3 text-[14px] font-semibold text-white hover:bg-[var(--gold-hover)] transition-colors disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed">
             {saving && <Loader2 size={15} className="animate-spin" />}
             {editingKey
-              ? 'Save changes'
-              : key && softNum > 0 ? `Set ${sym}${softNum.toLocaleString('en-IN')} budget` : 'Create budget'}
+              ? t('budget.form.saveChanges')
+              : key && softNum > 0 ? t('budget.form.setAmount', { amount: `${sym}${softNum.toLocaleString('en-IN')}` }) : t('budget.create')}
           </button>
         </div>
       </form>
@@ -392,19 +404,20 @@ function BudgetForm({ editingKey, initialCfg, options, usedKeys, expenses, sym, 
 
 // ── Detail sheet ───────────────────────────────────────────────────────────
 function BudgetDetail({ state, monthKey, progress, transactions, money, bookIdMap, onEdit, onDelete, onOpenEntry, onClose }) {
+  const { t, locale } = useI18n()
   const { key, cfg, spent, projected, zone } = state
   const meta = ZONE_META[zone]
   const left = cfg.soft - spent
   const perDay = progress.isCurrent && progress.daysLeft > 0 && left > 0 ? left / progress.daysLeft : null
 
   const facts = [
-    { label: left >= 0 ? 'Left' : 'Over', value: money(Math.abs(left)), tone: left >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400' },
+    { id: 'left', label: left >= 0 ? t('budget.detail.left') : t('budget.detail.over'), value: money(Math.abs(left)), tone: left >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400' },
     perDay !== null
-      ? { label: 'Per day left', value: money(perDay) }
-      : { label: 'Transactions', value: String(transactions.length) },
+      ? { id: 'perDay', label: t('budget.detail.perDayLeft'), value: money(perDay) }
+      : { id: 'count', label: t('budget.detail.transactions'), value: String(transactions.length) },
     projected !== null
-      ? { label: 'Month-end pace', value: money(projected), tone: projected > cfg.soft ? 'text-amber-600 dark:text-amber-400' : '' }
-      : { label: 'Avg each', value: transactions.length ? money(spent / transactions.length) : '—' },
+      ? { id: 'pace', label: t('budget.detail.monthEndPace'), value: money(projected), tone: projected > cfg.soft ? 'text-amber-600 dark:text-amber-400' : '' }
+      : { id: 'avg', label: t('budget.detail.avgEach'), value: transactions.length ? money(spent / transactions.length) : '—' },
   ]
 
   return (
@@ -415,15 +428,15 @@ function BudgetDetail({ state, monthKey, progress, transactions, money, bookIdMa
           <div className="flex items-center gap-4">
             <Ring pct={cfg.soft > 0 ? (spent / cfg.soft) * 100 : 0} color={meta.color} />
             <div className="min-w-0 flex-1">
-              <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ${meta.pill}`}>{meta.label}</span>
+              <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ${meta.pill}`}>{zoneLabel(t, zone)}</span>
               <p className="mt-1 text-[22px] font-bold leading-tight tabular-nums text-[var(--text-main)]">{money(spent)}</p>
-              <p className="text-[12px] text-[var(--text-subtle)]">of {money(cfg.soft)} budget</p>
+              <p className="text-[12px] text-[var(--text-subtle)]">{t('budget.detail.ofBudget', { amount: money(cfg.soft) })}</p>
             </div>
           </div>
           <div className="mt-4"><Bar spent={spent} soft={cfg.soft} warnAt={cfg.warnAt} color={meta.color} projected={projected} /></div>
           <div className="mt-4 grid grid-cols-3 divide-x divide-[var(--border-subtle)] text-center">
             {facts.map(f => (
-              <div key={f.label} className="px-1">
+              <div key={f.id} className="px-1">
                 <p className="text-[10px] text-[var(--text-subtle)]">{f.label}</p>
                 <p className={`mt-0.5 truncate text-[13px] font-semibold tabular-nums ${f.tone || 'text-[var(--text-main)]'}`}>{f.value}</p>
               </div>
@@ -431,29 +444,29 @@ function BudgetDetail({ state, monthKey, progress, transactions, money, bookIdMa
           </div>
           {cfg.hard > 0 && (
             <div className="mt-4 flex items-center justify-between rounded-xl bg-[var(--border-subtle)] px-3 py-2 text-[12px]">
-              <span className="flex items-center gap-1.5 text-[var(--text-muted)]"><ShieldAlert size={13} /> Hard limit</span>
+              <span className="flex items-center gap-1.5 text-[var(--text-muted)]"><ShieldAlert size={13} /> {t('budget.form.hardLimit')}</span>
               <span className={`font-semibold tabular-nums ${spent > cfg.hard ? 'text-rose-600 dark:text-rose-400' : 'text-[var(--text-main)]'}`}>
-                {money(cfg.hard)}{spent > cfg.hard ? ` · ${money(spent - cfg.hard)} over` : ''}
+                {money(cfg.hard)}{spent > cfg.hard ? ` · ${t('budget.detail.hardOver', { amount: money(spent - cfg.hard) })}` : ''}
               </span>
             </div>
           )}
         </div>
 
         <div className="space-y-2">
-          <p className={`${sectionTitle} px-1`}>Transactions</p>
+          <p className={`${sectionTitle} px-1`}>{t('budget.detail.transactions')}</p>
           {transactions.length === 0 ? (
-            <p className="py-8 text-center text-[12px] text-[var(--text-subtle)]">Nothing spent here in {monthLabel(monthKey, { month: 'long' })}.</p>
+            <p className="py-8 text-center text-[12px] text-[var(--text-subtle)]">{t('budget.detail.nothingSpent', { month: monthLabel(monthKey, { month: 'long' }) })}</p>
           ) : (
             <ul className={`${card} divide-y divide-[var(--border-subtle)]`}>
               {transactions.map(txn => {
                 const book = bookIdMap[txn.bookId]
-                const sub = [format(new Date(txn.timestamp), 'd MMM'), txn.subcategory, book?.bookName].filter(Boolean).join(' · ')
+                const sub = [format(new Date(txn.timestamp), 'd MMM', { locale }), txn.subcategory, book?.bookName].filter(Boolean).join(' · ')
                 return (
                   <li key={txn.id}>
                     <button type="button" onClick={() => onOpenEntry(txn)}
                       className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-[var(--border-subtle)]/60 cursor-pointer first:rounded-t-2xl last:rounded-b-2xl">
                       <span className="min-w-0 flex-1">
-                        <span className="block truncate text-[13px] font-medium text-[var(--text-main)]">{txn.description || 'Expense'}</span>
+                        <span className="block truncate text-[13px] font-medium text-[var(--text-main)]">{txn.description || t('budget.detail.expenseFallback')}</span>
                         <span className="block truncate text-[11px] text-[var(--text-subtle)]">{sub}</span>
                       </span>
                       <span className="flex-shrink-0 text-[13px] font-semibold tabular-nums text-[var(--text-main)]">−{money(txn.amount)}</span>
@@ -468,11 +481,11 @@ function BudgetDetail({ state, monthKey, progress, transactions, money, bookIdMa
       <div className="grid flex-shrink-0 grid-cols-2 gap-2 border-t border-[var(--border-subtle)] px-5 py-4">
         <button type="button" onClick={onDelete}
           className="flex items-center justify-center gap-1.5 rounded-xl border border-[var(--border-card)] py-2.5 text-[13px] font-medium text-rose-600 dark:text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer">
-          <Trash2 size={14} /> Remove
+          <Trash2 size={14} /> {t('common.remove')}
         </button>
         <button type="button" onClick={onEdit}
           className="flex items-center justify-center gap-1.5 rounded-xl bg-[var(--gold-primary)] py-2.5 text-[13px] font-semibold text-white hover:bg-[var(--gold-hover)] transition-colors cursor-pointer">
-          <Pencil size={14} /> Edit budget
+          <Pencil size={14} /> {t('budget.edit')}
         </button>
       </div>
     </Sheet>
@@ -484,6 +497,7 @@ export default function BudgetSection({
   budgets, allExpenseEntries = [], categories = [], sym = '₹', money,
   onSetBudget, onDeleteBudget, onOpenEntry, bookIdMap = {},
 }) {
+  const { t } = useI18n()
   const [now] = useState(() => new Date())
   const currentKey = toMonthKey(now)
   const [monthKey, setMonthKey] = useState(currentKey)
@@ -555,15 +569,15 @@ export default function BudgetSection({
   return (
     <section className="space-y-2">
       <div className="flex items-center justify-between gap-2 px-1">
-        <h2 className={sectionTitle}>Monthly budgets</h2>
+        <h2 className={sectionTitle}>{t('budget.title')}</h2>
         <div className="flex items-center gap-0.5 rounded-full border border-[var(--border-card)] bg-[var(--bg-card)] px-1 py-0.5">
-          <button type="button" className={navBtn} disabled={monthKey <= earliestKey} onClick={() => setMonthKey(k => offsetMonth(k, -1))} aria-label="Previous month">
+          <button type="button" className={navBtn} disabled={monthKey <= earliestKey} onClick={() => setMonthKey(k => offsetMonth(k, -1))} aria-label={t('budget.prevMonth')}>
             <ChevronLeft size={14} />
           </button>
           <span className="min-w-[72px] text-center text-[12px] font-semibold text-[var(--text-main)]">
             {monthLabel(monthKey, { month: 'short', year: 'numeric' })}
           </span>
-          <button type="button" className={navBtn} disabled={monthKey >= currentKey} onClick={() => setMonthKey(k => offsetMonth(k, 1))} aria-label="Next month">
+          <button type="button" className={navBtn} disabled={monthKey >= currentKey} onClick={() => setMonthKey(k => offsetMonth(k, 1))} aria-label={t('budget.nextMonth')}>
             <ChevronRight size={14} />
           </button>
         </div>
@@ -576,14 +590,14 @@ export default function BudgetSection({
               <Target size={20} />
             </span>
             <div>
-              <p className="text-[14px] font-semibold text-[var(--text-main)]">Plan your month</p>
+              <p className="text-[14px] font-semibold text-[var(--text-main)]">{t('budget.empty.title')}</p>
               <p className="mx-auto mt-1 max-w-[260px] text-[12px] leading-relaxed text-[var(--text-subtle)]">
-                Set a spending limit for a category. We'll track it across all your books and warn you early.
+                {t('budget.empty.text')}
               </p>
             </div>
             <button type="button" onClick={() => setForm({ key: null })}
               className="mt-1 flex items-center gap-1.5 rounded-full bg-[var(--gold-primary)] px-4 py-2 text-[13px] font-semibold text-white hover:bg-[var(--gold-hover)] transition-colors cursor-pointer">
-              <Plus size={14} /> Create budget
+              <Plus size={14} /> {t('budget.create')}
             </button>
           </div>
         ) : (
@@ -592,22 +606,22 @@ export default function BudgetSection({
             <div className="flex items-center gap-4 px-5 pt-4 pb-4">
               <Ring pct={overall.budget > 0 ? (overall.spent / overall.budget) * 100 : 0} color={ZONE_META[overall.zone].color} />
               <div className="min-w-0 flex-1">
-                <p className="text-[11px] text-[var(--text-subtle)]">{progress.isCurrent ? 'Spent this month' : `Spent in ${monthLabel(monthKey, { month: 'long' })}`}</p>
+                <p className="text-[11px] text-[var(--text-subtle)]">{progress.isCurrent ? t('budget.spentThisMonth') : t('budget.spentIn', { month: monthLabel(monthKey, { month: 'long' }) })}</p>
                 <p className="truncate text-[20px] font-bold leading-tight tabular-nums text-[var(--text-main)]">
-                  {fmt(overall.spent)} <span className="text-[13px] font-medium text-[var(--text-subtle)]">of {fmt(overall.budget)}</span>
+                  <Trans k="budget.spentOf" vars={{ spent: fmt(overall.spent), budget: fmt(overall.budget) }} components={{ muted: <span className="text-[13px] font-medium text-[var(--text-subtle)]" /> }} />
                 </p>
                 <p className="mt-0.5 truncate text-[12px] text-[var(--text-muted)]">
                   {overall.left < 0
-                    ? <span className="text-rose-600 dark:text-rose-400">{fmt(-overall.left)} over budget</span>
+                    ? <span className="text-rose-600 dark:text-rose-400">{t('budget.overBudget', { amount: fmt(-overall.left) })}</span>
                     : perDay !== null
-                      ? <>{fmt(overall.left)} left · <span className="text-[var(--text-main)]">{fmt(perDay)}/day</span> for {progress.daysLeft} days</>
-                      : <>{fmt(overall.left)} left unspent</>}
+                      ? <Trans k="budget.leftPerDay" vars={{ left: fmt(overall.left), perDay: fmt(perDay), count: progress.daysLeft }} components={{ hl: <span className="text-[var(--text-main)]" /> }} />
+                      : t('budget.leftUnspent', { amount: fmt(overall.left) })}
                 </p>
               </div>
             </div>
             {attention > 0 && (
               <p className="mx-5 mb-3 rounded-xl bg-amber-500/10 px-3 py-2 text-[12px] text-amber-700 dark:text-amber-400">
-                {attention === 1 ? '1 budget needs' : `${attention} budgets need`} attention
+                {t('budget.attention', { count: attention })}
               </p>
             )}
 
@@ -622,15 +636,15 @@ export default function BudgetSection({
                       className="group w-full space-y-2 px-5 py-3.5 text-left transition-colors hover:bg-[var(--border-subtle)]/60 cursor-pointer">
                       <div className="flex items-center gap-2">
                         <KeyLabel budgetKey={s.key} className="flex-1 text-[13px] font-medium text-[var(--text-main)]" />
-                        <span className={`flex-shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${meta.pill}`}>{meta.label}</span>
+                        <span className={`flex-shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${meta.pill}`}>{zoneLabel(t, s.zone)}</span>
                       </div>
                       <Bar spent={s.spent} soft={s.cfg.soft} warnAt={s.cfg.warnAt} color={meta.color} projected={s.projected} />
                       <div className="flex items-center justify-between text-[11px] tabular-nums">
                         <span className="text-[var(--text-muted)]">
-                          <span className="font-semibold text-[var(--text-main)]">{fmt(s.spent)}</span> of {fmt(s.cfg.soft)}
+                          <Trans k="budget.rowSpent" vars={{ spent: fmt(s.spent), budget: fmt(s.cfg.soft) }} components={{ b: <span className="font-semibold text-[var(--text-main)]" /> }} />
                         </span>
                         <span className={left < 0 ? 'font-medium text-rose-600 dark:text-rose-400' : 'text-[var(--text-subtle)]'}>
-                          {left < 0 ? `${fmt(-left)} over` : s.zone === 'pace' ? `Pace ${fmt(s.projected)}` : `${fmt(left)} left`}
+                          {left < 0 ? t('budget.rowOver', { amount: fmt(-left) }) : s.zone === 'pace' ? t('budget.rowPace', { amount: fmt(s.projected) }) : t('budget.rowLeft', { amount: fmt(left) })}
                         </span>
                       </div>
                     </button>
@@ -641,7 +655,7 @@ export default function BudgetSection({
 
             <button type="button" onClick={() => setForm({ key: null })}
               className="flex w-full items-center justify-center gap-1.5 rounded-b-2xl border-t border-[var(--border-subtle)] py-3 text-[13px] font-semibold text-[var(--gold-primary)] hover:bg-[var(--gold-light)] transition-colors cursor-pointer">
-              <Plus size={14} /> New budget
+              <Plus size={14} /> {t('budget.new')}
             </button>
           </>
         )}
@@ -680,8 +694,8 @@ export default function BudgetSection({
           await onDeleteBudget(deleteKey)
           setDetailKey(null)
         }}
-        title="Remove this budget?"
-        message={`The monthly budget for “${deleteKey}” will be removed. Your transactions are not affected.`}
+        title={t('budget.remove.title')}
+        message={t('budget.remove.message', { name: deleteKey })}
         danger
       />
     </section>

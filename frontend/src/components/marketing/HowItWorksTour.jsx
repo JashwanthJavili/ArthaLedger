@@ -5,14 +5,16 @@ import {
   Check, Bell, FolderOpen, BookOpen, PenLine, PieChart,
 } from 'lucide-react'
 import { EASE, GOLD_TINT, card } from './constants'
+import { useI18n } from '../../i18n/core'
 
 const STEP_MS = 6000
 
+// Text lives under landing.how.steps.<id>
 const STEPS = [
-  { Icon: FolderOpen, title: 'Create a project', text: 'A folder for one part of life: Personal, Family or Business.' },
-  { Icon: BookOpen, title: 'Add books inside', text: 'One book for each purpose, each with its own balance.' },
-  { Icon: PenLine, title: 'Record money', text: 'Tap Cash In or Cash Out, type the amount. Done.' },
-  { Icon: PieChart, title: 'See the picture', text: 'Charts and budget alerts, worked out for you.' },
+  { id: 'project', Icon: FolderOpen },
+  { id: 'books', Icon: BookOpen },
+  { id: 'record', Icon: PenLine },
+  { id: 'picture', Icon: PieChart },
 ]
 
 const inr = (n) => `₹${Math.round(n).toLocaleString('en-IN')}`
@@ -54,10 +56,14 @@ function ScreenHeader({ over, title }) {
 /* ─────────────── the four scenes ─────────────── */
 
 function ProjectsScene() {
-  const rows = [['Personal', User, '3 books'], ['Business', Briefcase, '2 books']]
+  const { t } = useI18n()
+  const rows = [
+    [t('landing.cats.personal'), User, t('landing.how.phone.books', { count: 3 })],
+    [t('landing.cats.business'), Briefcase, t('landing.how.phone.books', { count: 2 })],
+  ]
   return (
     <div>
-      <ScreenHeader over="Home" title="Your projects" />
+      <ScreenHeader over={t('landing.how.phone.home')} title={t('landing.how.phone.yourProjects')} />
       <div className="space-y-2 px-4">
         {rows.map(([l, I, c], i) => (
           <motion.div key={l} {...rise(0.1 + i * 0.12)} className="flex items-center gap-3 rounded-2xl px-3 py-2.5" style={card}>
@@ -76,8 +82,8 @@ function ProjectsScene() {
               initial={{ rotate: -20, scale: 0.6 }} animate={{ rotate: 0, scale: 1 }} transition={{ delay: 1.9, type: 'spring', stiffness: 320, damping: 14 }}>
               <Users size={16} className="text-[#D4B26E]" />
             </motion.span>
-            <span className="flex-1 text-[13px] font-semibold" style={{ color: 'var(--text-main)' }}>Family</span>
-            <motion.span {...rise(2.2)} className="rounded-full px-2 py-0.5 text-[10px] font-bold" style={{ background: GOLD_TINT, color: 'var(--text-main)' }}>New</motion.span>
+            <span className="flex-1 text-[13px] font-semibold" style={{ color: 'var(--text-main)' }}>{t('landing.cats.family')}</span>
+            <motion.span {...rise(2.2)} className="rounded-full px-2 py-0.5 text-[10px] font-bold" style={{ background: GOLD_TINT, color: 'var(--text-main)' }}>{t('landing.how.phone.new')}</motion.span>
           </motion.div>
         </motion.div>
         <div className="relative">
@@ -85,7 +91,7 @@ function ProjectsScene() {
             <motion.div className="flex items-center justify-center gap-2 rounded-2xl py-3 text-[12.5px] font-semibold"
               style={{ border: '1.5px dashed var(--gold-primary)', color: 'var(--gold-primary)' }}
               animate={{ scale: [1, 0.95, 1] }} transition={{ delay: 1.15, duration: 0.3 }}>
-              <Plus size={15} /> New project
+              <Plus size={15} /> {t('landing.how.phone.newProject')}
             </motion.div>
           </motion.div>
           <Tap delay={1.1} className="left-1/2 top-1/2 -ml-5 -mt-5 h-10 w-10" />
@@ -96,10 +102,11 @@ function ProjectsScene() {
 }
 
 function BooksScene() {
-  const books = [['Groceries', ShoppingBasket, 4800], ['Rent', HomeIcon, 15000], ['School fees', GraduationCap, 6200]]
+  const { t } = useI18n()
+  const books = [[t('landing.cats.groceries'), ShoppingBasket, 4800], [t('landing.cats.rent'), HomeIcon, 15000], [t('landing.cats.schoolFees'), GraduationCap, 6200]]
   return (
     <div>
-      <ScreenHeader over="Project" title="Family" />
+      <ScreenHeader over={t('landing.how.phone.project')} title={t('landing.cats.family')} />
       <div className="grid grid-cols-2 gap-2 px-4">
         {books.map(([l, I, amt], i) => (
           <motion.div key={l} initial={{ opacity: 0, scale: 0.85, y: 16 }} animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -112,12 +119,12 @@ function BooksScene() {
         ))}
         <motion.div {...rise(1.1)} className="flex flex-col items-center justify-center gap-1 rounded-2xl text-[11.5px] font-semibold"
           style={{ border: '1.5px dashed var(--border-card)', color: 'var(--text-subtle)' }}>
-          <Plus size={16} /> New book
+          <Plus size={16} /> {t('landing.how.phone.newBook')}
         </motion.div>
       </div>
       <motion.div {...rise(1.6)} className="mx-4 mt-3 flex items-center justify-between rounded-2xl px-3.5 py-3 text-white"
         style={{ background: 'linear-gradient(140deg, #2B2620, #17140F)' }}>
-        <span className="text-[10px] uppercase tracking-[0.18em] opacity-70">Project total</span>
+        <span className="text-[10px] uppercase tracking-[0.18em] opacity-70">{t('landing.how.phone.projectTotal')}</span>
         <Roll from={0} to={26000} delay={1.7} className="font-serif-luxury text-[16px] font-semibold" />
       </motion.div>
     </div>
@@ -125,26 +132,27 @@ function BooksScene() {
 }
 
 function RecordScene() {
+  const { t } = useI18n()
   const digits = ['4', '8', '0']
   return (
     <div className="relative h-full">
-      <ScreenHeader over="Family · Book" title="Groceries" />
+      <ScreenHeader over={t('landing.how.phone.familyBook')} title={t('landing.cats.groceries')} />
       <div className="mx-4 rounded-2xl p-3.5 text-white" style={{ background: 'linear-gradient(140deg, #2B2620, #17140F)' }}>
-        <p className="text-[9.5px] uppercase tracking-[0.18em] opacity-70">Money left</p>
+        <p className="text-[9.5px] uppercase tracking-[0.18em] opacity-70">{t('landing.how.phone.moneyLeft')}</p>
         <Roll from={5280} to={4800} delay={3.3} className="font-serif-luxury text-[22px] font-semibold" />
       </div>
       <div className="space-y-1.5 px-4 pt-3">
         <motion.div initial={{ opacity: 0, height: 0, y: -10 }} animate={{ opacity: 1, height: 'auto', y: 0 }} transition={{ delay: 3.1, duration: 0.45, ease: EASE }}>
           <div className="flex items-center gap-2.5 rounded-xl px-2.5 py-2" style={{ ...card, borderColor: 'var(--gold-primary)' }}>
             <span className="flex h-7 w-7 items-center justify-center rounded-full bg-rose-500/12 text-rose-600"><ArrowUpRight size={13} /></span>
-            <span className="flex-1"><span className="block text-[11.5px] font-semibold" style={{ color: 'var(--text-main)' }}>Vegetables</span><span className="block text-[9.5px]" style={{ color: 'var(--text-subtle)' }}>Groceries · now</span></span>
+            <span className="flex-1"><span className="block text-[11.5px] font-semibold" style={{ color: 'var(--text-main)' }}>{t('landing.cats.vegetables')}</span><span className="block text-[9.5px]" style={{ color: 'var(--text-subtle)' }}>{t('landing.how.phone.groceriesNow')}</span></span>
             <span className="text-[11.5px] font-semibold text-rose-600">− ₹480</span>
           </div>
         </motion.div>
-        {[['Milk', '− ₹62', false], ['Refund', '+ ₹300', true]].map(([t, a, isIn]) => (
-          <div key={t} className="flex items-center gap-2.5 rounded-xl px-2.5 py-2" style={card}>
+        {[[t('landing.cats.milk'), '− ₹62', false], [t('landing.cats.refund'), '+ ₹300', true]].map(([label, a, isIn]) => (
+          <div key={a} className="flex items-center gap-2.5 rounded-xl px-2.5 py-2" style={card}>
             <span className={`flex h-7 w-7 items-center justify-center rounded-full ${isIn ? 'bg-emerald-500/12 text-emerald-600' : 'bg-rose-500/12 text-rose-600'}`}>{isIn ? <ArrowDownLeft size={13} /> : <ArrowUpRight size={13} />}</span>
-            <span className="flex-1 text-[11.5px] font-semibold" style={{ color: 'var(--text-main)' }}>{t}</span>
+            <span className="flex-1 text-[11.5px] font-semibold" style={{ color: 'var(--text-main)' }}>{label}</span>
             <span className={`text-[11.5px] font-semibold ${isIn ? 'text-emerald-600' : 'text-rose-600'}`}>{a}</span>
           </div>
         ))}
@@ -155,7 +163,7 @@ function RecordScene() {
         style={{ background: 'var(--bg-card)', borderTop: '1px solid var(--border-card)' }}
         initial={{ y: '105%' }} animate={{ y: ['105%', '0%', '0%', '105%'] }} transition={{ duration: 3.1, times: [0, 0.12, 0.86, 1], delay: 0.2, ease: 'easeInOut' }}>
         <span className="mx-auto mb-3 block h-1 w-9 rounded-full" style={{ background: 'var(--border-card)' }} />
-        <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-rose-600">Cash out</p>
+        <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-rose-600">{t('landing.how.phone.cashOut')}</p>
         <p className="font-serif-luxury mt-1 flex text-[30px] font-semibold leading-none" style={{ color: 'var(--text-main)' }}>
           ₹{digits.map((d, i) => (
             <motion.span key={i} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.8 + i * 0.22, duration: 0.2 }}>{d}</motion.span>
@@ -163,20 +171,20 @@ function RecordScene() {
           <motion.span className="ml-0.5 w-[2px] self-stretch" style={{ background: 'var(--gold-primary)' }} animate={{ opacity: [1, 0, 1] }} transition={{ duration: 0.8, repeat: Infinity }} />
         </p>
         <div className="mt-3 flex flex-wrap gap-1.5">
-          {['Rent', 'Vegetables', 'Fuel'].map((c) => (
+          {['rent', 'vegetables', 'fuel'].map((c) => (
             <motion.span key={c} className="relative rounded-full px-2.5 py-1 text-[10.5px] font-semibold"
               style={{ border: '1px solid var(--border-card)', color: 'var(--text-muted)' }}
-              animate={c === 'Vegetables' ? { background: ['rgba(0,0,0,0)', '#C5A059'], color: ['#7A6F66', '#1F1A14'], borderColor: ['rgba(0,0,0,0.1)', '#C5A059'] } : undefined}
+              animate={c === 'vegetables' ? { background: ['rgba(0,0,0,0)', '#C5A059'], color: ['#7A6F66', '#1F1A14'], borderColor: ['rgba(0,0,0,0.1)', '#C5A059'] } : undefined}
               transition={{ delay: 1.75, duration: 0.2 }}>
-              {c}
-              {c === 'Vegetables' && <Tap delay={1.6} className="left-1/2 top-1/2 -ml-4 -mt-4 h-8 w-8" />}
+              {t(`landing.cats.${c}`)}
+              {c === 'vegetables' && <Tap delay={1.6} className="left-1/2 top-1/2 -ml-4 -mt-4 h-8 w-8" />}
             </motion.span>
           ))}
         </div>
         <div className="relative mt-3">
           <motion.div className="flex items-center justify-center gap-1.5 rounded-full bg-rose-600 py-2.5 text-[12px] font-semibold text-white"
             animate={{ scale: [1, 0.95, 1] }} transition={{ delay: 2.35, duration: 0.25 }}>
-            <Check size={14} /> Save
+            <Check size={14} /> {t('common.save')}
           </motion.div>
           <Tap delay={2.3} className="left-1/2 top-1/2 -ml-5 -mt-5 h-10 w-10" />
         </div>
@@ -186,12 +194,14 @@ function RecordScene() {
 }
 
 function PictureScene() {
-  const cats = [['Rent', 15000, '#C5A059'], ['Groceries', 8400, '#059669'], ['Bills', 5260, '#2563EB'], ['Other', 12600, '#E11D48']]
+  const { t } = useI18n()
+  const cats = [[t('landing.cats.rent'), 15000, '#C5A059'], [t('landing.cats.groceries'), 8400, '#059669'], [t('landing.cats.bills'), 5260, '#2563EB'], [t('landing.cats.other'), 12600, '#E11D48']]
+  const months = t('landing.months.short')
   const total = cats.reduce((s, c) => s + c[1], 0)
   const r = 40, C = 2 * Math.PI * r
   return (
     <div className="relative">
-      <ScreenHeader over="Analytics" title="October" />
+      <ScreenHeader over={t('landing.how.phone.analytics')} title={t('landing.how.phone.october')} />
       <div className="mx-4 flex items-center gap-3 rounded-2xl p-3" style={card}>
         <div className="relative h-[92px] w-[92px] shrink-0">
           <svg viewBox="0 0 100 100" className="h-full w-full -rotate-90" aria-hidden="true">
@@ -206,7 +216,7 @@ function PictureScene() {
             })}
           </svg>
           <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <span className="text-[8.5px] font-semibold uppercase tracking-[0.14em]" style={{ color: 'var(--text-subtle)' }}>Spent</span>
+            <span className="text-[8.5px] font-semibold uppercase tracking-[0.14em]" style={{ color: 'var(--text-subtle)' }}>{t('site.charts.spent')}</span>
             <Roll from={0} to={total} delay={0.3} className="font-serif-luxury text-[13px] font-semibold" />
           </div>
         </div>
@@ -230,7 +240,7 @@ function PictureScene() {
           ))}
         </div>
         <div className="mt-1.5 flex justify-between text-[9px]" style={{ color: 'var(--text-subtle)' }}>
-          {['May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct'].map(m => <span key={m} className="flex-1 text-center">{m}</span>)}
+          {months.map(m => <span key={m} className="flex-1 text-center">{m}</span>)}
         </div>
       </div>
       <motion.div className="mx-4 mt-2.5 flex items-center gap-2.5 rounded-2xl px-3 py-2.5 shadow-lg"
@@ -240,7 +250,7 @@ function PictureScene() {
           animate={{ rotate: [0, -14, 12, -8, 0] }} transition={{ delay: 2.2, duration: 0.7 }}>
           <Bell size={15} />
         </motion.span>
-        <span className="min-w-0"><span className="block text-[11.5px] font-semibold">Groceries at 84%</span><span className="block text-[10px] opacity-70">₹1,600 left for October</span></span>
+        <span className="min-w-0"><span className="block text-[11.5px] font-semibold">{t('landing.how.phone.alert')}</span><span className="block text-[10px] opacity-70">{t('landing.how.phone.alertLeft')}</span></span>
       </motion.div>
     </div>
   )
@@ -290,6 +300,7 @@ function Phone({ step }) {
 }
 
 export default function HowItWorksTour() {
+  const { t } = useI18n()
   const ref = useRef(null)
   const inView = useInView(ref, { margin: '-25% 0px -25% 0px' })
   const reduce = useReducedMotion()
@@ -300,19 +311,21 @@ export default function HowItWorksTour() {
   // Move to the next step when the current one has played
   useEffect(() => {
     if (!playing) return undefined
-    const t = setTimeout(() => setStep((s) => (s + 1) % STEPS.length), STEP_MS)
-    return () => clearTimeout(t)
+    const timer = setTimeout(() => setStep((s) => (s + 1) % STEPS.length), STEP_MS)
+    return () => clearTimeout(timer)
   }, [playing, step])
 
   return (
     <div ref={ref} className="mt-6 grid items-center gap-5 sm:mt-8 sm:gap-8 lg:grid-cols-[1fr_1.05fr] lg:gap-16"
       onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)}>
       {/* steps */}
-      <ol className="order-2 grid grid-cols-4 gap-2 lg:order-1 lg:grid-cols-1 lg:gap-3" aria-label="Steps">
-        {STEPS.map(({ Icon, title, text }, i) => {
+      <ol className="order-2 grid grid-cols-4 gap-2 lg:order-1 lg:grid-cols-1 lg:gap-3" aria-label={t('landing.how.stepsLabel')}>
+        {STEPS.map(({ id, Icon }, i) => {
           const on = step === i
+          const title = t(`landing.how.steps.${id}.title`)
+          const text = t(`landing.how.steps.${id}.text`)
           return (
-            <li key={title}>
+            <li key={id}>
               <button type="button" onClick={() => setStep(i)} aria-current={on ? 'step' : undefined}
                 className="relative w-full overflow-hidden rounded-2xl p-2.5 text-left transition-colors lg:p-5"
                 style={{ background: on ? 'var(--bg-card)' : 'transparent', border: `1px solid ${on ? 'var(--border-card)' : 'transparent'}`, boxShadow: on ? '0 24px 50px -36px rgba(43,38,32,0.5)' : 'none' }}>
@@ -322,7 +335,7 @@ export default function HowItWorksTour() {
                     <Icon size={18} />
                   </span>
                   <div className="min-w-0 text-center lg:text-left">
-                    <p className="hidden text-[11px] font-semibold uppercase tracking-[0.16em] lg:block" style={{ color: 'var(--text-subtle)' }}>Step {i + 1}</p>
+                    <p className="hidden text-[11px] font-semibold uppercase tracking-[0.16em] lg:block" style={{ color: 'var(--text-subtle)' }}>{t('landing.how.step', { n: i + 1 })}</p>
                     <p className="text-[11px] font-semibold leading-tight sm:text-[12.5px] lg:mt-0.5 lg:text-[17px]" style={{ color: on ? 'var(--text-main)' : 'var(--text-muted)' }}>{title}</p>
                     <AnimatePresence initial={false}>
                       {on && (
@@ -356,7 +369,7 @@ export default function HowItWorksTour() {
         <AnimatePresence mode="wait">
           <motion.p key={step} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.25 }}
             className="mx-auto mt-6 max-w-xs text-center text-[14.5px] leading-relaxed lg:hidden" style={{ color: 'var(--text-muted)' }}>
-            <span className="font-semibold" style={{ color: 'var(--text-main)' }}>{step + 1}. {STEPS[step].title}.</span> {STEPS[step].text}
+            <span className="font-semibold" style={{ color: 'var(--text-main)' }}>{step + 1}. {t(`landing.how.steps.${STEPS[step].id}.title`)}.</span> {t(`landing.how.steps.${STEPS[step].id}.text`)}
           </motion.p>
         </AnimatePresence>
       </div>

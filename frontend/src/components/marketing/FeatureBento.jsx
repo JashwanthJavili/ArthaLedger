@@ -4,6 +4,7 @@ import {
   ShoppingBasket, Fuel, Home as HomeIcon, Wallet,
 } from 'lucide-react'
 import { EASE, GOLD_TINT, card } from './constants'
+import { useI18n } from '../../i18n/core'
 
 const view = { once: true, margin: '-40px' }
 
@@ -26,13 +27,14 @@ function Tile({ title, line, children, className = '', delay = 0 }) {
 }
 
 function ProjectsArt() {
-  const books = [['Groceries', ShoppingBasket], ['Rent', HomeIcon], ['Fuel', Fuel]]
+  const { t } = useI18n()
+  const books = [[t('landing.cats.groceries'), ShoppingBasket], [t('landing.cats.rent'), HomeIcon], [t('landing.cats.fuel'), Fuel]]
   return (
     <div className="flex w-full max-w-[300px] items-center gap-3">
       <motion.div initial={{ scale: 0.8, opacity: 0 }} whileInView={{ scale: 1, opacity: 1 }} viewport={view} transition={{ duration: 0.5, ease: EASE }}
         className="flex h-16 w-16 shrink-0 flex-col items-center justify-center rounded-2xl text-white" style={{ background: 'linear-gradient(140deg, #2B2620, #17140F)' }}>
         <FolderOpen size={20} className="text-[#D4B26E]" />
-        <span className="mt-1 text-[9.5px] font-semibold">Family</span>
+        <span className="mt-1 text-[9.5px] font-semibold">{t('landing.cats.family')}</span>
       </motion.div>
       <svg width="28" height="80" viewBox="0 0 28 80" className="shrink-0" aria-hidden="true">
         {[12, 40, 68].map((y, i) => (
@@ -55,6 +57,7 @@ function ProjectsArt() {
 }
 
 function BudgetArt() {
+  const { t } = useI18n()
   const r = 38, C = 2 * Math.PI * r
   return (
     <div className="relative h-[104px] w-[104px]">
@@ -65,15 +68,16 @@ function BudgetArt() {
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
         <span className="font-serif-luxury text-[1.5rem] font-semibold leading-none" style={{ color: 'var(--text-main)' }}>84%</span>
-        <span className="text-[10px] font-semibold text-amber-600">Groceries</span>
+        <span className="text-[10px] font-semibold text-amber-600">{t('landing.cats.groceries')}</span>
       </div>
       <motion.span initial={{ opacity: 0, scale: 0.6 }} whileInView={{ opacity: 1, scale: 1 }} viewport={view} transition={{ delay: 1.4, type: 'spring', stiffness: 400, damping: 18 }}
-        className="absolute -right-3 -top-1 rounded-full bg-amber-500 px-2 py-0.5 text-[10px] font-bold text-white shadow">Heads-up</motion.span>
+        className="absolute -right-3 -top-1 rounded-full bg-amber-500 px-2 py-0.5 text-[10px] font-bold text-white shadow">{t('landing.features.headsUp')}</motion.span>
     </div>
   )
 }
 
 function GroupsArt() {
+  const { t } = useI18n()
   const items = [[Plane, -74, -38], [Hotel, 74, -34], [Utensils, -68, 38], [Car, 70, 40]]
   return (
     <div className="relative h-[120px] w-full max-w-[240px]">
@@ -88,7 +92,7 @@ function GroupsArt() {
       <motion.div className="absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center rounded-2xl px-3.5 py-2 text-white shadow-lg"
         style={{ background: 'linear-gradient(140deg, #2B2620, #17140F)' }}
         initial={{ scale: 0.6, opacity: 0 }} whileInView={{ scale: 1, opacity: 1 }} viewport={view} transition={{ delay: 1.1, type: 'spring', stiffness: 300, damping: 20 }}>
-        <span className="text-[9px] uppercase tracking-[0.18em] opacity-70">Goa trip</span>
+        <span className="text-[9px] uppercase tracking-[0.18em] opacity-70">{t('landing.features.goaTrip')}</span>
         <span className="font-serif-luxury text-[15px] font-semibold">₹18,450</span>
       </motion.div>
     </div>
@@ -113,6 +117,7 @@ function LockArt() {
 }
 
 function ReminderArt() {
+  const { t } = useI18n()
   return (
     <motion.div className="flex w-full max-w-[240px] items-center gap-2.5 rounded-2xl px-3 py-2.5 shadow-[0_14px_30px_-18px_rgba(0,0,0,0.4)]"
       style={card} initial={{ y: -24, opacity: 0 }} whileInView={{ y: 0, opacity: 1 }} viewport={view} transition={{ delay: 0.2, type: 'spring', stiffness: 260, damping: 20 }}>
@@ -121,8 +126,8 @@ function ReminderArt() {
         <Bell size={16} />
       </motion.span>
       <span className="min-w-0">
-        <span className="block text-[12px] font-semibold" style={{ color: 'var(--text-main)' }}>ArthaLedger · 9:00 PM</span>
-        <span className="block truncate text-[11.5px]" style={{ color: 'var(--text-muted)' }}>Time to note today&rsquo;s spends</span>
+        <span className="block text-[12px] font-semibold" style={{ color: 'var(--text-main)' }}>{t('landing.features.reminderTime')}</span>
+        <span className="block truncate text-[11.5px]" style={{ color: 'var(--text-muted)' }}>{t('landing.features.reminderText')}</span>
       </span>
     </motion.div>
   )
@@ -158,10 +163,11 @@ function OfflineArt() {
 }
 
 function TransferArt() {
+  const { t } = useI18n()
   const reduce = useReducedMotion()
   return (
     <div className="relative flex w-full max-w-[240px] items-center justify-between">
-      {['Savings', 'Wallet'].map((l, i) => (
+      {[t('landing.cats.savings'), t('landing.cats.wallet')].map((l, i) => (
         <div key={l} className="z-10 flex flex-col items-center gap-1">
           <span className="flex h-11 w-11 items-center justify-center rounded-2xl" style={{ background: GOLD_TINT, color: 'var(--gold-primary)' }}>
             {i ? <Wallet size={18} /> : <BookOpen size={18} />}
@@ -180,17 +186,19 @@ function TransferArt() {
 }
 
 export default function FeatureBento() {
+  const { t } = useI18n()
+  const tile = (id) => ({ title: t(`landing.features.tiles.${id}.title`), line: t(`landing.features.tiles.${id}.line`) })
   return (
     <div className="mt-12 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-      <Tile className="sm:col-span-2" title="Projects and books" line="A folder for each part of life" delay={0}><ProjectsArt /></Tile>
-      <Tile title="Budgets" line="A heads-up before it runs out" delay={0.05}><BudgetArt /></Tile>
-      <Tile title="Reminders" line="A nudge, morning to night" delay={0.1}><ReminderArt /></Tile>
-      <Tile title="Groups" line="One total for a trip or event" delay={0}><GroupsArt /></Tile>
-      <Tile title="PIN lock" line="Keep a book to yourself" delay={0.05}><LockArt /></Tile>
-      <Tile className="sm:col-span-2" title="Move money" line="Transfer between books" delay={0.1}><TransferArt /></Tile>
-      <Tile title="Reports" line="Download as PDF or Excel" delay={0}><ReportArt /></Tile>
-      <Tile title="Works offline" line="Saved when you are back online" delay={0.05}><OfflineArt /></Tile>
-      <Tile className="sm:col-span-2" title="Charts and categories" line="See where every rupee went" delay={0.1}>
+      <Tile className="sm:col-span-2" {...tile('projects')} delay={0}><ProjectsArt /></Tile>
+      <Tile {...tile('budgets')} delay={0.05}><BudgetArt /></Tile>
+      <Tile {...tile('reminders')} delay={0.1}><ReminderArt /></Tile>
+      <Tile {...tile('groups')} delay={0}><GroupsArt /></Tile>
+      <Tile {...tile('pin')} delay={0.05}><LockArt /></Tile>
+      <Tile className="sm:col-span-2" {...tile('move')} delay={0.1}><TransferArt /></Tile>
+      <Tile {...tile('reports')} delay={0}><ReportArt /></Tile>
+      <Tile {...tile('offline')} delay={0.05}><OfflineArt /></Tile>
+      <Tile className="sm:col-span-2" {...tile('charts')} delay={0.1}>
         <div className="flex h-[110px] w-full max-w-[300px] items-end gap-2" aria-hidden="true">
           {[45, 70, 52, 88, 60, 96, 74].map((h, i) => (
             <motion.span key={i} className="flex-1 rounded-t-lg" style={{ background: i === 5 ? 'var(--gold-primary)' : 'color-mix(in srgb, var(--gold-primary) 28%, transparent)' }}

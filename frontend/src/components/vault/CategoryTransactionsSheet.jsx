@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, Receipt } from 'lucide-react'
+import { useI18n } from '../../i18n/core'
 
 /**
  * Bottom sheet (mobile) / centered dialog (desktop) listing one category's
@@ -10,6 +11,7 @@ import { X, Receipt } from 'lucide-react'
 export default function CategoryTransactionsSheet({
   open, category, transactions, bookDetailsMap, periodLabel, formatMoney, onClose, onOpenEntry,
 }) {
+  const { t, intl } = useI18n()
   useEffect(() => {
     if (!open) return undefined
     const onKey = (e) => { if (e.key === 'Escape') onClose() }
@@ -18,7 +20,7 @@ export default function CategoryTransactionsSheet({
   }, [open, onClose])
 
   const isIncome = category?.type === 'income'
-  const total = (transactions || []).reduce((s, t) => s + Number(t.amount || 0), 0)
+  const total = (transactions || []).reduce((s, x) => s + Number(x.amount || 0), 0)
 
   return createPortal(
     <AnimatePresence>
@@ -52,18 +54,18 @@ export default function CategoryTransactionsSheet({
                       ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
                       : 'bg-rose-500/10 text-rose-600 dark:text-rose-400'
                   }`}>
-                    {isIncome ? 'Income' : 'Spending'}
+                    {isIncome ? t('common.income') : t('vault.sheet.spending')}
                   </span>
                 </div>
                 <p className="mt-0.5 truncate text-[11px] tabular-nums text-[var(--text-subtle)]">
-                  {transactions.length} transaction{transactions.length !== 1 ? 's' : ''} · {formatMoney(total)}
+                  {t('vault.sheet.transactions', { count: transactions.length })} · {formatMoney(total)}
                   {periodLabel ? ` · ${periodLabel}` : ''}
                 </p>
               </div>
               <button
                 type="button"
                 onClick={onClose}
-                aria-label="Close"
+                aria-label={t('common.close')}
                 className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-[var(--border-subtle)] text-[var(--text-muted)] transition-colors hover:text-[var(--text-main)] cursor-pointer"
               >
                 <X size={15} />
@@ -78,18 +80,18 @@ export default function CategoryTransactionsSheet({
                     <Receipt size={19} />
                   </span>
                   <div>
-                    <p className="text-sm font-semibold text-[var(--text-main)]">No records</p>
-                    <p className="mt-1 text-xs text-[var(--text-subtle)]">Nothing in this category for the selected period.</p>
+                    <p className="text-sm font-semibold text-[var(--text-main)]">{t('vault.sheet.emptyTitle')}</p>
+                    <p className="mt-1 text-xs text-[var(--text-subtle)]">{t('vault.sheet.emptyBody')}</p>
                   </div>
                 </div>
               ) : (
                 <ul className="divide-y divide-[var(--border-subtle)] rounded-2xl border border-[var(--border-card)] bg-[var(--bg-card)]">
                   {transactions.map((txn, idx) => {
                     const date = new Date(txn.timestamp)
-                    const dateStr = date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
-                    const timeStr = date.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })
+                    const dateStr = date.toLocaleDateString(intl, { day: 'numeric', month: 'short', year: 'numeric' })
+                    const timeStr = date.toLocaleTimeString(intl, { hour: '2-digit', minute: '2-digit', hour12: true })
                     const details = bookDetailsMap[txn.bookId]
-                    const meta = [dateStr, timeStr, txn.mode || 'Cash', details?.bookName].filter(Boolean).join(' · ')
+                    const meta = [dateStr, timeStr, !txn.mode || txn.mode === 'Cash' ? t('vault.sheet.cash') : txn.mode, details?.bookName].filter(Boolean).join(' · ')
                     return (
                       <li key={txn.id || idx}>
                         <button
@@ -99,7 +101,7 @@ export default function CategoryTransactionsSheet({
                         >
                           <span className="min-w-0 flex-1">
                             <span className="block truncate text-[13px] font-medium text-[var(--text-main)]">
-                              {txn.description || `Untitled ${isIncome ? 'income' : 'spending'}`}
+                              {txn.description || (isIncome ? t('vault.sheet.untitledIncome') : t('vault.sheet.untitledSpending'))}
                             </span>
                             <span className="block truncate text-[11px] text-[var(--text-subtle)]">{meta}</span>
                           </span>

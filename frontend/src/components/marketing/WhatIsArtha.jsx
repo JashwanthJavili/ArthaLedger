@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence, animate, useInView, useMotionValue, useReducedMotion, useTransform } from 'framer-motion'
 import { Landmark, ShieldCheck, Smartphone, Plus, Minus, X } from 'lucide-react'
 import { EASE, card } from './constants'
+import { useI18n } from '../../i18n/core'
+import { Trans } from '../../i18n/Trans'
 
 /*
  * "What is ArthaLedger?" told as three small animated scenes:
@@ -47,13 +49,15 @@ function Rolling({ value }) {
 
 /* ── scene 1: khata to phone ── */
 
+// [landing.cats id, amount]
 const LINES = [
-  ['Milk', '₹60'],
-  ['Rent', '₹15,000'],
-  ['Salary', '₹42,000'],
+  ['milk', '₹60'],
+  ['rent', '₹15,000'],
+  ['salary', '₹42,000'],
 ]
 
 function KhataScene() {
+  const { t } = useI18n()
   const { ref, step } = useLoop(4, 1400)
   return (
     <div ref={ref} className="relative flex h-full items-center justify-between px-5 sm:px-7">
@@ -62,7 +66,7 @@ function KhataScene() {
         style={{ background: 'linear-gradient(150deg, #B42334, #7E1626)', boxShadow: '0 18px 30px -16px rgba(80,20,30,0.55), inset 0 0 0 4px rgba(212,178,110,0.55), inset 0 0 0 6px #8E1A2B' }}
         animate={{ rotate: step === 0 ? -6 : -3 }} transition={{ duration: 0.8, ease: EASE }}>
         <span className="absolute inset-y-0 left-2 w-[3px] rounded-full bg-black/25" />
-        <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 font-serif-luxury text-[13px] font-semibold italic text-[#E0C084]">Khata</span>
+        <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 font-serif-luxury text-[13px] font-semibold italic text-[#E0C084]">{t('landing.what.khata')}</span>
         <span className="absolute -right-1 top-1/2 h-[3px] w-5 -translate-y-1/2 rounded-full bg-[#E0C084]" />
       </motion.div>
 
@@ -75,7 +79,7 @@ function KhataScene() {
               initial={{ x: '-30%', opacity: 0, rotate: -8, y: 10 }}
               animate={{ x: ['-30%', '60%', '130%'], opacity: [0, 1, 0], rotate: [-8, 0, 0], y: [10, -18, 0] }}
               transition={{ duration: 1.1, ease: 'easeInOut' }}>
-              {LINES[step - 1][0]} {LINES[step - 1][1]}
+              {t(`landing.cats.${LINES[step - 1][0]}`)} {LINES[step - 1][1]}
             </motion.span>
           )}
         </AnimatePresence>
@@ -88,7 +92,7 @@ function KhataScene() {
           {LINES.map(([l, a], i) => (
             <motion.div key={l} className="flex items-center justify-between rounded-md bg-white px-1.5 py-1 text-[8.5px] font-semibold text-[#3A2F22] shadow-sm"
               initial={false} animate={{ opacity: step > i ? 1 : 0, y: step > i ? 0 : 6 }} transition={{ duration: 0.4, delay: step > i ? 0.75 : 0 }}>
-              <span>{l}</span><span className={i === 2 ? 'text-emerald-600' : 'text-rose-600'}>{a}</span>
+              <span>{t(`landing.cats.${l}`)}</span><span className={i === 2 ? 'text-emerald-600' : 'text-rose-600'}>{a}</span>
             </motion.div>
           ))}
         </div>
@@ -99,13 +103,15 @@ function KhataScene() {
 
 /* ── scene 2: you add, it adds up ── */
 
+// `id` picks the label from landing.cats
 const ADDS = [
-  { label: 'Salary', amount: 42000, in: true },
-  { label: 'Rent', amount: -15000 },
-  { label: 'Groceries', amount: -3400 },
+  { id: 'salary', amount: 42000, in: true },
+  { id: 'rent', amount: -15000 },
+  { id: 'groceries', amount: -3400 },
 ]
 
 function SumScene() {
+  const { t } = useI18n()
   const { ref, step } = useLoop(5, 1300)
   const shown = Math.min(step, ADDS.length)
   const total = ADDS.slice(0, shown).reduce((s, a) => s + a.amount, 0)
@@ -113,20 +119,20 @@ function SumScene() {
     <div ref={ref} className="flex h-full flex-col justify-center px-5 sm:px-7">
       <div className="space-y-1.5">
         {ADDS.map((a, i) => (
-          <motion.div key={a.label} className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-[13px] shadow-[0_6px_14px_-12px_rgba(0,0,0,0.35)]"
+          <motion.div key={a.id} className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-[13px] shadow-[0_6px_14px_-12px_rgba(0,0,0,0.35)]"
             style={{ ...card, color: MAIN }}
             initial={false} animate={{ opacity: i < shown ? 1 : 0.3, x: i < shown ? 0 : -10 }} transition={{ duration: 0.45, ease: EASE }}>
             <span className={`flex h-5 w-5 items-center justify-center rounded-full ${a.in ? 'bg-emerald-500/12 text-emerald-600' : 'bg-rose-500/12 text-rose-600'}`}>
               {a.in ? <Plus size={11} strokeWidth={3} /> : <Minus size={11} strokeWidth={3} />}
             </span>
-            <span className="flex-1">{a.label}</span>
+            <span className="flex-1">{t(`landing.cats.${a.id}`)}</span>
             <span className={`tabular-nums font-semibold ${a.in ? 'text-emerald-600' : 'text-rose-600'}`}>₹{inr(Math.abs(a.amount))}</span>
           </motion.div>
         ))}
       </div>
       <motion.div className="mt-2.5 h-px origin-left" style={{ background: GOLD }} initial={false} animate={{ scaleX: shown ? 1 : 0.1 }} transition={{ duration: 0.6, ease: EASE }} />
       <div className="mt-2.5 flex items-baseline justify-between px-1">
-        <span className="text-[11px] font-semibold uppercase tracking-[0.16em]" style={{ color: SUBTLE }}>Balance</span>
+        <span className="text-[11px] font-semibold uppercase tracking-[0.16em]" style={{ color: SUBTLE }}>{t('common.balance')}</span>
         <span className="font-serif-luxury text-[26px] font-semibold leading-none" style={{ color: GOLD }}><Rolling value={total} /></span>
       </div>
     </div>
@@ -136,13 +142,14 @@ function SumScene() {
 /* ── scene 3: never touches your bank ── */
 
 function BankScene() {
+  const { t } = useI18n()
   const { ref, step } = useLoop(3, 1600)
   const blocked = step === 2
   return (
     <div ref={ref} className="relative flex h-full items-center justify-between px-6 sm:px-9">
       <div className="flex flex-col items-center gap-2">
         <span className="flex h-14 w-14 items-center justify-center rounded-2xl shadow-[0_10px_22px_-14px_rgba(0,0,0,0.35)]" style={{ ...card, color: MAIN }}><Landmark size={24} /></span>
-        <span className="text-[10.5px] font-semibold uppercase tracking-[0.14em]" style={{ color: SUBTLE }}>Bank</span>
+        <span className="text-[10.5px] font-semibold uppercase tracking-[0.14em]" style={{ color: SUBTLE }}>{t('landing.what.bank')}</span>
       </div>
 
       {/* the connection that never completes */}
@@ -162,25 +169,27 @@ function BankScene() {
         </motion.span>
         <motion.span className="absolute inset-x-0 -bottom-5 text-center text-[11px] font-semibold" style={{ color: GOLD }}
           initial={false} animate={{ opacity: blocked ? 1 : 0, y: blocked ? 0 : 4 }} transition={{ duration: 0.4 }}>
-          No link, ever
+          {t('landing.what.noLink')}
         </motion.span>
       </div>
 
       <div className="flex flex-col items-center gap-2">
         <span className="flex h-14 w-14 items-center justify-center rounded-2xl" style={{ background: 'linear-gradient(135deg, #E0C084, #C5A059)', color: INK }}><Smartphone size={24} /></span>
-        <span className="text-[10.5px] font-semibold uppercase tracking-[0.14em]" style={{ color: SUBTLE }}>You</span>
+        <span className="text-[10.5px] font-semibold uppercase tracking-[0.14em]" style={{ color: SUBTLE }}>{t('landing.what.you')}</span>
       </div>
     </div>
   )
 }
 
+// Text lives under landing.what.chapters.<id>
 const CHAPTERS = [
-  { n: '01', Scene: KhataScene, title: 'Like a khata, but on your phone', text: 'The same idea as the notebook many families use for household accounts, neatly organised into projects and books.' },
-  { n: '02', Scene: SumScene, title: 'You add, it adds up', text: 'Totals, balances and monthly summaries are worked out for you. No spreadsheets, no formulas.' },
-  { n: '03', Scene: BankScene, title: 'Never touches your bank', text: 'ArthaLedger does not connect to your bank, cards or UPI. You decide what to write. Nothing moves your money.' },
+  { n: '01', id: 'khata', Scene: KhataScene },
+  { n: '02', id: 'sum', Scene: SumScene },
+  { n: '03', id: 'bank', Scene: BankScene },
 ]
 
 export default function WhatIsArtha() {
+  const { t } = useI18n()
   const reduce = useReducedMotion()
   return (
     <div className="relative overflow-hidden rounded-[2rem] px-4 py-12 sm:rounded-[2.6rem] sm:px-10 sm:py-16"
@@ -192,15 +201,15 @@ export default function WhatIsArtha() {
 
       <motion.div className="relative mx-auto max-w-2xl text-center"
         initial={reduce ? { opacity: 0 } : { opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: '-60px' }} transition={{ duration: 0.7, ease: EASE }}>
-        <span className="text-[11px] font-semibold uppercase tracking-[0.22em]" style={{ color: GOLD }}>New here?</span>
+        <span className="text-[11px] font-semibold uppercase tracking-[0.22em]" style={{ color: GOLD }}>{t('landing.what.eyebrow')}</span>
         <h2 className="font-serif-luxury mt-3 text-[1.85rem] font-semibold leading-[1.12] tracking-tight sm:text-[2.6rem]" style={{ color: MAIN }}>
-          What is <em className="italic" style={{ color: GOLD }}>ArthaLedger?</em>
+          <Trans k="landing.what.title" components={{ em: <em className="italic" style={{ color: GOLD }} /> }} />
         </h2>
-        <p className="mt-3 text-[15px] leading-relaxed sm:text-base" style={{ color: 'var(--text-muted)' }}>An easy way to keep track of your money, made for everyday life in India.</p>
+        <p className="mt-3 text-[15px] leading-relaxed sm:text-base" style={{ color: 'var(--text-muted)' }}>{t('landing.what.sub')}</p>
       </motion.div>
 
       <div className="relative mt-10 grid gap-4 md:grid-cols-3 md:gap-5">
-        {CHAPTERS.map(({ n, Scene, title, text }, i) => (
+        {CHAPTERS.map(({ n, id, Scene }, i) => (
           <motion.article key={n} className="overflow-hidden rounded-3xl shadow-[0_24px_48px_-36px_rgba(43,38,32,0.45)]"
             style={card}
             initial={reduce ? { opacity: 0 } : { opacity: 0, y: 40, rotateX: 12 }} whileInView={{ opacity: 1, y: 0, rotateX: 0 }}
@@ -210,8 +219,8 @@ export default function WhatIsArtha() {
             </div>
             <div className="p-6">
               <span className="font-serif-luxury text-[13px] italic" style={{ color: GOLD }}>{n}</span>
-              <h3 className="mt-1 text-[17px] font-semibold" style={{ color: MAIN }}>{title}</h3>
-              <p className="mt-2 text-[14px] leading-relaxed" style={{ color: 'var(--text-muted)' }}>{text}</p>
+              <h3 className="mt-1 text-[17px] font-semibold" style={{ color: MAIN }}>{t(`landing.what.chapters.${id}.title`)}</h3>
+              <p className="mt-2 text-[14px] leading-relaxed" style={{ color: 'var(--text-muted)' }}>{t(`landing.what.chapters.${id}.text`)}</p>
             </div>
           </motion.article>
         ))}

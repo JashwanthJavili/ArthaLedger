@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X } from 'lucide-react'
+import { useI18n } from '../../i18n/core'
 
 const TAGLINE_MAX = 80
 
 export default function BookModal({ open, onClose, onSubmit, initial }) {
+  const { t } = useI18n()
   const [name, setName] = useState('')
   // Stored as `description` for backward compatibility; shown to users as "Tagline".
   const [description, setDescription] = useState('')
@@ -48,12 +50,12 @@ export default function BookModal({ open, onClose, onSubmit, initial }) {
         >
           <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-[var(--border-subtle)]">
             <h2 className="text-[15px] font-semibold text-[var(--text-main)]">
-              {initial ? 'Edit book' : 'New book'}
+              {initial ? t('forms.book.editTitle') : t('forms.book.newTitle')}
             </h2>
             <button
               type="button"
               onClick={onClose}
-              aria-label="Close"
+              aria-label={t('common.close')}
               className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--border-subtle)] text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors cursor-pointer"
             >
               <X size={15} />
@@ -62,12 +64,12 @@ export default function BookModal({ open, onClose, onSubmit, initial }) {
 
           <div className="space-y-4 px-5 py-5">
             <div>
-              <label htmlFor="book-name" className="mb-1.5 block text-[11px] font-semibold text-[var(--text-muted)]">Book name</label>
+              <label htmlFor="book-name" className="mb-1.5 block text-[11px] font-semibold text-[var(--text-muted)]">{t('forms.book.name')}</label>
               <input
                 id="book-name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="e.g. Monthly Budget, Savings"
+                placeholder={t('forms.book.namePlaceholder')}
                 className={fieldCls}
                 required
                 autoFocus
@@ -76,7 +78,7 @@ export default function BookModal({ open, onClose, onSubmit, initial }) {
             <div>
               <div className="mb-1.5 flex items-baseline justify-between">
                 <label htmlFor="book-tagline" className="text-[11px] font-semibold text-[var(--text-muted)]">
-                  Tagline <span className="font-normal text-[var(--text-subtle)]">(optional)</span>
+                  {t('forms.tagline')} <span className="font-normal text-[var(--text-subtle)]">{t('forms.optionalParen')}</span>
                 </label>
                 <span className="text-[10px] tabular-nums text-[var(--text-subtle)]">{description.length}/{TAGLINE_MAX}</span>
               </div>
@@ -85,7 +87,7 @@ export default function BookModal({ open, onClose, onSubmit, initial }) {
                 value={description}
                 maxLength={TAGLINE_MAX}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="A short line about this book"
+                placeholder={t('forms.book.taglinePlaceholder')}
                 className={fieldCls}
               />
             </div>
@@ -97,14 +99,14 @@ export default function BookModal({ open, onClose, onSubmit, initial }) {
               onClick={onClose}
               className="flex-1 rounded-xl border border-[var(--border-card)] py-3 text-xs font-semibold text-[var(--text-muted)] hover:bg-[var(--border-subtle)] hover:text-[var(--text-main)] transition-colors cursor-pointer"
             >
-              Cancel
+              {t('common.cancel')}
             </button>
             <button
               type="submit"
               disabled={!name.trim()}
               className="flex-[2] rounded-xl bg-[var(--gold-primary)] py-3 text-xs font-semibold text-white hover:bg-[var(--gold-hover)] disabled:opacity-40 transition-colors cursor-pointer"
             >
-              {initial ? 'Save changes' : 'Create book'}
+              {initial ? t('forms.saveChanges') : t('forms.book.create')}
             </button>
           </div>
         </motion.form>

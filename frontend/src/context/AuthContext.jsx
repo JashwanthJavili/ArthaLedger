@@ -21,6 +21,7 @@ import {
 } from 'firebase/auth'
 import { getDoc, setDoc } from 'firebase/firestore'
 import { deleteAllUserData, userDoc } from '../lib/userData'
+import { translate } from '../i18n/core'
 
 const AuthContext = createContext(null)
 
@@ -29,31 +30,32 @@ export function parseFirebaseError(err) {
   const code = err?.code || ''
   switch (code) {
     case 'auth/email-already-in-use':
-      return 'An account with this email already exists. Please sign in instead.'
+      return translate('auth.errors.emailInUse')
     case 'auth/account-exists-with-different-credential':
-      return 'This email is registered with a different sign-in method (e.g. Google). Please use that method.'
+      return translate('auth.errors.differentCredential')
     case 'auth/invalid-email':
-      return 'Please enter a valid email address.'
+      return translate('auth.errors.invalidEmail')
     case 'auth/weak-password':
-      return 'Password is too weak. Use at least 6 characters.'
+      return translate('auth.errors.weakPassword')
     case 'auth/user-not-found':
-      return 'No account found with this email.'
+      return translate('auth.errors.userNotFound')
     case 'auth/wrong-password':
-      return 'Incorrect password. Please try again.'
+      return translate('auth.errors.wrongPassword')
     case 'auth/invalid-credential':
-      return 'Invalid email or password. Please try again.'
+      return translate('auth.errors.invalidCredential')
     case 'auth/too-many-requests':
-      return 'Too many attempts. Please wait a moment and try again.'
+      return translate('auth.errors.tooManyRequests')
     case 'auth/network-request-failed':
-      return 'Network error. Please check your connection.'
+      return translate('auth.errors.network')
     case 'auth/popup-closed-by-user':
-      return 'Sign-in popup was closed. Please try again.'
+      return translate('auth.errors.popupClosed')
     case 'auth/cancelled-popup-request':
       return '' // silent
     case 'auth/requires-recent-login':
-      return 'For security, please sign out and sign in again before changing your password.'
+      return translate('auth.errors.requiresRecentLogin')
     default:
-      return err?.message || 'Something went wrong. Please try again.'
+      // Raw Firebase messages are English-only; show the generic text instead
+      return (!code && err?.message) || translate('common.somethingWrong')
   }
 }
 
@@ -95,13 +97,13 @@ export function AuthProvider({ children }) {
 
   const sendVerificationEmail = useCallback(async () => {
     const currentUser = auth.currentUser
-    if (!currentUser) throw new Error('No authenticated user.')
+    if (!currentUser) throw new Error(translate('auth.errors.noUser'))
     if (currentUser.emailVerified) return { alreadyVerified: true }
 
     const now = Date.now()
     if (now - lastVerificationSentAt < RESEND_COOLDOWN_MS) {
       const wait = Math.ceil((RESEND_COOLDOWN_MS - (now - lastVerificationSentAt)) / 1000)
-      throw new Error(`Please wait ${wait}s before requesting another email.`)
+      throw new Error(translate('auth.errors.waitBeforeResend', { seconds: wait }))
     }
 
     try {
@@ -150,7 +152,8 @@ export function AuthProvider({ children }) {
       cred = await createUserWithEmailAndPassword(auth, email, password)
     } catch (err) {
       setRegistering(false)
-      throw new Error(parseFirebaseError(err))
+      // Keep the code so the form can tell "email already in use" apart in any language
+      throw Object.assign(new Error(parseFirebaseError(err)), { code: err?.code })
     }
 
     // Set display name
@@ -240,7 +243,7 @@ export function AuthProvider({ children }) {
 
   const changePassword = useCallback(async (oldPassword, newPassword) => {
     const currentUser = auth.currentUser
-    if (!currentUser?.email) throw new Error('No authenticated user found.')
+    if (!currentUser?.email) throw new Error(translate('auth.errors.noUser'))
     try {
       const credential = EmailAuthProvider.credential(currentUser.email, oldPassword)
       await reauthenticateWithCredential(currentUser, credential)
@@ -252,7 +255,7 @@ export function AuthProvider({ children }) {
 
   const verifyPassword = useCallback(async (password) => {
     const currentUser = auth.currentUser
-    if (!currentUser?.email) throw new Error('No authenticated user found.')
+    if (!currentUser?.email) throw new Error(translate('auth.errors.noUser'))
     try {
       const credential = EmailAuthProvider.credential(currentUser.email, password)
       await reauthenticateWithCredential(currentUser, credential)
@@ -263,7 +266,7 @@ export function AuthProvider({ children }) {
 
   const updateUserProfile = useCallback(async ({ displayName, phone, gender, dob, bio }) => {
     const currentUser = auth.currentUser
-    if (!currentUser) throw new Error('No authenticated user found.')
+    if (!currentUser) throw new Error(translate('auth.errors.noUser'))
 
     // Update Firebase Auth display name
     if (displayName?.trim()) {
@@ -289,7 +292,7 @@ export function AuthProvider({ children }) {
         updatedAt: Date.now(),
       } }, { merge: true })
     } catch {
-      throw new Error('Failed to save profile. Please try again.')
+      throw new Error(translate('auth.errors.profileSaveFailed'))
     }
   }, [])
 
@@ -316,11 +319,11 @@ export function AuthProvider({ children }) {
 
   const deleteAccount = useCallback(async (password) => {
     const currentUser = auth.currentUser
-    if (!currentUser) throw new Error('No authenticated user found.')
+    if (!currentUser) throw new Error(translate('auth.errors.noUser'))
 
     const isPasswordUser = currentUser.providerData?.some((p) => p.providerId === 'password')
     if (isPasswordUser) {
-      if (!password) throw new Error('Please enter your password to confirm deletion.')
+      if (!password) throw new Error(translate('auth.errors.passwordToDelete'))
       try {
         const credential = EmailAuthProvider.credential(currentUser.email, password)
         await reauthenticateWithCredential(currentUser, credential)
@@ -335,7 +338,7 @@ export function AuthProvider({ children }) {
     try {
       await deleteAllUserData(uid)
     } catch {
-      throw new Error('Could not delete your data. Check your connection and try again.')
+      throw new Error(translate('auth.errors.deleteDataFailed'))
     }
 
     try {

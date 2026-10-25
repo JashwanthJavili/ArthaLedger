@@ -29,7 +29,7 @@ const messaging = firebase.messaging()
  * monochrome status-bar badge, grouped by tag, optional action buttons
  * (e.g. "Add to <book>" / "Later") and the time it was sent.
  */
-function showAppNotification(title, { body, url = '/dashboard', tag, actions, addUrl, snoozeUrl, image, silent = false, renotify = true } = {}) {
+function showAppNotification(title, { body, url = '/dashboard', tag, actions, addUrl, snoozeUrl, image, lang, silent = false, renotify = true } = {}) {
   let parsedActions = []
   try { parsedActions = Array.isArray(actions) ? actions : JSON.parse(actions || '[]') } catch { parsedActions = [] }
   const maxActions = (self.Notification && Notification.maxActions) || 2
@@ -46,7 +46,7 @@ function showAppNotification(title, { body, url = '/dashboard', tag, actions, ad
     // drops the image so it wraps onto the next lines instead of being cut.
     image: image && (body || '').length <= 42 ? image : undefined,
     silent,
-    data: { url, addUrl, snoozeUrl },
+    data: { url, addUrl, snoozeUrl, lang },
   })
 }
 
@@ -58,7 +58,7 @@ messaging.onBackgroundMessage((payload) => {
   const d = payload.data || {}
   return showAppNotification(d.title, {
     body: d.body, url: d.url, tag: d.tag, actions: d.actions,
-    addUrl: d.addUrl, snoozeUrl: d.snoozeUrl, image: d.image,
+    addUrl: d.addUrl, snoozeUrl: d.snoozeUrl, image: d.image, lang: d.lang,
   })
 })
 
@@ -82,8 +82,9 @@ self.addEventListener('activate', (event) => {
 // Local test notification (used when the server can't be reached)
 self.addEventListener('message', (event) => {
   if (event.data?.type === 'TEST_NOTIFICATION') {
-    event.waitUntil(showAppNotification('Notifications are on', {
-      body: 'Reminders will look just like this.',
+    // The page sends the text already in the user's language
+    event.waitUntil(showAppNotification(event.data.title || 'Notifications are on', {
+      body: event.data.body || 'Reminders will look just like this.',
       image: '/notify/evening.png',
       tag: 'test-notification',
     }))
@@ -91,6 +92,22 @@ self.addEventListener('message', (event) => {
 })
 
 // ── Notification tap → focus the app (or open it) on the right page ────────
+// Replies to the "Remind in 10 min" button, in the reminder's language
+const SNOOZE_TEXT = {
+  en: {
+    done: 'Snoozed for 10 minutes',
+    doneBody: 'See you again at {time}.',
+    failed: 'Couldn’t snooze',
+    failedBody: 'No connection. Open ArthaLedger to log today’s spending.',
+  },
+  te: {
+    done: '10 నిమిషాలు వాయిదా వేశాం',
+    doneBody: '{time}కి మళ్లీ గుర్తుచేస్తాం.',
+    failed: 'వాయిదా వేయలేకపోయాం',
+    failedBody: 'ఇంటర్నెట్ లేదు. ఈరోజు ఖర్చులు రాయడానికి ArthaLedger తెరవండి.',
+  },
+}
+
 self.addEventListener('notificationclick', (event) => {
   event.notification.close()
   if (event.action === 'dismiss') return
@@ -100,10 +117,11 @@ self.addEventListener('notificationclick', (event) => {
   if (event.action === 'snooze' && data.snoozeUrl) {
     const back = new Date(Date.now() + 10 * 60 * 1000)
     const at = back.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+    const text = SNOOZE_TEXT[data.lang] || SNOOZE_TEXT.en
     event.waitUntil(
       fetch(data.snoozeUrl, { method: 'POST', mode: 'no-cors', keepalive: true })
-        .then(() => showAppNotification('Snoozed for 10 minutes', { body: `See you again at ${at}.`, tag: 'daily-reminder', silent: true, renotify: false }))
-        .catch(() => showAppNotification('Couldn\u2019t snooze', { body: 'No connection. Open ArthaLedger to log today\u2019s spending.', tag: 'daily-reminder' })),
+        .then(() => showAppNotification(text.done, { body: text.doneBody.replace('{time}', at), tag: 'daily-reminder', silent: true, renotify: false }))
+        .catch(() => showAppNotification(text.failed, { body: text.failedBody, tag: 'daily-reminder' })),
     )
     return
   }

@@ -4,6 +4,7 @@ import { hashPin, weakPinReason } from '../../lib/pin'
 import PinDialog from './PinDialog'
 import PinPad from './PinPad'
 import PinEntry from './PinEntry'
+import { useI18n } from '../../i18n/core'
 
 /**
  * Set / change / remove a PIN.
@@ -33,13 +34,14 @@ function SetPinFlow({ onClose, hasPin, storedHash, pinLength, guardId, itemName,
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
   const [currentPin, setCurrentPin] = useState('')
+  const { t } = useI18n()
 
   const fail = (msg) => { setError(msg); setShake((n) => n + 1); setPin('') }
 
   const handleCreate = (value) => {
     const weak = weakPinReason(value)
     if (weak) { fail(weak); return }
-    if (hasPin && value === currentPin) { fail('Choose a PIN different from your current one.'); return }
+    if (hasPin && value === currentPin) { fail(t('pin.set.differentFromCurrent')); return }
     setFirst(value)
     setPin('')
     setError('')
@@ -50,7 +52,7 @@ function SetPinFlow({ onClose, hasPin, storedHash, pinLength, guardId, itemName,
     if (value !== first) {
       setFirst('')
       setStep('create')
-      fail("PINs didn't match. Enter a new PIN again.")
+      fail(t('pin.set.mismatch'))
       return
     }
     setSaving(true)
@@ -60,7 +62,7 @@ function SetPinFlow({ onClose, hasPin, storedHash, pinLength, guardId, itemName,
       setStep('done')
       setTimeout(onClose, 900)
     } catch {
-      fail('Could not save the PIN. Please try again.')
+      fail(t('pin.set.saveFailed'))
     } finally {
       setSaving(false)
     }
@@ -72,17 +74,17 @@ function SetPinFlow({ onClose, hasPin, storedHash, pinLength, guardId, itemName,
       await onRemove()
       onClose()
     } catch {
-      setError('Could not remove the PIN. Please try again.')
+      setError(t('pin.set.removeFailed'))
     } finally {
       setSaving(false)
     }
   }
 
-  const name = itemName ? `"${itemName}"` : 'this item'
+  const name = itemName ? t('pin.set.named', { name: itemName }) : t('pin.set.thisItem')
 
   if (step === 'verify') {
     return (
-      <PinDialog icon={KeyRound} title="Enter current PIN" subtitle={`Confirm it's you before changing the PIN for ${name}.`} onClose={onClose}>
+      <PinDialog icon={KeyRound} title={t('pin.set.verifyTitle')} subtitle={t('pin.set.verifySubtitle', { name })} onClose={onClose}>
         <PinEntry
           guardId={guardId}
           storedHash={storedHash}
@@ -95,19 +97,19 @@ function SetPinFlow({ onClose, hasPin, storedHash, pinLength, guardId, itemName,
 
   if (step === 'choose') {
     const options = [
-      { n: 4, title: '4-digit PIN', hint: 'Quicker to enter' },
-      { n: 6, title: '6-digit PIN', hint: 'Recommended · 100× harder to guess', recommended: true },
+      { n: 4, title: t('pin.set.fourTitle'), hint: t('pin.set.fourHint') },
+      { n: 6, title: t('pin.set.sixTitle'), hint: t('pin.set.sixHint'), recommended: true },
     ]
     return (
       <PinDialog
         icon={ShieldCheck}
-        title={hasPin ? 'Choose a new PIN' : 'Set a PIN lock'}
-        subtitle={`Pick how many digits you want for ${name}.`}
+        title={hasPin ? t('pin.set.chooseNew') : t('pin.set.setLock')}
+        subtitle={t('pin.set.chooseSubtitle', { name })}
         onClose={onClose}
         footer={hasPin && (
           <button type="button" onClick={handleRemove} disabled={saving}
             className="flex w-full items-center justify-center gap-1.5 rounded-xl py-2.5 text-xs font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-500/10 disabled:opacity-50 transition-colors cursor-pointer">
-            <Trash2 size={13} /> {saving ? 'Removing…' : 'Remove PIN lock'}
+            <Trash2 size={13} /> {saving ? t('pin.set.removing') : t('pin.set.removeLock')}
           </button>
         )}
       >
@@ -126,7 +128,7 @@ function SetPinFlow({ onClose, hasPin, storedHash, pinLength, guardId, itemName,
                 <span className="block text-[11px] text-[var(--text-subtle)]">{o.hint}</span>
               </span>
               {o.recommended && (
-                <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 dark:text-emerald-400">Best</span>
+                <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 dark:text-emerald-400">{t('pin.set.best')}</span>
               )}
             </button>
           ))}
@@ -138,7 +140,7 @@ function SetPinFlow({ onClose, hasPin, storedHash, pinLength, guardId, itemName,
 
   if (step === 'done') {
     return (
-      <PinDialog icon={Check} iconTone="success" title="PIN saved" subtitle={`${name} now needs your ${length}-digit PIN to open.`} />
+      <PinDialog icon={Check} iconTone="success" title={t('pin.set.saved')} subtitle={t('pin.set.doneSubtitle', { name, length })} />
     )
   }
 
@@ -146,8 +148,8 @@ function SetPinFlow({ onClose, hasPin, storedHash, pinLength, guardId, itemName,
   return (
     <PinDialog
       icon={ShieldCheck}
-      title={isConfirm ? 'Confirm your PIN' : `Create a ${length}-digit PIN`}
-      subtitle={isConfirm ? 'Enter the same PIN again.' : 'Avoid easy picks like 1234 or birthdays.'}
+      title={isConfirm ? t('pin.set.confirmTitle') : t('pin.set.createTitle', { length })}
+      subtitle={isConfirm ? t('pin.set.confirmSubtitle') : t('pin.set.createSubtitle')}
       onClose={onClose}
       onBack={() => { setPin(''); setError(''); if (isConfirm) { setFirst(''); setStep('create') } else setStep('choose') }}
     >
@@ -162,8 +164,8 @@ function SetPinFlow({ onClose, hasPin, storedHash, pinLength, guardId, itemName,
       <div className="mt-3 min-h-[36px] text-center" aria-live="polite">
         {error
           ? <p className="text-xs font-medium text-rose-600 dark:text-rose-400">{error}</p>
-          : saving ? <p className="text-xs text-[var(--text-subtle)]">Saving…</p>
-            : <p className="text-[11px] text-[var(--text-subtle)]">Step {isConfirm ? 2 : 1} of 2</p>}
+          : saving ? <p className="text-xs text-[var(--text-subtle)]">{t('common.saving')}</p>
+            : <p className="text-[11px] text-[var(--text-subtle)]">{t('pin.set.step', { n: isConfirm ? 2 : 1 })}</p>}
       </div>
     </PinDialog>
   )

@@ -2,9 +2,10 @@ import { useMemo, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronLeft, ChevronRight, ChevronDown } from 'lucide-react'
 import { toMonthKey, offsetMonth, monthLabel, monthBounds } from '../../lib/budgets'
+import { useI18n } from '../../i18n/core'
 
 const PALETTE = ['#C5A059', '#7FA58A', '#D88A7A', '#6FA3B5', '#B39BD0', '#E0A166', '#9C8B73', '#8FB8A2']
-const VIEWS = [{ id: 'month', label: 'Monthly' }, { id: 'year', label: 'Yearly' }]
+const VIEWS = ['month', 'year']
 const COLLAPSED_CATS = 6
 
 const sumAmounts = (list) => list.reduce((s, e) => s + Number(e.amount || 0), 0)
@@ -46,14 +47,17 @@ function ShareBar({ pct, color, delay = 0 }) {
 }
 
 /**
- * Spending summary: totals for a month (defaults to last month) or a year,
+ * Spending summary: totals for a month or a year,
  * classified by category → subcategory, and by month in the yearly view.
+ * Opens on last month (a full month to review) when it has spending,
+ * otherwise on this month, so a new user never lands on an empty month.
  */
 export default function SpendingTrends({ expenses = [], money, onOpenCategory }) {
+  const { t, intl } = useI18n()
   const [now] = useState(() => new Date())
   const currentKey = toMonthKey(now)
   const [view, setView] = useState('month')
-  const [monthKey, setMonthKey] = useState(() => offsetMonth(currentKey, -1))
+  const [pickedKey, setMonthKey] = useState(null)
   const [year, setYear] = useState(now.getFullYear())
   const [openCat, setOpenCat] = useState(null)
   const [showAll, setShowAll] = useState(false)
@@ -64,6 +68,14 @@ export default function SpendingTrends({ expenses = [], money, onOpenCategory })
     return new Date(min)
   }, [expenses, now])
   const earliestKey = toMonthKey(earliest)
+
+  // Until the user moves between months, follow the data as it loads
+  const lastKey = offsetMonth(currentKey, -1)
+  const lastHasSpend = useMemo(() => {
+    const { start, end } = monthBounds(lastKey)
+    return expenses.some(e => e.timestamp >= start && e.timestamp <= end)
+  }, [expenses, lastKey])
+  const monthKey = pickedKey ?? (lastHasSpend ? lastKey : currentKey)
 
   const data = useMemo(() => {
     if (view === 'month') {
@@ -80,12 +92,12 @@ export default function SpendingTrends({ expenses = [], money, onOpenCategory })
         list, prevTotal, months: null,
         compareLabel: monthLabel(offsetMonth(monthKey, -1), { month: 'short' }),
         stats: [
-          { label: 'Daily average', value: money(sumAmounts(list) / daysCounted) },
-          { label: 'Transactions', value: String(list.length) },
+          { label: t('analytics.trends.dailyAverage'), value: money(sumAmounts(list) / daysCounted) },
+          { label: t('analytics.trends.transactions'), value: String(list.length) },
           {
-            label: 'Highest day',
+            label: t('analytics.trends.highestDay'),
             value: peakDay ? money(peakValue) : '—',
-            hint: peakDay ? new Date(y, m - 1, peakDay).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : '',
+            hint: peakDay ? new Date(y, m - 1, peakDay).toLocaleDateString(intl, { day: 'numeric', month: 'short' }) : '',
           },
         ],
       }
@@ -105,16 +117,16 @@ export default function SpendingTrends({ expenses = [], money, onOpenCategory })
       list, prevTotal, months,
       compareLabel: String(year - 1),
       stats: [
-        { label: 'Monthly average', value: money(sumAmounts(list) / (lastMonth + 1)) },
-        { label: 'Transactions', value: String(list.length) },
+        { label: t('analytics.trends.monthlyAverage'), value: money(sumAmounts(list) / (lastMonth + 1)) },
+        { label: t('analytics.trends.transactions'), value: String(list.length) },
         {
-          label: 'Highest month',
+          label: t('analytics.trends.highestMonth'),
           value: peak?.value ? money(peak.value) : '—',
-          hint: peak?.value ? new Date(year, peak.index, 1).toLocaleDateString('en-IN', { month: 'long' }) : '',
+          hint: peak?.value ? new Date(year, peak.index, 1).toLocaleDateString(intl, { month: 'long' }) : '',
         },
       ],
     }
-  }, [view, monthKey, year, expenses, currentKey, now, money])
+  }, [view, monthKey, year, expenses, currentKey, now, money, t, intl])
 
   const total = sumAmounts(data.list)
   const delta = data.prevTotal > 0 ? Math.round(((total - data.prevTotal) / data.prevTotal) * 100) : null
@@ -123,12 +135,13 @@ export default function SpendingTrends({ expenses = [], money, onOpenCategory })
   const maxMonth = data.months ? Math.max(...data.months.map(m => m.value), 0) : 0
 
   const periodLabel = view === 'month' ? monthLabel(monthKey) : String(year)
+  const viewLabel = { month: t('analytics.trends.monthly'), year: t('analytics.trends.yearly') }
   const canPrev = view === 'month' ? monthKey > earliestKey : year > earliest.getFullYear()
   const canNext = view === 'month' ? monthKey < currentKey : year < now.getFullYear()
   const reset = () => { setOpenCat(null); setShowAll(false) }
   const step = (dir) => {
     reset()
-    if (view === 'month') setMonthKey(k => offsetMonth(k, dir))
+    if (view === 'month') setMonthKey(offsetMonth(monthKey, dir))
     else setYear(y => y + dir)
   }
   const openMonth = (index) => { reset(); setMonthKey(toMonthKey(new Date(year, index, 1))); setView('month') }
@@ -138,7 +151,7 @@ export default function SpendingTrends({ expenses = [], money, onOpenCategory })
   return (
     <section className="space-y-2">
       <div className="flex items-center justify-between gap-2 px-1">
-        <h2 className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[var(--text-subtle)]">Spending summary</h2>
+        <h2 className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[var(--text-subtle)]">{t('analytics.trends.title')}</h2>
         <div className="relative isolate grid grid-cols-2 rounded-lg bg-[var(--border-subtle)] p-0.5">
           <motion.span
             aria-hidden initial={false}
@@ -147,9 +160,9 @@ export default function SpendingTrends({ expenses = [], money, onOpenCategory })
             className="absolute inset-y-0.5 left-0.5 -z-10 w-[calc(50%-2px)] rounded-md bg-[var(--bg-card)] shadow-sm"
           />
           {VIEWS.map(v => (
-            <button key={v.id} type="button" onClick={() => { reset(); setView(v.id) }}
-              className={`px-3 py-1 text-[11px] font-semibold transition-colors cursor-pointer ${view === v.id ? 'text-[var(--text-main)]' : 'text-[var(--text-subtle)] hover:text-[var(--text-main)]'}`}>
-              {v.label}
+            <button key={v} type="button" onClick={() => { reset(); setView(v) }}
+              className={`px-3 py-1 text-[11px] font-semibold transition-colors cursor-pointer ${view === v ? 'text-[var(--text-main)]' : 'text-[var(--text-subtle)] hover:text-[var(--text-main)]'}`}>
+              {viewLabel[v]}
             </button>
           ))}
         </div>
@@ -158,11 +171,11 @@ export default function SpendingTrends({ expenses = [], money, onOpenCategory })
       <div className="rounded-2xl border border-[var(--border-card)] bg-[var(--bg-card)]">
         {/* Period */}
         <div className="flex items-center justify-between px-4 pt-3.5">
-          <button type="button" className={navBtn} disabled={!canPrev} onClick={() => step(-1)} aria-label="Previous">
+          <button type="button" className={navBtn} disabled={!canPrev} onClick={() => step(-1)} aria-label={t('analytics.trends.previous')}>
             <ChevronLeft size={15} />
           </button>
           <span className="text-[13px] font-semibold text-[var(--text-main)]">{periodLabel}</span>
-          <button type="button" className={navBtn} disabled={!canNext} onClick={() => step(1)} aria-label="Next">
+          <button type="button" className={navBtn} disabled={!canNext} onClick={() => step(1)} aria-label={t('analytics.trends.next')}>
             <ChevronRight size={15} />
           </button>
         </div>
@@ -170,14 +183,14 @@ export default function SpendingTrends({ expenses = [], money, onOpenCategory })
         {/* Total */}
         <div className="flex items-end justify-between gap-3 px-5 pt-3">
           <div className="min-w-0">
-            <p className="text-[11px] text-[var(--text-subtle)]">Total spent</p>
+            <p className="text-[11px] text-[var(--text-subtle)]">{t('analytics.trends.totalSpent')}</p>
             <p className="truncate text-[26px] font-bold leading-tight tabular-nums tracking-tight text-[var(--text-main)]">{money(total)}</p>
           </div>
           {delta !== null && (
             <span className={`mb-1.5 flex-shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold tabular-nums ${
               delta > 0 ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400' : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
             }`}>
-              {delta > 0 ? '▲' : '▼'} {Math.abs(delta)}% vs {data.compareLabel}
+              {delta > 0 ? '▲' : '▼'} {t('analytics.trends.vsPrevious', { percent: Math.abs(delta), label: data.compareLabel })}
             </span>
           )}
         </div>
@@ -194,20 +207,20 @@ export default function SpendingTrends({ expenses = [], money, onOpenCategory })
         </div>
 
         {total === 0 ? (
-          <p className="px-5 py-8 text-center text-[12px] text-[var(--text-subtle)]">No spending in {periodLabel}.</p>
+          <p className="px-5 py-8 text-center text-[12px] text-[var(--text-subtle)]">{t('analytics.trends.noSpending', { period: periodLabel })}</p>
         ) : (
           <>
             {/* By month (yearly view) */}
             {data.months && (
               <div className="border-b border-[var(--border-subtle)] px-5 pt-3.5 pb-2">
-                <p className={subTitle}>By month</p>
+                <p className={subTitle}>{t('analytics.trends.byMonth')}</p>
                 <ul className="mt-1.5">
                   {data.months.map((mm, i) => (
                     <li key={mm.index}>
                       <button type="button" onClick={() => openMonth(mm.index)} disabled={!mm.value}
                         className="group grid w-full grid-cols-[44px_1fr_auto] items-center gap-3 rounded-lg py-1.5 text-left disabled:cursor-default cursor-pointer">
                         <span className={`text-[12px] font-medium ${mm.value ? 'text-[var(--text-main)]' : 'text-[var(--text-subtle)]'}`}>
-                          {new Date(year, mm.index, 1).toLocaleDateString('en-IN', { month: 'short' })}
+                          {new Date(year, mm.index, 1).toLocaleDateString(intl, { month: 'short' })}
                         </span>
                         <ShareBar pct={maxMonth ? (mm.value / maxMonth) * 100 : 0} color="var(--gold-primary)" delay={i * 0.02} />
                         <span className={`w-20 text-right text-[12px] font-semibold tabular-nums ${mm.value ? 'text-[var(--text-main)] group-hover:text-[var(--gold-primary)]' : 'text-[var(--text-subtle)]'}`}>
@@ -223,8 +236,8 @@ export default function SpendingTrends({ expenses = [], money, onOpenCategory })
             {/* By category → subcategory */}
             <div className="px-5 pt-3.5 pb-2">
               <div className="flex items-baseline justify-between">
-                <p className={subTitle}>By category</p>
-                <span className="text-[11px] text-[var(--text-subtle)]">{cats.length} {cats.length === 1 ? 'category' : 'categories'}</span>
+                <p className={subTitle}>{t('analytics.trends.byCategory')}</p>
+                <span className="text-[11px] text-[var(--text-subtle)]">{t('analytics.trends.categoryCount', { count: cats.length })}</span>
               </div>
               <ul className="mt-1 divide-y divide-[var(--border-subtle)]">
                 {shownCats.map((c, i) => {
@@ -261,7 +274,7 @@ export default function SpendingTrends({ expenses = [], money, onOpenCategory })
                               ))}
                               <button type="button" onClick={() => onOpenCategory?.(c.name)}
                                 className="mt-1 text-[11px] font-semibold text-[var(--gold-primary)] cursor-pointer">
-                                View {c.count} transaction{c.count === 1 ? '' : 's'} →
+                                {t('analytics.trends.viewTransactions', { count: c.count })}
                               </button>
                             </div>
                           </motion.div>
@@ -274,7 +287,7 @@ export default function SpendingTrends({ expenses = [], money, onOpenCategory })
               {cats.length > COLLAPSED_CATS && (
                 <button type="button" onClick={() => setShowAll(v => !v)}
                   className="w-full py-2 text-center text-[12px] font-semibold text-[var(--gold-primary)] cursor-pointer">
-                  {showAll ? 'Show less' : `Show all ${cats.length}`}
+                  {showAll ? t('common.showLess') : t('analytics.trends.showAll', { count: cats.length })}
                 </button>
               )}
             </div>

@@ -15,17 +15,12 @@ import { useAppData } from '../context/AppDataContext'
 import { aggregateAndSortCategories } from '../lib/dsa'
 import { formatAmount, getCurrencySymbol } from '../lib/format'
 import { compareNewestFirst } from '../lib/entryOrder'
+import { useI18n } from '../i18n/core'
 
 const PALETTE = ['#C5A059', '#7FA58A', '#D88A7A', '#6FA3B5', '#B39BD0', '#E0A166', '#9C8B73', '#8FB8A2']
-const PERIODS = [
-  { id: 'overall', label: 'Overall' },
-  { id: 'month', label: 'Monthly' },
-  { id: 'custom', label: 'Custom' },
-]
-const BREAKDOWN_TABS = [
-  { id: 'expense', label: 'Spending' },
-  { id: 'income', label: 'Income' },
-]
+// Tab labels are looked up at render: vault.periods.<id>, vault.breakdown.<id>
+const PERIOD_IDS = ['overall', 'month', 'custom']
+const BREAKDOWN_IDS = ['expense', 'income']
 const LEDGER_PAGE = 10
 
 const sectionTitle = 'text-[11px] font-semibold uppercase tracking-[0.1em] text-[var(--text-subtle)]'
@@ -39,7 +34,7 @@ const parseLocalDate = (str) => {
   const [y, m, d] = str.split('-').map(Number)
   return new Date(y, m - 1, d)
 }
-const shortDate = (d) => d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+const shortDate = (d, intl) => d.toLocaleDateString(intl, { day: 'numeric', month: 'short', year: 'numeric' })
 
 function ShareBar({ pct, color, delay = 0 }) {
   return (
@@ -73,6 +68,9 @@ export default function VaultPage() {
   const { user, verifyPassword, googleSignIn } = useAuth()
   const { projects, booksByProject, entriesByBook } = useAppData()
   const navigate = useNavigate()
+  const { t, intl } = useI18n()
+  const PERIODS = PERIOD_IDS.map(id => ({ id, label: t(`vault.periods.${id}`) }))
+  const BREAKDOWN_TABS = BREAKDOWN_IDS.map(id => ({ id, label: t(`vault.breakdown.${id}`) }))
 
   const [now] = useState(() => new Date())
   const [password, setPassword] = useState('')
@@ -105,7 +103,7 @@ export default function VaultPage() {
 
   const showToast = (msg, type = 'success') => {
     setToast({ msg, type, visible: true })
-    setTimeout(() => setToast(t => ({ ...t, visible: false })), 2000)
+    setTimeout(() => setToast(s => ({ ...s, visible: false })), 2000)
   }
 
   const handleUnlock = async (e) => {
@@ -115,7 +113,7 @@ export default function VaultPage() {
     try {
       if (isPasswordUser) {
         if (!password) {
-          setError('Password is required.')
+          setError(t('vault.errPasswordRequired'))
           setLoading(false)
           return
         }
@@ -126,9 +124,9 @@ export default function VaultPage() {
       }
       setIsUnlocked(true)
       setPassword('')
-      showToast('Vault unlocked')
+      showToast(t('vault.toastUnlocked'))
     } catch (err) {
-      setError(err.message || 'Verification failed. Please try again.')
+      setError(err.message || t('vault.errVerification'))
     } finally {
       setLoading(false)
     }
@@ -163,7 +161,7 @@ export default function VaultPage() {
   const availableMonths = useMemo(() => {
     const monthsMap = {}
     const currentKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
-    const currentLabel = now.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })
+    const currentLabel = now.toLocaleDateString(intl, { month: 'long', year: 'numeric' })
     monthsMap[currentKey] = { key: currentKey, label: currentLabel, year: now.getFullYear(), month: now.getMonth() }
 
     allEntries.forEach(entry => {
@@ -172,12 +170,12 @@ export default function VaultPage() {
       const year = date.getFullYear()
       const month = date.getMonth()
       const key = `${year}-${String(month + 1).padStart(2, '0')}`
-      const label = date.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })
+      const label = date.toLocaleDateString(intl, { month: 'long', year: 'numeric' })
       monthsMap[key] = { key, label, year, month }
     })
 
     return Object.values(monthsMap).sort((a, b) => b.key.localeCompare(a.key))
-  }, [allEntries, now])
+  }, [allEntries, now, intl])
 
   const customInvalid = filterType === 'custom' && customStart && customEnd && customStart > customEnd
 
@@ -264,12 +262,12 @@ export default function VaultPage() {
   // ── Period helpers ─────────────────────────────────────────────────────────
   const monthIndex = availableMonths.findIndex(m => m.key === selectedMonth)
   const periodLabel = (() => {
-    if (filterType === 'overall') return 'All time'
+    if (filterType === 'overall') return t('dates.presets.all')
     if (filterType === 'month') return availableMonths[monthIndex]?.label || selectedMonth
-    if (customStart && customEnd) return `${shortDate(parseLocalDate(customStart))} – ${shortDate(parseLocalDate(customEnd))}`
-    if (customStart) return `From ${shortDate(parseLocalDate(customStart))}`
-    if (customEnd) return `Until ${shortDate(parseLocalDate(customEnd))}`
-    return 'All dates'
+    if (customStart && customEnd) return `${shortDate(parseLocalDate(customStart), intl)} – ${shortDate(parseLocalDate(customEnd), intl)}`
+    if (customStart) return t('dates.from', { date: shortDate(parseLocalDate(customStart), intl) })
+    if (customEnd) return t('dates.until', { date: shortDate(parseLocalDate(customEnd), intl) })
+    return t('dates.allDates')
   })()
 
   const changePeriod = (type) => { setFilterType(type); setLedgerLimit(LEDGER_PAGE) }
@@ -290,17 +288,17 @@ export default function VaultPage() {
       <div className="mx-auto max-w-2xl space-y-6">
         {/* ── Header ── */}
         <header className="flex items-center gap-3 pt-1">
-          <button type="button" onClick={() => navigate('/settings')} className={roundBtn} aria-label="Back to settings">
+          <button type="button" onClick={() => navigate('/settings')} className={roundBtn} aria-label={t('vault.backToSettings')}>
             <ArrowLeft size={17} />
           </button>
           <div className="min-w-0 flex-1">
-            <h1 className="font-serif-luxury text-[28px] font-semibold leading-tight tracking-[-0.01em] text-[var(--text-main)]">Vault</h1>
+            <h1 className="font-serif-luxury text-[28px] font-semibold leading-tight tracking-[-0.01em] text-[var(--text-main)]">{t('vault.title')}</h1>
             <p className="font-serif-luxury mt-0.5 truncate text-[14px] italic text-[var(--text-muted)]">
-              {isUnlocked ? 'Private analytics, verified' : 'Deep analytics, kept private'}
+              {isUnlocked ? t('vault.subtitleUnlocked') : t('vault.subtitleLocked')}
             </p>
           </div>
           {isUnlocked && (
-            <button type="button" onClick={lockVault} className={`${roundBtn} text-[var(--text-muted)] hover:text-[var(--text-main)]`} aria-label="Lock vault">
+            <button type="button" onClick={lockVault} className={`${roundBtn} text-[var(--text-muted)] hover:text-[var(--text-main)]`} aria-label={t('vault.lock')}>
               <Lock size={16} />
             </button>
           )}
@@ -321,16 +319,16 @@ export default function VaultPage() {
                 <span className="flex h-14 w-14 items-center justify-center rounded-full bg-[var(--gold-light)] text-[var(--gold-primary)]">
                   <Lock size={24} />
                 </span>
-                <h2 className="mt-4 text-[17px] font-semibold text-[var(--text-main)]">Your vault is locked</h2>
+                <h2 className="mt-4 text-[17px] font-semibold text-[var(--text-main)]">{t('vault.lockedTitle')}</h2>
                 <p className="mt-1 max-w-xs text-[12px] leading-relaxed text-[var(--text-muted)]">
-                  Confirm it&apos;s you to view private income, spending and savings across all your books.
+                  {t('vault.lockedBody')}
                 </p>
               </div>
 
               <form onSubmit={handleUnlock} className="space-y-3 border-t border-[var(--border-subtle)] px-5 pt-5 pb-5">
                 {isPasswordUser ? (
                   <div>
-                    <label htmlFor="vault-password" className={`${sectionTitle} mb-1.5 block`}>Account password</label>
+                    <label htmlFor="vault-password" className={`${sectionTitle} mb-1.5 block`}>{t('vault.accountPassword')}</label>
                     <div className="relative">
                       <KeyRound size={15} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--text-subtle)]" />
                       <input
@@ -339,13 +337,13 @@ export default function VaultPage() {
                         value={password}
                         autoComplete="current-password"
                         onChange={(e) => { setPassword(e.target.value); setError('') }}
-                        placeholder="Enter your password"
+                        placeholder={t('vault.passwordPlaceholder')}
                         className={`${fieldCls} py-3 pl-10 pr-11 placeholder:text-[var(--text-subtle)]`}
                       />
                       <button
                         type="button"
                         onClick={() => setShowPassword(v => !v)}
-                        aria-label={showPassword ? 'Hide password' : 'Show password'}
+                        aria-label={showPassword ? t('vault.hidePassword') : t('vault.showPassword')}
                         className="absolute right-1.5 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-[var(--text-subtle)] transition-colors hover:text-[var(--text-main)] cursor-pointer"
                       >
                         {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
@@ -356,7 +354,7 @@ export default function VaultPage() {
                   <div className="flex items-center gap-3 rounded-xl bg-[var(--border-subtle)]/60 px-3.5 py-3">
                     <Globe size={16} className="flex-shrink-0 text-[var(--gold-primary)]" />
                     <p className="text-[12px] leading-snug text-[var(--text-muted)]">
-                      You signed in with Google. Re-verify your Google session to continue.
+                      {t('vault.googleNote')}
                     </p>
                   </div>
                 )}
@@ -383,10 +381,10 @@ export default function VaultPage() {
                   className="flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--gold-primary)] py-3 text-[13px] font-semibold text-white transition-colors hover:bg-[var(--gold-hover)] disabled:opacity-60 cursor-pointer"
                 >
                   {isPasswordUser ? <Unlock size={15} /> : <Globe size={15} />}
-                  {loading ? 'Verifying…' : isPasswordUser ? 'Unlock vault' : 'Verify with Google'}
+                  {loading ? t('vault.verifying') : isPasswordUser ? t('vault.unlock') : t('vault.verifyGoogle')}
                 </button>
                 <p className="flex items-center justify-center gap-1.5 pt-1 text-[11px] text-[var(--text-subtle)]">
-                  <ShieldCheck size={12} /> Verification is required every time you open the vault
+                  <ShieldCheck size={12} /> {t('vault.verifyEveryTime')}
                 </p>
               </form>
             </motion.section>
@@ -403,21 +401,21 @@ export default function VaultPage() {
               {/* ── Period ── */}
               <section className="space-y-2">
                 <div className="flex items-center justify-between gap-3 px-1">
-                  <h2 className={sectionTitle}>Period</h2>
+                  <h2 className={sectionTitle}>{t('vault.period')}</h2>
                   <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
-                    <ShieldCheck size={11} /> Verified
+                    <ShieldCheck size={11} /> {t('vault.verified')}
                   </span>
                 </div>
                 <div className={`${card} space-y-3 p-3`}>
-                  <Segmented options={PERIODS} value={filterType} onChange={changePeriod} full ariaLabel="Period" />
+                  <Segmented options={PERIODS} value={filterType} onChange={changePeriod} full ariaLabel={t('vault.period')} />
 
                   {filterType === 'overall' && (
-                    <p className="px-1 pb-0.5 text-center text-[12px] text-[var(--text-muted)]">Every transaction across all books</p>
+                    <p className="px-1 pb-0.5 text-center text-[12px] text-[var(--text-muted)]">{t('vault.overallHint')}</p>
                   )}
 
                   {filterType === 'month' && (
                     <div className="flex items-center justify-between gap-2">
-                      <button type="button" className={navBtn} aria-label="Previous month"
+                      <button type="button" className={navBtn} aria-label={t('vault.prevMonth')}
                         disabled={monthIndex < 0 || monthIndex >= availableMonths.length - 1}
                         onClick={() => changeMonth(availableMonths[monthIndex + 1]?.key)}>
                         <ChevronLeft size={16} />
@@ -428,7 +426,7 @@ export default function VaultPage() {
                         <select
                           value={selectedMonth}
                           onChange={(e) => changeMonth(e.target.value)}
-                          aria-label="Select month"
+                          aria-label={t('vault.selectMonth')}
                           className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
                         >
                           {availableMonths.map(m => (
@@ -436,7 +434,7 @@ export default function VaultPage() {
                           ))}
                         </select>
                       </label>
-                      <button type="button" className={navBtn} aria-label="Next month"
+                      <button type="button" className={navBtn} aria-label={t('vault.nextMonth')}
                         disabled={monthIndex <= 0}
                         onClick={() => changeMonth(availableMonths[monthIndex - 1]?.key)}>
                         <ChevronRight size={16} />
@@ -448,30 +446,30 @@ export default function VaultPage() {
                     <div className="space-y-2">
                       <div className="grid grid-cols-2 gap-2">
                         <label className="block min-w-0">
-                          <span className="mb-1 block px-0.5 text-[10px] font-medium text-[var(--text-subtle)]">From</span>
+                          <span className="mb-1 block px-0.5 text-[10px] font-medium text-[var(--text-subtle)]">{t('forms.filters.from')}</span>
                           <input type="date" value={customStart} max={customEnd || undefined}
                             onChange={(e) => { setCustomStart(e.target.value); setLedgerLimit(LEDGER_PAGE) }}
                             className={`${fieldCls} min-w-0 appearance-none`} />
                         </label>
                         <label className="block min-w-0">
-                          <span className="mb-1 block px-0.5 text-[10px] font-medium text-[var(--text-subtle)]">To</span>
+                          <span className="mb-1 block px-0.5 text-[10px] font-medium text-[var(--text-subtle)]">{t('forms.filters.to')}</span>
                           <input type="date" value={customEnd} min={customStart || undefined}
                             onChange={(e) => { setCustomEnd(e.target.value); setLedgerLimit(LEDGER_PAGE) }}
                             className={`${fieldCls} min-w-0 appearance-none`} />
                         </label>
                       </div>
                       {customInvalid ? (
-                        <p className="px-1 text-[11px] font-medium text-rose-600 dark:text-rose-400">The start date is after the end date.</p>
+                        <p className="px-1 text-[11px] font-medium text-rose-600 dark:text-rose-400">{t('vault.customInvalid')}</p>
                       ) : (customStart || customEnd) ? (
                         <div className="flex items-center justify-between px-1">
                           <span className="truncate text-[11px] text-[var(--text-muted)]">{periodLabel}</span>
                           <button type="button" onClick={() => { setCustomStart(''); setCustomEnd('') }}
                             className="flex-shrink-0 text-[11px] font-semibold text-[var(--gold-primary)] cursor-pointer">
-                            Clear
+                            {t('common.clear')}
                           </button>
                         </div>
                       ) : (
-                        <p className="px-1 text-[11px] text-[var(--text-subtle)]">Pick one or both dates to narrow the range.</p>
+                        <p className="px-1 text-[11px] text-[var(--text-subtle)]">{t('vault.customHint')}</p>
                       )}
                     </div>
                   )}
@@ -482,7 +480,7 @@ export default function VaultPage() {
               <section className={card}>
                 <div className="flex items-end justify-between gap-3 px-5 pt-4 pb-4">
                   <div className="min-w-0">
-                    <p className={sectionTitle}>Net savings</p>
+                    <p className={sectionTitle}>{t('vault.netSavings')}</p>
                     <p className={`mt-1 truncate text-[30px] font-bold leading-tight tracking-tight tabular-nums ${
                       netSavings < 0 ? 'text-rose-600 dark:text-rose-400' : 'text-[var(--text-main)]'
                     }`}>
@@ -496,7 +494,7 @@ export default function VaultPage() {
                         ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
                         : 'bg-rose-500/10 text-rose-600 dark:text-rose-400'
                     }`}>
-                      {savingsRate.toFixed(0)}% saved
+                      {t('vault.savedPct', { pct: savingsRate.toFixed(0) })}
                     </span>
                   )}
                 </div>
@@ -512,17 +510,17 @@ export default function VaultPage() {
                       />
                     </div>
                     <p className="mt-1.5 text-[11px] tabular-nums text-[var(--text-subtle)]">
-                      Spent {spentShare.toFixed(0)}% of income
+                      {t('vault.spentPct', { pct: spentShare.toFixed(0) })}
                     </p>
                   </div>
                 )}
 
                 <div className="grid grid-cols-2 divide-x divide-[var(--border-subtle)] border-t border-[var(--border-subtle)]">
                   {[
-                    { label: 'Income', value: totalIncome, Icon: TrendingUp, cls: 'text-emerald-600 dark:text-emerald-400' },
-                    { label: 'Spent', value: totalSpending, Icon: TrendingDown, cls: 'text-rose-600 dark:text-rose-400' },
-                  ].map(({ label, value, Icon, cls }) => (
-                    <div key={label} className="min-w-0 px-4 py-3">
+                    { id: 'income', label: t('common.income'), value: totalIncome, Icon: TrendingUp, cls: 'text-emerald-600 dark:text-emerald-400' },
+                    { id: 'spent', label: t('vault.spent'), value: totalSpending, Icon: TrendingDown, cls: 'text-rose-600 dark:text-rose-400' },
+                  ].map(({ id, label, value, Icon, cls }) => (
+                    <div key={id} className="min-w-0 px-4 py-3">
                       <p className="flex items-center gap-1 truncate text-[10px] text-[var(--text-subtle)]">
                         <Icon size={11} className={cls} /> {label}
                       </p>
@@ -535,15 +533,15 @@ export default function VaultPage() {
               {/* ── By category ── */}
               <section className="space-y-2">
                 <div className="flex items-center justify-between gap-3 px-1">
-                  <h2 className={sectionTitle}>By category</h2>
-                  <Segmented options={BREAKDOWN_TABS} value={breakdownTab} onChange={setBreakdownTab} ariaLabel="Breakdown type" />
+                  <h2 className={sectionTitle}>{t('vault.byCategory')}</h2>
+                  <Segmented options={BREAKDOWN_TABS} value={breakdownTab} onChange={setBreakdownTab} ariaLabel={t('vault.breakdownType')} />
                 </div>
                 <div className={card}>
                   {breakdown.length === 0 ? (
                     <EmptyState
                       icon={PieChart}
-                      title={breakdownTab === 'expense' ? 'No spending' : 'No income'}
-                      hint={filterType === 'overall' ? 'Nothing recorded yet.' : `Nothing recorded in ${periodLabel}.`}
+                      title={breakdownTab === 'expense' ? t('vault.noSpending') : t('vault.noIncome')}
+                      hint={filterType === 'overall' ? t('vault.nothingYet') : t('vault.nothingIn', { period: periodLabel })}
                     />
                   ) : (
                     <ul className="divide-y divide-[var(--border-subtle)]">
@@ -580,17 +578,17 @@ export default function VaultPage() {
               {/* ── Transactions ── */}
               <section className="space-y-2">
                 <div className="flex items-baseline justify-between px-1">
-                  <h2 className={sectionTitle}>Transactions</h2>
+                  <h2 className={sectionTitle}>{t('vault.transactions')}</h2>
                   <span className="text-[11px] tabular-nums text-[var(--text-subtle)]">{ledgerEntries.length}</span>
                 </div>
                 <div className={card}>
                   {ledgerEntries.length === 0 ? (
-                    <EmptyState icon={Receipt} title="No transactions" hint="Try a different period." />
+                    <EmptyState icon={Receipt} title={t('vault.noTransactions')} hint={t('vault.tryOtherPeriod')} />
                   ) : (
                     <>
                       <ul className="divide-y divide-[var(--border-subtle)]">
                         {ledgerEntries.slice(0, ledgerLimit).map((txn, idx) => {
-                          const dateStr = new Date(txn.timestamp).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })
+                          const dateStr = new Date(txn.timestamp).toLocaleDateString(intl, { day: 'numeric', month: 'short' })
                           const details = bookDetailsMap[txn.bookId]
                           const isInc = txn.type === 'income'
                           const meta = [dateStr, txn.category || 'General', details?.bookName].filter(Boolean).join(' · ')
@@ -610,7 +608,7 @@ export default function VaultPage() {
                                 </span>
                                 <span className="min-w-0 flex-1">
                                   <span className="block truncate text-[13px] font-medium text-[var(--text-main)]">
-                                    {txn.description || 'Untitled transaction'}
+                                    {txn.description || t('vault.untitled')}
                                   </span>
                                   <span className="block truncate text-[11px] text-[var(--text-subtle)]">{meta}</span>
                                 </span>
@@ -626,12 +624,12 @@ export default function VaultPage() {
                       </ul>
                       <div className="flex items-center justify-between gap-3 border-t border-[var(--border-subtle)] px-4 py-2.5">
                         <span className="text-[11px] tabular-nums text-[var(--text-subtle)]">
-                          Latest {Math.min(ledgerLimit, ledgerEntries.length)} of {ledgerEntries.length}
+                          {t('vault.latestOf', { shown: Math.min(ledgerLimit, ledgerEntries.length), total: ledgerEntries.length })}
                         </span>
                         {ledgerEntries.length > ledgerLimit && (
                           <button type="button" onClick={() => setLedgerLimit(l => l + 20)}
                             className="text-[12px] font-semibold text-[var(--gold-primary)] cursor-pointer">
-                            Show more
+                            {t('common.showMore')}
                           </button>
                         )}
                       </div>

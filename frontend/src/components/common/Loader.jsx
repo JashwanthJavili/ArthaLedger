@@ -2,11 +2,14 @@
 // shows the outline of the app (greeting, balance card, a few rows) so the
 // real screen simply fills in. It stays invisible for the first moment, so
 // fast loads go straight to the content with nothing flashing.
-export default function Loader({ text = 'Loading' }) {
+import { useI18n } from '../../i18n/core'
+
+export default function Loader({ text }) {
+  const { t } = useI18n()
   return (
     <div
       role="status"
-      aria-label={text}
+      aria-label={text || t('common.loading')}
       className="min-h-[100dvh] bg-[var(--bg-page)] px-4 pt-[max(env(safe-area-inset-top),20px)] opacity-0 animate-[loader-in_300ms_ease-out_250ms_forwards]"
     >
       <div className="mx-auto max-w-2xl">

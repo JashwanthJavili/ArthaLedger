@@ -16,6 +16,7 @@ from app.core.config import settings
 from google.cloud.firestore_v1.base_query import FieldFilter
 
 from app.services.firebase_service import get_firestore
+from app.services.reminder_copy import COPY, copy_for, counted
 
 DEFAULT_TZ = 'Asia/Kolkata'
 PUBLIC_API_URL = os.getenv('PUBLIC_API_URL', 'https://arthaledger-api.onrender.com').rstrip('/')
@@ -65,39 +66,14 @@ def _slot(hour: int) -> str:
   return 'night'
 
 
-# Short, playful copy (no emojis). With a banner image Android shows the body
-# on ONE line only, so bodies stay under ~40 characters to fit without "...".
-COPY = {
-  'morning': [
-    ('Good morning, money manager', 'Plan today before today plans you.'),
-    ('Needs first, wants later', 'A 10-second plan saves a lot tonight.'),
-    ('Your wallet woke up too', 'Tell it what today looks like.'),
-    ('Fresh day, fresh page', 'Decide what today deserves.'),
-  ],
-  'afternoon': [
-    ('Lunch was good. Was it logged?', 'Add it now. Future you says thanks.'),
-    ('That chai counts too', 'Small spends add up. Note them.'),
-    ('Halfway through the day', 'Spent anything? Takes five seconds.'),
-    ('Quick check-in', 'Log it while the amount is fresh.'),
-  ],
-  'evening': [
-    ('Evening check-in', 'Anything sneak out of the wallet?'),
-    ('The day is wrapping up', 'Your ledger is too. Add today.'),
-    ('Psst, your wallet has stories', 'Tell your ledger before it forgets.'),
-    ('Golden hour for your ledger', 'Two minutes now, clarity forever.'),
-  ],
-  'night': [
-    ("Don't let today's spends sleep", 'Note them before they become a mystery.'),
-    ('One last thing tonight', 'Close the day. Sleep better.'),
-    ("Psst, it's almost tomorrow", "Today's spends are still waiting."),
-    ('Before you scroll to sleep', 'Ten seconds to log today. We timed it.'),
-  ],
-}
-EMPTY_DAY = {
-  'afternoon': ('Nothing logged yet today', 'You spent nothing, or you forgot?'),
-  'evening': ('We saw nothing today', 'Saint or forgot? Log it in seconds.'),
-  'night': ('Your ledger is still empty', 'Today happened. Write it down.'),
-}
+def _language(uid: str) -> str:
+  """The language the user picked in the app (saved as profile.language)."""
+  try:
+    snap = get_firestore().collection('users').document(uid).get(['profile'])
+    lang = ((snap.to_dict() or {}).get('profile') or {}).get('language')
+    return lang if lang in COPY else 'en'
+  except Exception:
+    return 'en'
 
 
 def _scan(uid: str, tz: ZoneInfo, now: datetime.datetime) -> dict:
@@ -150,28 +126,34 @@ def build_reminder(uid: str, tz_name, snooze: bool = True) -> dict:
   streak = _streak(data['days'], now.date())
   count = data['count']
 
-  title, body = random.choice(COPY[slot])
+  lang = _language(uid)
+  text = copy_for(lang)
+
+  title, body = random.choice(text['slots'][slot])
   if slot in ('evening', 'night') and count:
     # Real numbers beat clever lines
-    noun = 'entry' if count == 1 else 'entries'
-    title = f'{count} {noun} today, {fmt_money(data["spent"])} spent' if data['spent'] else f'{count} {noun} logged today'
-    body = 'Missed anything? Add it now.' if slot == 'evening' else 'Anything else before bed?'
+    if data['spent']:
+      title = counted(text['spent_today'], count, money=fmt_money(data['spent']))
+    else:
+      title = counted(text['logged_today'], count)
+    body = text['missed_evening'] if slot == 'evening' else text['missed_night']
   elif slot != 'morning' and not count and streak >= 2:
-    title = f'Your {streak}-day streak is on the line'
-    body = 'One entry keeps it alive. No pressure.'
-  elif slot != 'morning' and not count and slot in EMPTY_DAY and random.random() < 0.5:
-    title, body = EMPTY_DAY[slot]
+    title = text['streak_title'].format(streak=streak)
+    body = text['streak_body']
+  elif slot != 'morning' and not count and slot in text['empty_day'] and random.random() < 0.5:
+    title, body = text['empty_day'][slot]
 
   actions = []
-  extra = {'image': f'/notify/{slot}.png'}
+  # lang lets the service worker answer a snooze tap in the same language
+  extra = {'image': f'/notify/{slot}.png', 'lang': lang}
   if data['latest']:
     _, pid, bid, _name = data['latest']
     extra['addUrl'] = f'/projects/{pid}/books/{bid}?add=expense'
-    actions.append({'action': 'add', 'title': 'Add expense'})
+    actions.append({'action': 'add', 'title': text['action_add']})
   link = snooze_url(uid) if snooze else None
   if link:
     extra['snoozeUrl'] = link
-    actions.append({'action': 'snooze', 'title': 'Remind in 10 min'})
+    actions.append({'action': 'snooze', 'title': text['action_snooze']})
   if actions:
     extra['actions'] = json.dumps(actions)
   return {'title': title, 'body': body, 'url': '/dashboard', 'extra': extra}
