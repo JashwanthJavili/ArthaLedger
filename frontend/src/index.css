@@ -1,12 +1,24 @@
 @import 'tailwindcss';
 
+/* Poppins also has Hindi letters, so it would draw Hindi before Noto Sans
+   Devanagari could. This face covers only the Hindi letters and comes first;
+   everything else still falls through to Poppins / Playfair. */
+@font-face {
+  font-family: 'Noto Sans Devanagari Hindi';
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url('/fonts/noto-sans-devanagari.woff2') format('woff2');
+  unicode-range: U+0900-097F, U+1CD0-1CF9, U+200C-200D, U+20F0, U+25CC, U+A830-A839, U+A8E0-A8FF;
+}
+
 @custom-variant dark (&:where(.dark, .dark *));
 
 /* ── Light Mode Luxury Palette ── */
 :root {
   color-scheme: light;
-  --font-sans: 'Poppins', 'Noto Sans Telugu', 'Noto Sans Tamil', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --font-serif: 'Playfair Display', 'Noto Sans Telugu', 'Noto Sans Tamil', Georgia, serif;
+  --font-sans: 'Noto Sans Devanagari Hindi', 'Poppins', 'Noto Sans Telugu', 'Noto Sans Tamil', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-serif: 'Noto Sans Devanagari Hindi', 'Playfair Display', 'Noto Sans Telugu', 'Noto Sans Tamil', Georgia, serif;
 
   --gold-primary: #C5A059;
   --gold-hover: #B38E46;
@@ -119,17 +131,73 @@ html.dark body {
   font-family: var(--font-serif);
 }
 
-/* Telugu and Tamil have no italic letters; a slanted copy looks wrong, so keep them upright */
+/* Telugu, Tamil and Hindi have no italic letters; a slanted copy looks wrong, so keep them upright */
 :lang(te) em,
 :lang(te) .italic,
 :lang(ta) em,
-:lang(ta) .italic {
+:lang(ta) .italic,
+:lang(hi) em,
+:lang(hi) .italic {
   font-style: normal;
 }
-/* Letter spacing pulls Telugu and Tamil syllables apart; set them normally */
+/* Letter spacing pulls Telugu, Tamil and Hindi syllables apart; set them normally */
 :lang(te) [class*='tracking-'],
-:lang(ta) [class*='tracking-'] {
+:lang(ta) [class*='tracking-'],
+:lang(hi) [class*='tracking-'] {
   letter-spacing: normal;
+}
+
+/* ── Hero backdrop: a page of a money notebook in warm window light ── */
+.hero-paper {
+  background:
+    radial-gradient(110% 75% at 88% -12%, rgba(255, 229, 178, 0.7), transparent 58%),
+    radial-gradient(80% 60% at -8% 108%, rgba(197, 160, 89, 0.16), transparent 62%),
+    linear-gradient(180deg, #FCF7EE 0%, #F9F2E5 62%, var(--bg-page) 100%);
+}
+html.dark .hero-paper {
+  background:
+    radial-gradient(110% 75% at 88% -12%, rgba(212, 178, 110, 0.16), transparent 58%),
+    linear-gradient(180deg, #2B2D33 0%, var(--bg-page) 100%);
+}
+/* ruled ledger lines, fading out towards the edges */
+.hero-ruled {
+  background-image: repeating-linear-gradient(to bottom, transparent 0 35px, rgba(150, 112, 44, 0.11) 35px 36px);
+  -webkit-mask-image: radial-gradient(75% 70% at 40% 45%, black 30%, transparent 78%);
+  mask-image: radial-gradient(75% 70% at 40% 45%, black 30%, transparent 78%);
+}
+html.dark .hero-ruled {
+  background-image: repeating-linear-gradient(to bottom, transparent 0 35px, rgba(255, 255, 255, 0.045) 35px 36px);
+}
+/* the red double margin line of a khata page */
+.hero-margin {
+  border-left: 1px solid rgba(196, 84, 72, 0.22);
+  box-shadow: -4px 0 0 -3px rgba(196, 84, 72, 0.22);
+  -webkit-mask-image: linear-gradient(to bottom, transparent, black 18%, black 62%, transparent 92%);
+  mask-image: linear-gradient(to bottom, transparent, black 18%, black 62%, transparent 92%);
+}
+html.dark .hero-margin {
+  border-left-color: rgba(230, 120, 105, 0.16);
+  box-shadow: -4px 0 0 -3px rgba(230, 120, 105, 0.16);
+}
+/* sunlight falling through a window */
+.hero-beam {
+  background:
+    linear-gradient(118deg, transparent 38%, rgba(255, 247, 228, 0.75) 45%, transparent 53%),
+    linear-gradient(118deg, transparent 55%, rgba(255, 247, 228, 0.5) 60%, transparent 66%);
+  filter: blur(26px);
+}
+html.dark .hero-beam {
+  opacity: 0.08;
+}
+/* fine paper grain */
+.hero-grain {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.45 0 0 0 0 0.36 0 0 0 0 0.22 0 0 0 0.55 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  opacity: 0.32;
+  mix-blend-mode: multiply;
+}
+html.dark .hero-grain {
+  opacity: 0.12;
+  mix-blend-mode: screen;
 }
 
 /* Smooth Premium Cards */

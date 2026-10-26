@@ -18,23 +18,24 @@ function Appear({ children, className, delay }) {
   )
 }
 
-function Bubble({ children, className, delay, tail }) {
+// Bubbles sit side by side in one row, so however long the text, they never overlap
+function Bubble({ children, className = '', delay, tail }) {
   return (
-    <Appear className={className} delay={delay}>
-      <div className="relative whitespace-nowrap rounded-2xl px-3.5 py-2 text-[12.5px] font-semibold shadow-[0_14px_30px_-16px_rgba(0,0,0,0.4)] sm:text-[14px]"
+    <motion.div className={`min-w-0 ${className}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay, duration: 0.6 }}>
+      <div className="relative rounded-2xl px-3.5 py-2 text-[12.5px] font-semibold shadow-[0_14px_30px_-16px_rgba(0,0,0,0.4)] sm:text-[14px]"
         style={{ ...card, color: 'var(--text-main)' }}>
         {children}
         <span className={`absolute -bottom-[7px] h-3.5 w-3.5 rotate-45 ${tail}`}
           style={{ background: 'var(--bg-card)', borderRight: '1px solid var(--border-card)', borderBottom: '1px solid var(--border-card)' }} aria-hidden="true" />
       </div>
-    </Appear>
+    </motion.div>
   )
 }
 
 function Chip({ children, className, delay }) {
   return (
     <Appear className={className} delay={delay}>
-      <div className="flex items-center gap-2 whitespace-nowrap rounded-2xl px-3 py-2 text-[12px] shadow-[0_16px_32px_-18px_rgba(0,0,0,0.45)]"
+      <div className="flex items-center gap-2 rounded-2xl px-3 py-2 text-[12px] sm:whitespace-nowrap shadow-[0_16px_32px_-18px_rgba(0,0,0,0.45)]"
         style={{ ...card, color: 'var(--text-main)' }}>
         {children}
       </div>
@@ -69,20 +70,22 @@ export default function HeroPhoto() {
         initial={reduce ? false : { scale: 1.04 }} animate={{ scale: 1 }} transition={{ duration: 1.4, delay: 0.2, ease: EASE }}
       />
 
-      <Bubble className="right-[3%] top-[2%]" delay={0.9} tail="left-6">{t('landing.hero.photo.easy')}</Bubble>
-      <Bubble className="left-[2%] top-[8%]" delay={1.3} tail="right-6">
-        <span className="flex items-center gap-1.5"><Check size={15} className="text-emerald-600" /> {t('landing.hero.photo.sorted')}</span>
-      </Bubble>
+      <div className="absolute inset-x-[2%] top-[2%] z-10 flex items-start justify-between gap-3">
+        <Bubble className="mt-6 sm:mt-8" delay={1.3} tail="right-6">
+          <span className="flex items-center gap-1.5"><Check size={15} className="shrink-0 text-emerald-600" /> {t('landing.hero.photo.sorted')}</span>
+        </Bubble>
+        <Bubble delay={0.9} tail="left-6">{t('landing.hero.photo.easy')}</Bubble>
+      </div>
 
-      <Chip className="bottom-[-2%] right-[0%] sm:bottom-auto sm:-right-[4%] sm:top-[50%]" delay={1.7}>
-        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-rose-500/12 text-rose-600"><ArrowUpRight size={14} /></span>
+      <Chip className="bottom-[-2%] right-[0%] max-w-[49%] sm:max-w-none sm:bottom-auto sm:-right-[4%] sm:top-[50%]" delay={1.7}>
+        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-rose-500/12 text-rose-600"><ArrowUpRight size={14} /></span>
         <span>
           <span className="block font-semibold">{t('landing.cats.vegetables')}</span>
-          <span className="flex items-center gap-1 text-[11px]"><span className="text-rose-600">− ₹480</span><span style={{ color: 'var(--text-subtle)' }}>{t('landing.hero.photo.saved')}</span></span>
+          <span className="flex flex-wrap items-center gap-x-1 text-[11px]"><span className="whitespace-nowrap text-rose-600">− ₹480</span><span className="hidden sm:inline" style={{ color: 'var(--text-subtle)' }}>{t('landing.hero.photo.saved')}</span></span>
         </span>
       </Chip>
-      <Chip className="bottom-[-2%] left-[0%] sm:-left-[4%] sm:bottom-[10%]" delay={2.1}>
-        <svg width="28" height="28" viewBox="0 0 36 36" className="-rotate-90" aria-hidden="true">
+      <Chip className="bottom-[-2%] left-[0%] max-w-[49%] sm:max-w-none sm:-left-[4%] sm:bottom-[10%]" delay={2.1}>
+        <svg width="28" height="28" viewBox="0 0 36 36" className="shrink-0 -rotate-90" aria-hidden="true">
           <circle cx="18" cy="18" r="14" fill="none" stroke="var(--border-subtle)" strokeWidth="5" />
           <circle cx="18" cy="18" r="14" fill="none" stroke="#059669" strokeWidth="5" strokeLinecap="round" strokeDasharray="53 88" />
         </svg>

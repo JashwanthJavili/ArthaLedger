@@ -40,9 +40,12 @@ function Hero() {
   })
   return (
     <section className="relative -mt-16 pt-16">
-      <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
-        <div className="absolute left-1/2 top-[-160px] h-[560px] w-[560px] -translate-x-1/2 rounded-full blur-3xl lg:left-[72%]" style={{ background: `radial-gradient(circle, ${GOLD_SOFT}, transparent 65%)` }} />
-        <div className="absolute inset-0 opacity-[0.35]" style={{ backgroundImage: 'radial-gradient(var(--border-card) 1px, transparent 1px)', backgroundSize: '22px 22px', maskImage: 'linear-gradient(to bottom, black, transparent 70%)', WebkitMaskImage: 'linear-gradient(to bottom, black, transparent 70%)' }} />
+      {/* a page of a money notebook in warm window light: ruled lines, a red margin, paper grain */}
+      <div className="hero-paper pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
+        <div className="hero-beam absolute -right-[10%] -top-[10%] h-[85%] w-[75%]" />
+        <div className="hero-ruled absolute inset-0" />
+        <div className="hero-margin absolute bottom-0 left-[4%] top-0 hidden sm:block lg:left-[max(0.75rem,calc(50%-36rem+0.75rem))]" />
+        <div className="hero-grain absolute inset-0" />
       </div>
 
       <div className="relative mx-auto grid min-h-[calc(100svh-4rem)] max-w-6xl content-center items-center gap-8 px-4 pt-6 pb-10 sm:gap-12 sm:px-6 sm:py-12 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] lg:gap-8 lg:py-10">
@@ -51,7 +54,7 @@ function Hero() {
 
           {/* Tamil words run wide, so the heading is a size smaller on bigger screens */}
           <motion.h1 {...fade(0.08)}
-            className={`font-serif-luxury mt-4 text-[2.15rem] sm:mt-5 min-[380px]:text-[2.5rem] leading-[1.06] font-semibold tracking-tight ${lang === 'ta' ? 'sm:text-5xl lg:text-[3.3rem]' : 'sm:text-6xl lg:text-[4.2rem]'}`}
+            className={`font-serif-luxury mt-4 font-semibold tracking-tight sm:mt-5 ${lang === 'ta' ? 'text-[1.75rem] leading-[1.18] min-[380px]:text-[1.95rem] sm:text-5xl lg:text-[3.3rem]' : 'text-[2.15rem] leading-[1.06] min-[380px]:text-[2.5rem] sm:text-6xl lg:text-[4.2rem]'}`}
             style={{ color: 'var(--text-main)' }}>
             <Trans k="landing.hero.title" components={{ br: <br className="hidden min-[380px]:block" />, em: <em className="italic" style={{ color: 'var(--gold-primary)' }} /> }} />
           </motion.h1>

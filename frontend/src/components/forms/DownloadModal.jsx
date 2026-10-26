@@ -433,7 +433,7 @@ export default function DownloadModal({ open, onClose, user, projects, booksByPr
                     )
                   })}
                 </div>
-                {/* PDF export can't draw Telugu or Tamil script, so PDFs are always in English */}
+                {/* PDF export can't draw Telugu, Tamil or Hindi script, so PDFs are always in English */}
                 {lang !== 'en' && (
                   <p className="text-[10px] text-stone-500 mt-1.5 ml-1">{t('download.pdfEnglishNote')}</p>
                 )}

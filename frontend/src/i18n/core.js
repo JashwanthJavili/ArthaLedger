@@ -1,11 +1,12 @@
 import { createContext, useContext } from 'react'
-import { enIN, te as teLocale, ta as taLocale } from 'date-fns/locale'
+import { enIN, te as teLocale, ta as taLocale, hi as hiLocale } from 'date-fns/locale'
 import en from './en.json'
 import te from './te.json'
 import ta from './ta.json'
+import hi from './hi.json'
 
 /*
- * Languages. All text lives in en.json, te.json and ta.json, grouped by screen
+ * Languages. All text lives in en.json, te.json, ta.json and hi.json, grouped by screen
  * ("landing.hero.title", "book.empty.title", ...).
  *
  *   const { t } = useI18n()
@@ -15,7 +16,7 @@ import ta from './ta.json'
  *
  * A missing translated string falls back to English, so nothing is ever blank.
  * Code outside React (notifications, API errors) uses `translate()`.
- * PDF export stays in English: its fonts cannot draw Telugu or Tamil.
+ * PDF export stays in English: its fonts cannot draw Telugu, Tamil or Hindi.
  */
 
 // label: full name · short: the app's header button · badge: two-letter square
@@ -23,8 +24,9 @@ export const LANGS = [
   { code: 'en', label: 'English', short: 'Eng', badge: 'EN', intl: 'en-IN' },
   { code: 'te', label: 'తెలుగు', short: 'తెలుగు', badge: 'తె', intl: 'te-IN' },
   { code: 'ta', label: 'தமிழ்', short: 'தமிழ்', badge: 'த', intl: 'ta-IN' },
+  { code: 'hi', label: 'हिन्दी', short: 'हिन्दी', badge: 'हि', intl: 'hi-IN' },
 ]
-const DICTS = { en, te, ta }
+const DICTS = { en, te, ta, hi }
 const STORE_KEY = 'artha.lang'
 
 function readStored() {
@@ -75,7 +77,7 @@ export const currentLang = () => current
 /** Intl locale for numbers and dates, e.g. "te-IN". */
 export const intlLocale = (lang = current) => (LANGS.find((l) => l.code === lang) || LANGS[0]).intl
 /** date-fns locale for `format(date, 'd MMM', { locale })`. */
-const DATE_LOCALES = { en: enIN, te: teLocale, ta: taLocale }
+const DATE_LOCALES = { en: enIN, te: teLocale, ta: taLocale, hi: hiLocale }
 export const dateLocale = (lang = current) => DATE_LOCALES[lang] || enIN
 
 export const I18nContext = createContext(null)
