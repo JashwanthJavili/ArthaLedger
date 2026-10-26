@@ -1,10 +1,11 @@
 import { createContext, useContext } from 'react'
-import { enIN, te as teLocale } from 'date-fns/locale'
+import { enIN, te as teLocale, ta as taLocale } from 'date-fns/locale'
 import en from './en.json'
 import te from './te.json'
+import ta from './ta.json'
 
 /*
- * Languages. All text lives in en.json and te.json, grouped by screen
+ * Languages. All text lives in en.json, te.json and ta.json, grouped by screen
  * ("landing.hero.title", "book.empty.title", ...).
  *
  *   const { t } = useI18n()
@@ -12,17 +13,18 @@ import te from './te.json'
  *   t('book.count', { count: 3 })          -> picks "one" / "other", fills {count}
  *   <Trans k="landing.hero.title" components={{ em: <em /> }} />   (from ./Trans)
  *
- * A missing Telugu string falls back to English, so nothing is ever blank.
+ * A missing translated string falls back to English, so nothing is ever blank.
  * Code outside React (notifications, API errors) uses `translate()`.
- * PDF export stays in English: its fonts cannot draw Telugu.
+ * PDF export stays in English: its fonts cannot draw Telugu or Tamil.
  */
 
 // label: full name · short: the app's header button · badge: two-letter square
 export const LANGS = [
   { code: 'en', label: 'English', short: 'Eng', badge: 'EN', intl: 'en-IN' },
   { code: 'te', label: 'తెలుగు', short: 'తెలుగు', badge: 'తె', intl: 'te-IN' },
+  { code: 'ta', label: 'தமிழ்', short: 'தமிழ்', badge: 'த', intl: 'ta-IN' },
 ]
-const DICTS = { en, te }
+const DICTS = { en, te, ta }
 const STORE_KEY = 'artha.lang'
 
 function readStored() {
@@ -73,7 +75,8 @@ export const currentLang = () => current
 /** Intl locale for numbers and dates, e.g. "te-IN". */
 export const intlLocale = (lang = current) => (LANGS.find((l) => l.code === lang) || LANGS[0]).intl
 /** date-fns locale for `format(date, 'd MMM', { locale })`. */
-export const dateLocale = (lang = current) => (lang === 'te' ? teLocale : enIN)
+const DATE_LOCALES = { en: enIN, te: teLocale, ta: taLocale }
+export const dateLocale = (lang = current) => DATE_LOCALES[lang] || enIN
 
 export const I18nContext = createContext(null)
 

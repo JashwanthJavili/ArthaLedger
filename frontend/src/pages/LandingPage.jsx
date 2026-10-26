@@ -31,7 +31,7 @@ import { Trans } from '../i18n/Trans'
 /* ─────────────────────────── hero ─────────────────────────── */
 
 function Hero() {
-  const { t } = useI18n()
+  const { t, lang } = useI18n()
   const reduce = useReducedMotion()
   const fade = (d) => ({
     initial: reduce ? { opacity: 0 } : { opacity: 0, y: 18 },
@@ -45,12 +45,13 @@ function Hero() {
         <div className="absolute inset-0 opacity-[0.35]" style={{ backgroundImage: 'radial-gradient(var(--border-card) 1px, transparent 1px)', backgroundSize: '22px 22px', maskImage: 'linear-gradient(to bottom, black, transparent 70%)', WebkitMaskImage: 'linear-gradient(to bottom, black, transparent 70%)' }} />
       </div>
 
-      <div className="relative mx-auto grid min-h-[calc(100svh-4rem)] max-w-6xl content-center items-center gap-8 px-4 pt-6 pb-10 sm:gap-12 sm:px-6 sm:py-12 lg:grid-cols-[1.1fr_1fr] lg:gap-8 lg:py-10">
+      <div className="relative mx-auto grid min-h-[calc(100svh-4rem)] max-w-6xl content-center items-center gap-8 px-4 pt-6 pb-10 sm:gap-12 sm:px-6 sm:py-12 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] lg:gap-8 lg:py-10">
         <div className="text-center lg:text-left">
           <motion.div {...fade(0)}><Eyebrow>{t('landing.hero.eyebrow')}</Eyebrow></motion.div>
 
+          {/* Tamil words run wide, so the heading is a size smaller on bigger screens */}
           <motion.h1 {...fade(0.08)}
-            className="font-serif-luxury mt-4 text-[2.15rem] sm:mt-5 min-[380px]:text-[2.5rem] leading-[1.06] font-semibold tracking-tight sm:text-6xl lg:text-[4.2rem]"
+            className={`font-serif-luxury mt-4 text-[2.15rem] sm:mt-5 min-[380px]:text-[2.5rem] leading-[1.06] font-semibold tracking-tight ${lang === 'ta' ? 'sm:text-5xl lg:text-[3.3rem]' : 'sm:text-6xl lg:text-[4.2rem]'}`}
             style={{ color: 'var(--text-main)' }}>
             <Trans k="landing.hero.title" components={{ br: <br className="hidden min-[380px]:block" />, em: <em className="italic" style={{ color: 'var(--gold-primary)' }} /> }} />
           </motion.h1>
@@ -59,12 +60,12 @@ function Hero() {
             {t('landing.hero.sub')}
           </motion.p>
 
-          <motion.div {...fade(0.24)} className="mt-6 grid grid-cols-2 gap-2.5 sm:mt-8 sm:flex sm:justify-center sm:gap-3 lg:justify-start">
+          <motion.div {...fade(0.24)} className="mt-6 grid grid-cols-2 gap-2.5 sm:mt-8 sm:flex sm:flex-wrap sm:justify-center sm:gap-3 lg:justify-start">
             <PrimaryLink to="/register" className="px-3 sm:px-6" iconClassName="hidden sm:block">
-              <span className="whitespace-nowrap sm:hidden">{t('landing.hero.startShort')}</span><span className="hidden sm:inline">{t('landing.hero.start')}</span>
+              <span className="whitespace-nowrap sm:hidden">{t('landing.hero.startShort')}</span><span className="hidden whitespace-nowrap sm:inline">{t('landing.hero.start')}</span>
             </PrimaryLink>
             <GhostLink href={APK_URL} download icon={Download} className="px-3 sm:px-6">
-              <span className="sm:hidden">{t('common.androidApp')}</span><span className="hidden sm:inline">{t('common.downloadAndroid')}</span>
+              <span className="sm:hidden">{t('common.androidApp')}</span><span className="hidden whitespace-nowrap sm:inline">{t('common.downloadAndroid')}</span>
             </GhostLink>
           </motion.div>
 
@@ -146,8 +147,8 @@ function Transformation() {
       <div className="mx-auto w-full max-w-6xl">
         <SectionTitle eyebrow={t('landing.sorted.eyebrow')} title={t('landing.sorted.title')}
           sub={t('landing.sorted.sub')}
-          // Telugu takes two lines for the heading on phones; drop the sub there so it fits one screen
-          subClassName={lang === 'te' ? 'hidden sm:block' : ''} />
+          // Telugu and Tamil take two lines for the heading on phones; drop the sub there so it fits one screen
+          subClassName={lang !== 'en' ? 'hidden sm:block' : ''} />
         <Reveal className="mt-6 sm:mt-8"><BeforeAfter /></Reveal>
         <div className="mt-3 grid gap-2 sm:mt-4 sm:gap-3 md:grid-cols-3">
           {shifts.map(({ from, to }, i) => (

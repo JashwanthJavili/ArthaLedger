@@ -318,18 +318,22 @@
       "steps": {
         "project": {
           "title": "Create a project",
+          "chip": "Project",
           "text": "A folder for one part of life: Personal, Family or Business."
         },
         "books": {
           "title": "Add books inside",
+          "chip": "Books",
           "text": "One book for each purpose, each with its own balance."
         },
         "record": {
           "title": "Record money",
+          "chip": "Record",
           "text": "Tap Cash In or Cash Out, type the amount. Done."
         },
         "picture": {
           "title": "See the picture",
+          "chip": "Insights",
           "text": "Charts and budget alerts, worked out for you."
         }
       },
@@ -2131,7 +2135,7 @@
       },
       "allBooksIn": "All books in {name}",
       "entries": {
-        "one": "{count} entries",
+        "one": "{count} entry",
         "other": "{count} entries"
       },
       "selectOne": "Select at least one project to continue."

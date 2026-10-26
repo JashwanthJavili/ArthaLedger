@@ -69,7 +69,7 @@ export default function PrivacyPage() {
           <p className="mt-4 text-[13px] text-[var(--text-subtle)]">
             {t('privacy.effective', { date: EFFECTIVE.toLocaleDateString(intl, { day: 'numeric', month: 'long', year: 'numeric' }) })}
           </p>
-          {lang === 'te' && <p className="mt-2 text-[13px] text-[var(--text-subtle)]">{t('privacy.translationNote')}</p>}
+          {lang !== 'en' && <p className="mt-2 text-[13px] text-[var(--text-subtle)]">{t('privacy.translationNote')}</p>}
         </motion.div>
 
         <section aria-label={t('privacy.glanceTitle')} className="py-8">

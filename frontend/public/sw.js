@@ -106,6 +106,12 @@ const SNOOZE_TEXT = {
     failed: 'వాయిదా వేయలేకపోయాం',
     failedBody: 'ఇంటర్నెట్ లేదు. ఈరోజు ఖర్చులు రాయడానికి ArthaLedger తెరవండి.',
   },
+  ta: {
+    done: '10 நிமிடம் தள்ளிவைக்கப்பட்டது',
+    doneBody: 'மீண்டும் {time} மணிக்கு நினைவூட்டுவோம்.',
+    failed: 'தள்ளிவைக்க முடியவில்லை',
+    failedBody: 'இணைய இணைப்பு இல்லை. இன்றைய செலவுகளைப் பதிய ArthaLedger-ஐத் திறக்கவும்.',
+  },
 }
 
 self.addEventListener('notificationclick', (event) => {

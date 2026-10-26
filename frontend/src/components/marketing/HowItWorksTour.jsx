@@ -327,7 +327,7 @@ export default function HowItWorksTour() {
           return (
             <li key={id}>
               <button type="button" onClick={() => setStep(i)} aria-current={on ? 'step' : undefined}
-                className="relative w-full overflow-hidden rounded-2xl p-2.5 text-left transition-colors lg:p-5"
+                className="relative w-full overflow-hidden rounded-2xl px-1 py-2.5 text-left sm:p-2.5 transition-colors lg:p-5"
                 style={{ background: on ? 'var(--bg-card)' : 'transparent', border: `1px solid ${on ? 'var(--border-card)' : 'transparent'}`, boxShadow: on ? '0 24px 50px -36px rgba(43,38,32,0.5)' : 'none' }}>
                 <div className="flex flex-col items-center gap-1.5 lg:flex-row lg:items-start lg:gap-4">
                   <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-colors duration-300"
@@ -336,7 +336,11 @@ export default function HowItWorksTour() {
                   </span>
                   <div className="min-w-0 text-center lg:text-left">
                     <p className="hidden text-[11px] font-semibold uppercase tracking-[0.16em] lg:block" style={{ color: 'var(--text-subtle)' }}>{t('landing.how.step', { n: i + 1 })}</p>
-                    <p className="text-[11px] font-semibold leading-tight sm:text-[12.5px] lg:mt-0.5 lg:text-[17px]" style={{ color: on ? 'var(--text-main)' : 'var(--text-muted)' }}>{title}</p>
+                    <p className="text-[11px] font-semibold leading-tight sm:text-[12.5px] lg:mt-0.5 lg:text-[17px]" style={{ color: on ? 'var(--text-main)' : 'var(--text-muted)' }}>
+                      {/* one word on phones, where four buttons share the row */}
+                      <span className="sm:hidden">{t(`landing.how.steps.${id}.chip`)}</span>
+                      <span className="hidden sm:inline">{title}</span>
+                    </p>
                     <AnimatePresence initial={false}>
                       {on && (
                         <motion.p initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}

@@ -5,8 +5,8 @@
 /* ── Light Mode Luxury Palette ── */
 :root {
   color-scheme: light;
-  --font-sans: 'Poppins', 'Noto Sans Telugu', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --font-serif: 'Playfair Display', 'Noto Sans Telugu', Georgia, serif;
+  --font-sans: 'Poppins', 'Noto Sans Telugu', 'Noto Sans Tamil', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-serif: 'Playfair Display', 'Noto Sans Telugu', 'Noto Sans Tamil', Georgia, serif;
 
   --gold-primary: #C5A059;
   --gold-hover: #B38E46;
@@ -119,10 +119,17 @@ html.dark body {
   font-family: var(--font-serif);
 }
 
-/* Telugu has no italic letters; a slanted copy looks wrong, so keep it upright */
+/* Telugu and Tamil have no italic letters; a slanted copy looks wrong, so keep them upright */
 :lang(te) em,
-:lang(te) .italic {
+:lang(te) .italic,
+:lang(ta) em,
+:lang(ta) .italic {
   font-style: normal;
+}
+/* Letter spacing pulls Telugu and Tamil syllables apart; set them normally */
+:lang(te) [class*='tracking-'],
+:lang(ta) [class*='tracking-'] {
+  letter-spacing: normal;
 }
 
 /* Smooth Premium Cards */

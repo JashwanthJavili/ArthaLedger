@@ -32,7 +32,7 @@ function NavItem({ item, onHome, current, mobile, onClick }) {
   const isActive = item.page ? current === item.page : current === item.id
   const base = mobile
     ? 'flex min-h-12 items-center justify-between rounded-2xl px-4 text-[15px] font-medium'
-    : 'relative rounded-full px-3.5 py-1 text-[13.5px] font-medium leading-6 transition-colors'
+    : 'relative whitespace-nowrap rounded-full px-2.5 py-1 xl:px-3.5 text-[13.5px] font-medium leading-6 transition-colors'
   const style = { color: isActive ? 'var(--text-main)' : mobile ? 'var(--text-main)' : 'var(--text-muted)', background: mobile && isActive ? 'var(--border-subtle)' : undefined }
   const inner = (
     <>
