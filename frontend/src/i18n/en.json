@@ -1096,8 +1096,6 @@
     "categoriesSaved": "Categories saved",
     "budget": {
       "used": "{pct}% used",
-      "noneFor": "No monthly budget for {category}",
-      "none": "No monthly budget for this category",
       "hardTitle": "Hard limit crossed by {amount}",
       "hardMsgEntry": "Total after this entry: {total} — {over} over the hard limit of {hard}.",
       "hardMsg": "Already {amount} over the hard limit.",

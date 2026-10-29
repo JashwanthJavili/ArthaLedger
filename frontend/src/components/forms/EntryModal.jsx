@@ -175,7 +175,6 @@ export default function EntryModal({
   const savingsOn = isIncome && isSavings
   const matchingTemplates = templates.filter(tpl => tpl.type === entryType)
 
-  const hasBudgets = Object.values(budgets || {}).some(b => b?.soft > 0)
   const budgetHint = (() => {
     if (isIncome || !category) return null
     const cfg = budgets[category]
@@ -776,35 +775,27 @@ export default function EntryModal({
                 </AnimatePresence>
               </div>
 
-              {/* Budget — fixed-height line (reserved whenever budgets exist) */}
-              {!isIncome && hasBudgets && (
+              {/* Budget line, only for a category that has a budget */}
+              {!isIncome && budgetHint && (
                 <div className="mt-2 h-[52px] rounded-xl border border-[var(--border-card)] bg-[var(--bg-card)] px-3.5 py-2">
-                  {budgetHint ? (
-                    <>
-                      <div className="flex items-center justify-between gap-2">
-                        <span className={`flex min-w-0 items-center gap-1.5 truncate text-[12px] font-semibold ${budgetHint.textClass}`}>
-                          {budgetHint.icon}
-                          <span className="truncate" title={budgetHint.message}>{budgetHint.title}</span>
-                        </span>
-                        <span className="flex-shrink-0 text-[11px] font-medium tabular-nums text-[var(--text-muted)]">
-                          {t('entry.budget.used', { pct: Math.round(budgetHint.pctAfter) })}
-                        </span>
-                      </div>
-                      <div className="mt-2 h-1 overflow-hidden rounded-full bg-[var(--border-subtle)]">
-                        <motion.div
-                          initial={false}
-                          animate={{ width: `${Math.min(budgetHint.pctAfter, 100)}%` }}
-                          transition={{ duration: 0.4, ease: 'easeOut' }}
-                          className="h-full rounded-full"
-                          style={{ backgroundColor: budgetHint.barColor }}
-                        />
-                      </div>
-                    </>
-                  ) : (
-                    <p className="flex h-full items-center text-[11px] text-[var(--text-subtle)]">
-                      {category ? t('entry.budget.noneFor', { category }) : t('entry.budget.none')}
-                    </p>
-                  )}
+                  <div className="flex items-center justify-between gap-2">
+                    <span className={`flex min-w-0 items-center gap-1.5 truncate text-[12px] font-semibold ${budgetHint.textClass}`}>
+                      {budgetHint.icon}
+                      <span className="truncate" title={budgetHint.message}>{budgetHint.title}</span>
+                    </span>
+                    <span className="flex-shrink-0 text-[11px] font-medium tabular-nums text-[var(--text-muted)]">
+                      {t('entry.budget.used', { pct: Math.round(budgetHint.pctAfter) })}
+                    </span>
+                  </div>
+                  <div className="mt-2 h-1 overflow-hidden rounded-full bg-[var(--border-subtle)]">
+                    <motion.div
+                      initial={false}
+                      animate={{ width: `${Math.min(budgetHint.pctAfter, 100)}%` }}
+                      transition={{ duration: 0.4, ease: 'easeOut' }}
+                      className="h-full rounded-full"
+                      style={{ backgroundColor: budgetHint.barColor }}
+                    />
+                  </div>
                 </div>
               )}
 

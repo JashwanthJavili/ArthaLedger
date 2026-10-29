@@ -14,6 +14,7 @@ import BeforeAfter from '../components/marketing/BeforeAfter'
 import FeatureBento from '../components/marketing/FeatureBento'
 import HowItWorksTour from '../components/marketing/HowItWorksTour'
 import HeroPhoto from '../components/marketing/HeroPhoto'
+import TypedHeading from '../components/marketing/TypedHeading'
 import ScrollCue from '../components/marketing/ScrollCue'
 import WhatIsArtha from '../components/marketing/WhatIsArtha'
 import AudienceBand from '../components/marketing/AudienceBand'
@@ -21,7 +22,6 @@ import { Counter, Donut, InOutBars, Sparkline } from '../components/marketing/Ch
 import { Reveal, Eyebrow, SectionTitle, PrimaryLink, GhostLink, FaqItem } from '../components/marketing/ui'
 import { EASE, APK_URL, CONTACT, GOLD_TINT, GOLD_SOFT, BAND_BG, goldBtn, card } from '../components/marketing/constants'
 import { useI18n } from '../i18n/core'
-import { Trans } from '../i18n/Trans'
 
 /* ─────────────────────────── shared bits ─────────────────────────── */
 
@@ -53,17 +53,17 @@ function Hero() {
           <motion.div {...fade(0)}><Eyebrow>{t('landing.hero.eyebrow')}</Eyebrow></motion.div>
 
           {/* Tamil words run wide, so the heading is a size smaller on bigger screens */}
-          <motion.h1 {...fade(0.08)}
+          <motion.h1 initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }}
             className={`font-serif-luxury mt-4 font-semibold tracking-tight sm:mt-5 ${lang === 'ta' ? 'text-[1.75rem] leading-[1.18] min-[380px]:text-[1.95rem] sm:text-5xl lg:text-[3.3rem]' : 'text-[2.15rem] leading-[1.06] min-[380px]:text-[2.5rem] sm:text-6xl lg:text-[4.2rem]'}`}
             style={{ color: 'var(--text-main)' }}>
-            <Trans k="landing.hero.title" components={{ br: <br className="hidden min-[380px]:block" />, em: <em className="italic" style={{ color: 'var(--gold-primary)' }} /> }} />
+            <TypedHeading k="landing.hero.title" brClassName="hidden min-[380px]:block" emClassName="italic" emStyle={{ color: 'var(--gold-primary)' }} />
           </motion.h1>
 
-          <motion.p {...fade(0.16)} className="mx-auto mt-4 max-w-lg text-[15.5px] sm:mt-5 leading-relaxed sm:text-lg lg:mx-0" style={{ color: 'var(--text-muted)' }}>
+          <motion.p {...fade(1.1)} className="mx-auto mt-4 max-w-lg text-[15.5px] sm:mt-5 leading-relaxed sm:text-lg lg:mx-0" style={{ color: 'var(--text-muted)' }}>
             {t('landing.hero.sub')}
           </motion.p>
 
-          <motion.div {...fade(0.24)} className="mt-6 grid grid-cols-2 gap-2.5 sm:mt-8 sm:flex sm:flex-wrap sm:justify-center sm:gap-3 lg:justify-start">
+          <motion.div {...fade(1.3)} className="mt-6 grid grid-cols-2 gap-2.5 sm:mt-8 sm:flex sm:flex-wrap sm:justify-center sm:gap-3 lg:justify-start">
             <PrimaryLink to="/register" className="px-3 sm:px-6" iconClassName="hidden sm:block">
               <span className="whitespace-nowrap sm:hidden">{t('landing.hero.startShort')}</span><span className="hidden whitespace-nowrap sm:inline">{t('landing.hero.start')}</span>
             </PrimaryLink>
@@ -72,7 +72,7 @@ function Hero() {
             </GhostLink>
           </motion.div>
 
-          <motion.ul {...fade(0.32)} className="mt-5 flex flex-wrap justify-center gap-x-3.5 gap-y-1.5 text-[12px] sm:mt-7 sm:gap-x-5 sm:gap-y-2 sm:text-[13px] lg:justify-start" style={{ color: 'var(--text-subtle)' }}>
+          <motion.ul {...fade(1.5)} className="mt-5 flex flex-wrap justify-center gap-x-3.5 gap-y-1.5 text-[12px] sm:mt-7 sm:gap-x-5 sm:gap-y-2 sm:text-[13px] lg:justify-start" style={{ color: 'var(--text-subtle)' }}>
             <li className="flex items-center gap-1.5"><Landmark size={14} style={{ color: 'var(--gold-primary)' }} /> {t('landing.hero.noBank')}</li>
             <li className="flex items-center gap-1.5"><ShieldCheck size={14} style={{ color: 'var(--gold-primary)' }} /> {t('landing.hero.private')}</li>
             <li className="flex items-center gap-1.5"><WifiOff size={14} style={{ color: 'var(--gold-primary)' }} /> {t('landing.hero.offline')}</li>
