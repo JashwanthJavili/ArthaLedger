@@ -4,9 +4,9 @@ import { format, isToday, isYesterday } from 'date-fns'
 import {
   Search, Download, ArrowLeft, MoreVertical, SlidersHorizontal,
   Pencil, Trash2, X, ArrowDownLeft, ArrowUpRight, Check, Tags,
-  Hash, Lock, Unlock, Link2, ArrowLeftRight,
+  Hash, Lock, Unlock, Link2, ArrowLeftRight, MessageSquareText,
 } from 'lucide-react'
-import { Link, useParams, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useParams, useNavigate } from 'react-router-dom'
 import LayoutShell from '../components/LayoutShell'
 import PageSkeleton from '../components/common/PageSkeleton'
 import EntryCard from '../components/cards/EntryCard'
@@ -30,6 +30,7 @@ import SendToTripModal from '../components/forms/SendToTripModal'
 import TransferModal from '../components/forms/TransferModal'
 import { compareNewestFirst, compareOldestFirst } from '../lib/entryOrder'
 import { useI18n } from '../i18n/core'
+import { canImportSms, startSmsImport } from '../lib/nativeApp'
 import { Trans } from '../i18n/Trans'
 
 const defaultCategories = []
@@ -124,7 +125,7 @@ function EntryMenu({ variant = 'normal', sourceName, onEdit, onDelete, onOpenSou
 }
 
 /* ── Book header 3-dot menu ── */
-function BookHeaderMenu({ onEdit, onDelete, onSetPin, onManageCategories, onTransfer, hasPin }) {
+function BookHeaderMenu({ onEdit, onDelete, onSetPin, onManageCategories, onTransfer, onSmsImport, hasPin }) {
   const [open, setOpen] = useState(false)
   const ref = useDismiss(setOpen)
   const { t } = useI18n()
@@ -144,6 +145,11 @@ function BookHeaderMenu({ onEdit, onDelete, onSetPin, onManageCategories, onTran
             {onTransfer && (
               <button onClick={() => { onTransfer(); setOpen(false) }} className={menuItem}>
                 <ArrowLeftRight size={14} className="text-[var(--text-muted)]" /> {t('book.menu.transferMoney')}
+              </button>
+            )}
+            {onSmsImport && (
+              <button onClick={() => { onSmsImport(); setOpen(false) }} className={menuItem}>
+                <MessageSquareText size={14} className="text-[var(--text-muted)]" /> {t('sms.menuItem')}
               </button>
             )}
             <button onClick={() => { onManageCategories(); setOpen(false) }} className={menuItem}>
@@ -176,7 +182,8 @@ const roundMoney = (n) => Math.round(n * 100) / 100
 export default function BookPage() {
   const { projectId, bookId } = useParams()
   const navigate = useNavigate()
-  const { t, locale } = useI18n()
+  const location = useLocation()
+  const { t, locale, lang } = useI18n()
   const {
     loading,
     error,
@@ -471,6 +478,15 @@ export default function BookPage() {
 
   const clearFilters = () => setFilters({ type: 'all', mode: 'all', category: 'all', enteredBy: 'all', from: '', to: '' })
 
+  // A message handed over from another page (e.g. "3 entries added" after a bank SMS import)
+  useEffect(() => {
+    const msg = location.state?.toast
+    if (!msg) return
+    showToast(msg)
+    navigate(location.pathname, { replace: true, state: null })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.state])
+
   if (error) {
     return (
       <LayoutShell>
@@ -612,6 +628,7 @@ export default function BookPage() {
             onSetPin={() => setSetPinOpen(true)}
             onManageCategories={() => setShowCatManager(true)}
             onTransfer={hasTransferTarget ? () => setTransferOpen(true) : undefined}
+            onSmsImport={canImportSms() ? () => startSmsImport({ lang, book: `${projectId}/${bookId}` }) : undefined}
             hasPin={Boolean(book.pinHash)}
           />
         </header>

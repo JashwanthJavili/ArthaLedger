@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- "Add from bank SMS" screens (SmsImportActivity) -->
+<resources>
+    <string name="sms_disclosure_title">வங்கி SMS-இலிருந்து பதிவுகளைச் சேர்</string>
+    <string name="sms_disclosure_body">இந்த ஃபோனில் வங்கிகள், UPI ஆப்களிலிருந்து வரும் பணச் செய்திகளை ArthaLedger படித்து, அவற்றைப் பதிவுகளாக மாற்றும். எதையும் சேர்ப்பதற்கு முன் நீங்கள் அவற்றைச் சரிபார்க்கலாம்.\n\n• செய்திகள் உங்கள் ஃபோனிலேயே படிக்கப்படும். அவை ஒருபோதும் பதிவேற்றப்படாது, யாருடனும் பகிரப்படாது. நீங்கள் தேர்ந்தெடுக்கும் பதிவுகள் மட்டுமே உங்கள் கணக்கில் சேமிக்கப்படும்.\n• தனிப்பட்ட செய்திகளும் OTP-களும் தவிர்க்கப்படும்.\n• நீங்கள் தேர்ந்தெடுக்கும் வரை எதுவும் சேர்க்கப்படாது.</string>
+    <string name="sms_continue">தொடர்</string>
+    <string name="sms_not_now">இப்போது வேண்டாம்</string>
+    <string name="sms_blocked_title">SMS அனுமதி முடக்கப்பட்டுள்ளது</string>
+    <string name="sms_blocked_body">வங்கி SMS-இலிருந்து பதிவுகளைச் சேர்க்க, அமைப்புகளில் ArthaLedger-க்கு SMS அனுமதியை இயக்கவும்.\n\nAndroid இதைக் கட்டுப்படுத்தப்பட்ட அமைப்பு எனச் சொன்னால், ArthaLedger ஆப்ஸ் தகவலைத் திறந்து, மேலே வலதுபுறம் ⋮ → Allow restricted settings என்பதைத் தட்டி, பிறகு SMS-ஐ அனுமதிக்கவும்.</string>
+    <string name="sms_open_settings">அமைப்புகளைத் திற</string>
+    <string name="sms_need_chrome">இதற்கு Google Chrome நிறுவப்பட்டு, புதுப்பிக்கப்பட்டிருக்க வேண்டும்.</string>
+</resources>

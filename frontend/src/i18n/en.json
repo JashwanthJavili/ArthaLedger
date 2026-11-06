@@ -681,7 +681,8 @@
             "Feedback you send us: your message, its type and rating, and your name and email so we can reply.",
             "Basic technical information needed to keep the service secure and working, such as sign-in times and error logs."
           ],
-          "We do not collect your bank, card or UPI details, your contacts, your location or your messages."
+          "We do not collect your bank, card or UPI details, your contacts or your location, and your SMS messages never leave your phone.",
+          "Bank SMS (Android app only, and only if you use it): when you tap “Add from bank SMS” and allow the SMS permission, the app reads recent payment messages from banks and UPI apps on your phone and suggests entries from them. This happens on your phone. The messages are not uploaded, stored or shared with us or anyone else. Only the entries you choose to add are saved, like any entry you type; each keeps a short note with the bank name, the last four digits of the account and the payment reference. You can turn the SMS permission off at any time in your phone’s settings."
         ]
       },
       "use": {
@@ -2288,5 +2289,99 @@
       "checkInput": "Please check what you entered.",
       "serverError": "Something went wrong ({status})."
     }
+  },
+  "sms": {
+    "title": "Bank SMS",
+    "subtitle": "Payments from the last {days} days",
+    "private": "Read on your phone only. Your messages are never uploaded.",
+    "waiting": "Reading your bank SMS…",
+    "status": {
+      "cancelled": {
+        "title": "Nothing was read",
+        "text": "You closed the SMS step, so no messages were read. Try again whenever you like."
+      },
+      "denied": {
+        "title": "SMS permission not given",
+        "text": "ArthaLedger needs the SMS permission to find your bank payments. Nothing was read. If Android calls it a restricted setting, open ArthaLedger’s App info, tap ⋮ (top right) → Allow restricted settings, then allow SMS."
+      },
+      "error": {
+        "title": "Couldn't read your messages",
+        "text": "Something went wrong on your phone. Please try again."
+      },
+      "unverified": {
+        "title": "Please update the app",
+        "text": "This version of the ArthaLedger app couldn't connect to this page. Update the app and try again."
+      },
+      "noapp": {
+        "title": "Needs the Android app",
+        "text": "Adding entries from bank SMS works in the ArthaLedger app for Android."
+      },
+      "timeout": {
+        "title": "No messages arrived",
+        "text": "Start from the ArthaLedger app: Settings → Add from bank SMS."
+      },
+      "nochrome": {
+        "title": "Needs Google Chrome",
+        "text": "Reading bank SMS works with Google Chrome. Install or update Chrome from the Play Store, then try again. Nothing was read."
+      }
+    },
+    "readButton": "Read bank SMS",
+    "book": "Add to book",
+    "chooseBook": "Choose a book",
+    "noBooks": "You don't have a book yet. Create one first, then come back.",
+    "empty": {
+      "title": "Nothing new to add",
+      "text": "No new bank payments in the last {days} days. Ones you've added before don't show again."
+    },
+    "found": {
+      "one": "1 payment found",
+      "other": "{count} payments found"
+    },
+    "selectAll": "Select all",
+    "selectNone": "Deselect all",
+    "truncated": "Only your most recent messages are shown.",
+    "channel": {
+      "upi": "UPI",
+      "card": "Card",
+      "bank": "Bank transfer",
+      "atm": "ATM",
+      "wallet": "Wallet",
+      "other": "Bank"
+    },
+    "description": "Description",
+    "category": "Category",
+    "noCategory": "General",
+    "kind": {
+      "atm": "ATM cash",
+      "transfer": "Own transfer",
+      "refund": "Refund",
+      "salary": "Salary"
+    },
+    "hide": "Hide",
+    "add": {
+      "one": "Add 1 entry",
+      "other": "Add {count} entries"
+    },
+    "added": {
+      "one": "1 entry added",
+      "other": "{count} entries added"
+    },
+    "addError": "Couldn't add the entries. Please try again.",
+    "note": "From bank SMS · {details}",
+    "desc": {
+      "received": "Money received",
+      "refund": "Refund",
+      "salary": "Salary",
+      "atm": "ATM withdrawal",
+      "upi": "UPI payment",
+      "card": "Card payment",
+      "bank": "Bank transfer",
+      "wallet": "Wallet payment",
+      "other": "Bank payment"
+    },
+    "settingsRow": "Add from bank SMS",
+    "settingsHint": "Turn bank and UPI messages into entries",
+    "menuItem": "Add from bank SMS",
+    "tip": "Banks don’t always send an SMS for small UPI payments, so add those yourself. On Xiaomi, Redmi and POCO phones, open ArthaLedger’s app permissions and also allow “Service SMS” (sometimes called “Notification SMS”), or bank messages stay hidden."
   }
 }

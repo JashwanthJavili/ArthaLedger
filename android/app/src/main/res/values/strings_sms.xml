@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- "Add from bank SMS" screens (SmsImportActivity) -->
+<resources>
+    <string name="sms_disclosure_title">Add entries from bank SMS</string>
+    <string name="sms_disclosure_body">ArthaLedger reads payment messages from banks and UPI apps on this phone and turns them into entries. You review them before anything is added.\n\n• Messages are read on your phone only. They are never uploaded or shared. Only the entries you choose are saved to your account.\n• Personal messages and OTPs are skipped.\n• Nothing is added until you choose.</string>
+    <string name="sms_continue">Continue</string>
+    <string name="sms_not_now">Not now</string>
+    <string name="sms_blocked_title">SMS permission is off</string>
+    <string name="sms_blocked_body">To add entries from bank SMS, allow SMS for ArthaLedger in Settings.\n\nIf Android calls it a restricted setting, open ArthaLedger’s App info, tap ⋮ (top right) → Allow restricted settings, then allow SMS.</string>
+    <string name="sms_open_settings">Open settings</string>
+    <string name="sms_need_chrome">This needs Google Chrome, installed and up to date.</string>
+</resources>

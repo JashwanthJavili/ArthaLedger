@@ -22,6 +22,7 @@ import VaultPage from './pages/VaultPage'
 import ExpenseGroupsPage from './pages/ExpenseGroupsPage'
 import ExpenseGroupDetailPage from './pages/ExpenseGroupDetailPage'
 import AdminPage from './pages/AdminPage'
+import SmsImportPage from './pages/SmsImportPage'
 import { useAuth } from './context/AuthContext'
 import Loader from './components/common/Loader'
 import { ensurePushRegistration, syncReminderFromFirebase } from './lib/notifications'
@@ -102,6 +103,7 @@ export default function App() {
           <Route path="/trips/:tripId"   element={<ProtectedRoute><ExpenseGroupDetailPage /></ProtectedRoute>} />
           <Route path="/settings"        element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
           <Route path="/vault"           element={<ProtectedRoute><VaultPage /></ProtectedRoute>} />
+          <Route path="/sms-import"      element={<ProtectedRoute><SmsImportPage /></ProtectedRoute>} />
           <Route path="/admin"           element={<ProtectedRoute><AdminPage /></ProtectedRoute>} />
           <Route path="/projects/:projectId"                    element={<ProtectedRoute><ProjectDetailPage /></ProtectedRoute>} />
           <Route path="/projects/:projectId/books/:bookId"      element={<ProtectedRoute><BookPage /></ProtectedRoute>} />

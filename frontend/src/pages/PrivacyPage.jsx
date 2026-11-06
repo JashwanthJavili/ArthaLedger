@@ -5,7 +5,7 @@ import { useI18n } from '../i18n/core'
 
 const CONTACT = 'jashwanthjavili7@gmail.com'
 // Effective date of this version (shown in the reader's language)
-const EFFECTIVE = new Date(2026, 9, 23)
+const EFFECTIVE = new Date(2026, 9, 30)
 
 const GLANCE = [
   { Icon: ShieldCheck, id: 'private' },

@@ -3,6 +3,7 @@ import { isDarkMode, setDarkMode as applyDarkMode } from '../lib/theme'
 import {
   Moon, Coins, Download, FileText, LogOut, Lock, KeyRound, Bell, BellRing,
   Clock, Stethoscope, Smartphone, CheckCircle2, Trash2, HelpCircle, Info, ShieldCheck, Pencil, MessageSquareHeart, LayoutDashboard, Languages,
+  MessageSquareText,
 } from 'lucide-react'
 import {
   requestNotificationPermission, getNotificationPermissionState, sendNativeNotification,
@@ -26,6 +27,7 @@ import { useAuth } from '../context/AuthContext'
 import { useAppData } from '../context/AppDataContext'
 import { useI18n, LANGS } from '../i18n/core'
 import useChangeLanguage from '../hooks/useChangeLanguage'
+import { canImportSms, startSmsImport } from '../lib/nativeApp'
 
 const APP_VERSION = '1.0.0'
 
@@ -451,6 +453,10 @@ export default function SettingsPage() {
                   {t('settings.prefs.install')}
                 </button>
               } />
+          )}
+          {canImportSms() && (
+            <Row icon={MessageSquareText} label={t('sms.settingsRow')} hint={t('sms.settingsHint')}
+              onClick={() => startSmsImport({ lang })} />
           )}
         </Group>
 

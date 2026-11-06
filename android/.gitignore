@@ -1,0 +1,11 @@
+# Gradle and build output
+.gradle/
+build/
+app/build/
+local.properties
+*.iml
+.idea/
+# Signing: the key and its passwords never go in git
+keystore.properties
+*.keystore
+*.jks

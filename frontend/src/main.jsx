@@ -5,6 +5,11 @@ import './index.css'
 import App from './App.jsx'
 import { I18nProvider } from './i18n/I18nProvider'
 import { startUpdateWatcher } from './lib/appUpdate'
+import { listenForSms, rememberAppFeatures } from './lib/nativeApp'
+
+// Android app: note what it can do, and catch bank SMS it hands over
+rememberAppFeatures()
+listenForSms()
 
 // ── Native-app behaviour on touch devices ──────────────────────────────────
 // No long-press menu / text selection (which brings up Copy, Translate and

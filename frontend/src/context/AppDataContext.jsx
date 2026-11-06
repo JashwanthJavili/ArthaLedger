@@ -275,6 +275,42 @@ export function AppDataProvider({ children }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.uid])
 
+  /**
+   * Adds several entries to one book together (e.g. from bank SMS), with every
+   * running balance worked out once over the whole set, so they never race
+   * each other the way back-to-back addEntry calls would. Returns { ids, saved }.
+   */
+  const addEntries = useCallback((projectId, bookId, payloads) => {
+    const now = Date.now()
+    const fresh = payloads.map((payload) => ({
+      id: doc(entriesCol(user.uid, projectId, bookId)).id,
+      amount: Number(payload.amount),
+      type: payload.type,
+      description: payload.description,
+      category: payload.category || 'General',
+      subcategory: payload.subcategory || '',
+      mode: payload.mode || 'Cash',
+      enteredBy: payload.enteredBy || '',
+      timestamp: payload.timestamp || now,
+      notes: payload.notes || '',
+      isSavings: Boolean(payload.isSavings),
+      createdAt: now,
+    }))
+    if (!fresh.length) return { ids: [], saved: Promise.resolve() }
+    const list = [...localEntriesAsc(bookId), ...fresh].sort(compareOldestFirst)
+    for (const entry of fresh) entry.balanceAfter = runningBalanceAt(list, entry.id)
+    const from = Math.min(...fresh.map((e) => Number(e.timestamp)))
+    const ops = [
+      ...fresh.map((entry) => ({ type: 'set', ref: entryDoc(user.uid, projectId, bookId, entry.id), data: sanitiseEntry(entry) })),
+      // the new entries already carry the right balance, so only older ones show up here
+      ...balanceOps(projectId, bookId, list, from),
+      touchBook(projectId, bookId),
+    ]
+    const saved = commitAll(ops).catch((err) => { throw new Error(friendlyDbError(err)) })
+    return { ids: fresh.map((e) => e.id), saved }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.uid])
+
   const deleteEntry = useCallback(async (projectId, bookId, entryId) => {
     const entry = localEntriesAsc(bookId).find((e) => e.id === entryId)
     if (!entry) throw new Error(translate('app.errors.entryNotFound'))
@@ -607,6 +643,7 @@ export function AppDataProvider({ children }) {
     updateBook,
     deleteBook,
     addEntry,
+    addEntries,
     deleteEntry,
     updateEntry,
     getBookCurrentBalance,
@@ -626,7 +663,7 @@ export function AppDataProvider({ children }) {
     loading, error, projects, booksByProject, entriesByBook, templatesByBook, trips, categories,
     createProject, updateProject, deleteProject,
     createBook, updateBook, deleteBook,
-    addEntry, deleteEntry, updateEntry,
+    addEntry, addEntries, deleteEntry, updateEntry,
     getBookCurrentBalance, updateCategories, getCategories,
     saveTemplate, deleteTemplate,
     setPinForBook, setPinForProject, transferBetweenBooks, updateTransfer,

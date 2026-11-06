@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- "Add from bank SMS" screens (SmsImportActivity) -->
+<resources>
+    <string name="sms_disclosure_title">బ్యాంక్ SMS నుండి ఎంట్రీలు జోడించండి</string>
+    <string name="sms_disclosure_body">ArthaLedger ఈ ఫోన్‌లోని బ్యాంకులు, UPI యాప్‌ల చెల్లింపు సందేశాలను చదివి వాటిని ఎంట్రీలుగా మారుస్తుంది. ఏదైనా జోడించే ముందు మీరు వాటిని చూసుకోవచ్చు.\n\n• సందేశాలను మీ ఫోన్‌లోనే చదువుతాం. వాటిని ఎప్పుడూ అప్‌లోడ్ చేయం, ఎవరితోనూ పంచుకోం. మీరు ఎంచుకున్న ఎంట్రీలు మాత్రమే మీ ఖాతాలో సేవ్ అవుతాయి.\n• వ్యక్తిగత సందేశాలను, OTPలను వదిలేస్తాం.\n• మీరు ఎంచుకునే వరకు ఏదీ జోడించం.</string>
+    <string name="sms_continue">కొనసాగించండి</string>
+    <string name="sms_not_now">ఇప్పుడు కాదు</string>
+    <string name="sms_blocked_title">SMS అనుమతి ఆఫ్‌లో ఉంది</string>
+    <string name="sms_blocked_body">బ్యాంక్ SMS నుండి ఎంట్రీలు జోడించడానికి, సెట్టింగ్‌లలో ArthaLedgerకు SMS అనుమతి ఇవ్వండి.\n\nAndroid దీన్ని పరిమితం చేయబడిన సెట్టింగ్ అంటే, ArthaLedger యాప్ సమాచారం తెరిచి, పైన కుడివైపు ⋮ → Allow restricted settings నొక్కి, ఆపై SMS అనుమతి ఇవ్వండి.</string>
+    <string name="sms_open_settings">సెట్టింగ్‌లు తెరవండి</string>
+    <string name="sms_need_chrome">దీనికి Google Chrome ఇన్‌స్టాల్ అయి, అప్‌డేట్‌గా ఉండాలి.</string>
+</resources>
