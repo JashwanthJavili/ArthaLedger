@@ -1045,14 +1045,27 @@
       "entryDeleted": "Entry deleted",
       "bookDeleted": "Book deleted",
       "pinSet": "{length}-digit PIN set",
-      "pinRemoved": "PIN removed"
+      "pinRemoved": "PIN removed",
+      "bulkDeleted": {
+        "one": "1 entry deleted",
+        "other": "{count} entries deleted"
+      },
+      "bulkDeletedSkipped": "{count} deleted · {skipped} received transfers kept. Delete those from the book that sent them."
     },
     "confirm": {
       "deleteTransferTitle": "Delete transfer?",
       "deleteEntryTitle": "Delete entry?",
       "deleteTransferMsg": "{amount} sent to {book} will be removed from both books.",
       "otherBook": "the other book",
-      "deleteEntryMsg": "\"{description}\" ({amount}) will be permanently deleted."
+      "deleteEntryMsg": "\"{description}\" ({amount}) will be permanently deleted.",
+      "bulkDeleteTitle": {
+        "one": "Delete 1 entry?",
+        "other": "Delete {count} entries?"
+      },
+      "bulkDeleteMsg": {
+        "one": "This entry ({amount}) will be permanently deleted.",
+        "other": "These {count} entries ({amount} in total) will be permanently deleted."
+      }
     },
     "summary": {
       "netBalance": "Net balance",
@@ -2383,7 +2396,9 @@
     "settingsHint": "Turn bank and UPI messages into entries",
     "menuItem": "Add from bank SMS",
     "tip": "Banks don’t always send an SMS for small UPI payments, so add those yourself. On Xiaomi, Redmi and POCO phones, open ArthaLedger’s app permissions and also allow “Service SMS” (sometimes called “Notification SMS”), or bank messages stay hidden.",
-    "needsAppHint": "Needs the latest Android app"
+    "needsAppHint": "Needs the latest Android app",
+    "searchCategory": "Search categories",
+    "noCategoryMatch": "No category matches"
   },
   "appLock": {
     "groupTitle": "Security",

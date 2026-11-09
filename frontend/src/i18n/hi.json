@@ -1045,14 +1045,27 @@
       "entryDeleted": "एंट्री हटा दी गई",
       "bookDeleted": "बुक हटा दी गई",
       "pinSet": "{length} अंकों का PIN सेट हो गया",
-      "pinRemoved": "PIN हटा दिया गया"
+      "pinRemoved": "PIN हटा दिया गया",
+      "bulkDeleted": {
+        "one": "1 एंट्री हटाई गई",
+        "other": "{count} एंट्रियाँ हटाई गईं"
+      },
+      "bulkDeletedSkipped": "{count} हटाई गईं · मिले हुए {skipped} ट्रांसफ़र रखे गए। उन्हें भेजने वाली बुक से हटाएँ।"
     },
     "confirm": {
       "deleteTransferTitle": "ट्रांसफ़र हटाएँ?",
       "deleteEntryTitle": "एंट्री हटाएँ?",
       "deleteTransferMsg": "{book} में भेजे गए {amount} दोनों बुकों से हटा दिए जाएँगे.",
       "otherBook": "दूसरी बुक",
-      "deleteEntryMsg": "\"{description}\" ({amount}) हमेशा के लिए हटा दी जाएगी."
+      "deleteEntryMsg": "\"{description}\" ({amount}) हमेशा के लिए हटा दी जाएगी.",
+      "bulkDeleteTitle": {
+        "one": "1 एंट्री हटाएँ?",
+        "other": "{count} एंट्रियाँ हटाएँ?"
+      },
+      "bulkDeleteMsg": {
+        "one": "यह एंट्री ({amount}) हमेशा के लिए हट जाएगी।",
+        "other": "ये {count} एंट्रियाँ (कुल {amount}) हमेशा के लिए हट जाएँगी।"
+      }
     },
     "summary": {
       "netBalance": "नेट बैलेंस",
@@ -2383,7 +2396,9 @@
     "settingsHint": "बैंक और UPI मैसेज को एंट्री में बदलें",
     "menuItem": "बैंक SMS से जोड़ें",
     "tip": "छोटे UPI पेमेंट के लिए बैंक हमेशा SMS नहीं भेजते, इसलिए उन्हें ख़ुद जोड़ें. Xiaomi, Redmi और POCO फ़ोन में ArthaLedger की ऐप अनुमतियाँ खोलकर “Service SMS” (कभी-कभी “Notification SMS”) भी चालू करें, वरना बैंक मैसेज नहीं दिखेंगे.",
-    "needsAppHint": "नया Android ऐप ज़रूरी है"
+    "needsAppHint": "नया Android ऐप ज़रूरी है",
+    "searchCategory": "श्रेणियाँ खोजें",
+    "noCategoryMatch": "कोई मिलती श्रेणी नहीं"
   },
   "appLock": {
     "groupTitle": "सुरक्षा",

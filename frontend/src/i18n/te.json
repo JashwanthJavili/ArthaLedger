@@ -1045,14 +1045,27 @@
       "entryDeleted": "ఎంట్రీ తొలగించబడింది",
       "bookDeleted": "పుస్తకం తొలగించబడింది",
       "pinSet": "{length} అంకెల పిన్ సెట్ అయింది",
-      "pinRemoved": "పిన్ తీసివేయబడింది"
+      "pinRemoved": "పిన్ తీసివేయబడింది",
+      "bulkDeleted": {
+        "one": "1 ఎంట్రీ తొలగించాం",
+        "other": "{count} ఎంట్రీలు తొలగించాం"
+      },
+      "bulkDeletedSkipped": "{count} తొలగించాం · అందుకున్న {skipped} బదిలీలు ఉంచాం. వాటిని పంపిన బుక్ నుంచి తొలగించండి."
     },
     "confirm": {
       "deleteTransferTitle": "బదిలీ తొలగించాలా?",
       "deleteEntryTitle": "ఎంట్రీ తొలగించాలా?",
       "deleteTransferMsg": "{book} పుస్తకానికి పంపిన {amount} రెండు పుస్తకాల నుండి తీసివేయబడుతుంది.",
       "otherBook": "మరో",
-      "deleteEntryMsg": "\"{description}\" ({amount}) శాశ్వతంగా తొలగించబడుతుంది."
+      "deleteEntryMsg": "\"{description}\" ({amount}) శాశ్వతంగా తొలగించబడుతుంది.",
+      "bulkDeleteTitle": {
+        "one": "1 ఎంట్రీ తొలగించాలా?",
+        "other": "{count} ఎంట్రీలు తొలగించాలా?"
+      },
+      "bulkDeleteMsg": {
+        "one": "ఈ ఎంట్రీ ({amount}) శాశ్వతంగా తొలగించబడుతుంది.",
+        "other": "ఈ {count} ఎంట్రీలు (మొత్తం {amount}) శాశ్వతంగా తొలగించబడతాయి."
+      }
     },
     "summary": {
       "netBalance": "నికర బ్యాలెన్స్",
@@ -2383,7 +2396,9 @@
     "settingsHint": "బ్యాంక్, UPI సందేశాలను ఎంట్రీలుగా మార్చండి",
     "menuItem": "బ్యాంక్ SMS నుండి జోడించండి",
     "tip": "చిన్న UPI చెల్లింపులకు బ్యాంకులు ప్రతిసారీ SMS పంపకపోవచ్చు, కాబట్టి వాటిని మీరే జోడించండి. Xiaomi, Redmi, POCO ఫోన్‌లలో ArthaLedger యాప్ అనుమతులు తెరిచి “Service SMS” (కొన్నిసార్లు “Notification SMS”) కూడా అనుమతించండి, లేకపోతే బ్యాంక్ సందేశాలు కనిపించవు.",
-    "needsAppHint": "తాజా Android యాప్ అవసరం"
+    "needsAppHint": "తాజా Android యాప్ అవసరం",
+    "searchCategory": "వర్గాలను వెతకండి",
+    "noCategoryMatch": "సరిపోయే వర్గం లేదు"
   },
   "appLock": {
     "groupTitle": "భద్రత",

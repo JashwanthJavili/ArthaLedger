@@ -1045,14 +1045,27 @@
       "entryDeleted": "பதிவு நீக்கப்பட்டது",
       "bookDeleted": "புத்தகம் நீக்கப்பட்டது",
       "pinSet": "{length} இலக்க PIN அமைக்கப்பட்டது",
-      "pinRemoved": "PIN நீக்கப்பட்டது"
+      "pinRemoved": "PIN நீக்கப்பட்டது",
+      "bulkDeleted": {
+        "one": "1 பதிவு நீக்கப்பட்டது",
+        "other": "{count} பதிவுகள் நீக்கப்பட்டன"
+      },
+      "bulkDeletedSkipped": "{count} நீக்கப்பட்டன · பெற்ற {skipped} பரிமாற்றங்கள் வைக்கப்பட்டன. அனுப்பிய புத்தகத்திலிருந்து அவற்றை நீக்குங்கள்."
     },
     "confirm": {
       "deleteTransferTitle": "பரிமாற்றத்தை நீக்கவா?",
       "deleteEntryTitle": "பதிவை நீக்கவா?",
       "deleteTransferMsg": "{book} புத்தகத்திற்கு அனுப்பப்பட்ட {amount} இரண்டு புத்தகங்களிலிருந்தும் நீக்கப்படும்.",
       "otherBook": "மற்ற",
-      "deleteEntryMsg": "\"{description}\" ({amount}) நிரந்தரமாக நீக்கப்படும்."
+      "deleteEntryMsg": "\"{description}\" ({amount}) நிரந்தரமாக நீக்கப்படும்.",
+      "bulkDeleteTitle": {
+        "one": "1 பதிவை நீக்கவா?",
+        "other": "{count} பதிவுகளை நீக்கவா?"
+      },
+      "bulkDeleteMsg": {
+        "one": "இந்தப் பதிவு ({amount}) நிரந்தரமாக நீக்கப்படும்.",
+        "other": "இந்த {count} பதிவுகள் (மொத்தம் {amount}) நிரந்தரமாக நீக்கப்படும்."
+      }
     },
     "summary": {
       "netBalance": "நிகர இருப்பு",
@@ -2383,7 +2396,9 @@
     "settingsHint": "வங்கி, UPI செய்திகளைப் பதிவுகளாக மாற்றவும்",
     "menuItem": "வங்கி SMS-இலிருந்து சேர்",
     "tip": "சிறிய UPI பணப்பரிமாற்றங்களுக்கு வங்கிகள் எப்போதும் SMS அனுப்புவதில்லை, எனவே அவற்றை நீங்களே சேர்க்கவும். Xiaomi, Redmi, POCO ஃபோன்களில் ArthaLedger ஆப் அனுமதிகளைத் திறந்து “Service SMS” (சில நேரங்களில் “Notification SMS”) என்பதையும் அனுமதிக்கவும், இல்லையெனில் வங்கிச் செய்திகள் தெரியாது.",
-    "needsAppHint": "புதிய Android ஆப் தேவை"
+    "needsAppHint": "புதிய Android ஆப் தேவை",
+    "searchCategory": "வகைகளைத் தேடுங்கள்",
+    "noCategoryMatch": "பொருந்தும் வகை இல்லை"
   },
   "appLock": {
     "groupTitle": "பாதுகாப்பு",

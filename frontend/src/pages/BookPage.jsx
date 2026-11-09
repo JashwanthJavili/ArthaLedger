@@ -188,7 +188,7 @@ export default function BookPage() {
     loading,
     error,
     projects, booksByProject, entriesByBook, templatesByBook, trips,
-    addEntry, deleteEntry, updateCategories, getCategories,
+    addEntry, deleteEntry, deleteEntries, updateCategories, getCategories,
     updateBook, updateEntry, deleteBook, setPinForBook, setPinForProject,
     linkEntriesToTrip, unlinkEntryFromTrip, saveTemplate, deleteTemplate,
     transferBetweenBooks, updateTransfer,
@@ -232,6 +232,7 @@ export default function BookPage() {
   const [editingBook, setEditingBook] = useState(false)
   const [editingEntry, setEditingEntry] = useState(null)
   const [deleteEntryTarget, setDeleteEntryTarget] = useState(null)
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false)
   const [transferOpen, setTransferOpen] = useState(false)
   const [editingTransfer, setEditingTransfer] = useState(null)
   const [deleteBookConfirm, setDeleteBookConfirm] = useState(false)
@@ -890,6 +891,15 @@ export default function BookPage() {
               </button>
               <button
                 disabled={selectedEntryIds.length === 0}
+                onClick={() => setBulkDeleteOpen(true)}
+                aria-label={t('common.delete')}
+                title={t('common.delete')}
+                className="flex items-center gap-1.5 rounded-xl border border-rose-500/30 px-3 py-2.5 text-xs font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-500/10 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+              >
+                <Trash2 size={14} /> <span className="hidden min-[380px]:inline">{t('common.delete')}</span>
+              </button>
+              <button
+                disabled={selectedEntryIds.length === 0}
                 onClick={() => setOpenSendToTripModal(true)}
                 className="rounded-xl bg-[var(--gold-primary)] px-4 py-2.5 text-xs font-semibold text-white hover:bg-[var(--gold-hover)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
               >
@@ -1013,6 +1023,26 @@ export default function BookPage() {
         message={deleteEntryTarget?.transferId && deleteEntryTarget?.type === 'transfer_out'
           ? t('book.confirm.deleteTransferMsg', { amount: `${symbol}${formatAmount(deleteEntryTarget?.amount)}`, book: bookNameById(deleteEntryTarget?.toBookId) || t('book.confirm.otherBook') })
           : t('book.confirm.deleteEntryMsg', { description: deleteEntryTarget?.description, amount: `${symbol}${formatAmount(deleteEntryTarget?.amount || 0)}` })}
+        danger
+      />
+
+      {/* ── Delete the selected entries ── */}
+      <ConfirmDialog
+        open={bulkDeleteOpen}
+        onClose={() => setBulkDeleteOpen(false)}
+        onConfirm={async () => {
+          const { deleted, skipped, saved } = deleteEntries(projectId, bookId, selectedEntryIds)
+          saved.catch(err => showToast(err?.message || t('book.toast.deleteFailed'), 'error'))
+          setIsMultiSelectMode(false)
+          setSelectedEntryIds([])
+          if (skipped) showToast(t('book.toast.bulkDeletedSkipped', { count: deleted, skipped }), deleted ? 'info' : 'error')
+          else showToast(t('book.toast.bulkDeleted', { count: deleted }), 'info')
+        }}
+        title={t('book.confirm.bulkDeleteTitle', { count: selectedEntryIds.length })}
+        message={t('book.confirm.bulkDeleteMsg', {
+          count: selectedEntryIds.length,
+          amount: `${symbol}${formatAmount(entries.filter(e => selectedEntryIds.includes(e.id)).reduce((sum, e) => sum + Number(e.amount || 0), 0))}`,
+        })}
         danger
       />
 

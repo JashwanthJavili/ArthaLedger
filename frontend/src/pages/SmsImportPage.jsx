@@ -11,6 +11,7 @@ import { isUnlocked } from '../lib/pin'
 import { parseAll, guessCategory } from '../lib/smsParse'
 import { canImportSms, hasSmsApp, onSms, startSmsImport, takeSms } from '../lib/nativeApp'
 import { APK_URL } from '../components/marketing/constants'
+import CategoryPicker from '../components/forms/CategoryPickerSheet'
 
 /*
  * Review page for "Add from bank SMS". The Android app reads recent bank and
@@ -92,10 +93,13 @@ export default function SmsImportPage() {
   const isTicked = (p) => picked[p.key] ?? (p.kind !== 'atm' && p.kind !== 'transfer')
   const chosen = items.filter(isTicked)
 
-  const descriptionOf = (p) => (edits[p.key]?.payee ?? (p.kind === 'atm' ? '' : p.payee)) || (
-    p.type === 'income'
-      ? t(p.kind === 'refund' ? 'sms.desc.refund' : p.kind === 'salary' ? 'sms.desc.salary' : 'sms.desc.received')
-      : t(`sms.desc.${p.kind === 'atm' ? 'atm' : p.channel}`))
+  // What's typed in the box (may be cleared to empty while editing) ...
+  const typedOf = (p) => edits[p.key]?.payee ?? (p.kind === 'atm' ? '' : p.payee || '')
+  // ... and the plain label used when the box is left empty
+  const fallbackOf = (p) => (p.type === 'income'
+    ? t(p.kind === 'refund' ? 'sms.desc.refund' : p.kind === 'salary' ? 'sms.desc.salary' : 'sms.desc.received')
+    : t(`sms.desc.${p.kind === 'atm' ? 'atm' : p.channel}`))
+  const descriptionOf = (p) => typedOf(p).trim() || fallbackOf(p)
   const categoryOf = (p) => edits[p.key]?.category ?? guessCategory(p, categories)
   const edit = (key, field, value) => setEdits((e) => ({ ...e, [key]: { ...e[key], [field]: value } }))
 
@@ -249,19 +253,17 @@ export default function SmsImportPage() {
                               <span className={`flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full ${income ? 'bg-emerald-500/12 text-emerald-600' : 'bg-rose-500/12 text-rose-600'}`}>
                                 {income ? <ArrowDownLeft size={13} /> : <ArrowUpRight size={13} />}
                               </span>
-                              <input value={descriptionOf(p)} onChange={(e) => edit(p.key, 'payee', e.target.value)} maxLength={80}
-                                aria-label={t('sms.description')} className="min-w-0 flex-1 truncate bg-transparent text-[14px] font-semibold text-[var(--text-main)] outline-none" />
+                              <input value={typedOf(p)} onChange={(e) => edit(p.key, 'payee', e.target.value)} maxLength={80}
+                                placeholder={fallbackOf(p)} aria-label={t('sms.description')}
+                                className="min-w-0 flex-1 truncate bg-transparent text-[14px] font-semibold text-[var(--text-main)] outline-none placeholder:font-medium placeholder:text-[var(--text-subtle)]" />
                               <span className={`flex-shrink-0 text-[14px] font-semibold tabular-nums ${income ? 'text-emerald-600' : 'text-rose-600'}`}>
                                 {income ? '+' : '−'}{symbol}{formatAmount(p.amount)}
                               </span>
                             </div>
                             <p className="mt-1 truncate text-[11.5px] text-[var(--text-muted)]">{meta}</p>
                             <div className="mt-2 flex items-center gap-2">
-                              <select value={categoryOf(p)} onChange={(e) => edit(p.key, 'category', e.target.value)} aria-label={t('sms.category')}
-                                className="min-w-0 max-w-[60%] rounded-full border border-[var(--border-card)] bg-[var(--bg-page)] px-2.5 py-1 text-[12px] text-[var(--text-main)] outline-none">
-                                <option value="">{t('sms.noCategory')}</option>
-                                {categories.map((c) => <option key={c.name} value={c.name}>{c.name}</option>)}
-                              </select>
+                              <CategoryPicker value={categoryOf(p)} categories={categories} label={t('sms.category')}
+                                onChange={(v) => edit(p.key, 'category', v)} />
                               {p.kind && <span className="min-w-0 truncate rounded-full bg-[var(--gold-light)] px-2 py-0.5 text-[11px] font-medium text-[var(--gold-primary)]">{t(`sms.kind.${p.kind}`)}</span>}
                               <button type="button" onClick={() => remember([p.key])} aria-label={t('sms.hide')} title={t('sms.hide')}
                                 className="ml-auto flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full text-[var(--text-subtle)] hover:bg-[var(--border-subtle)] hover:text-[var(--text-main)] cursor-pointer">

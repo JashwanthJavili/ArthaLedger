@@ -338,6 +338,49 @@ export function AppDataProvider({ children }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.uid])
 
+  /**
+   * Delete several entries of one book in a single write. Same rules as
+   * deleteEntry: a transfer sent from here also removes the other book's side;
+   * a transfer received here whose sender still has it is skipped.
+   * Returns { deleted, skipped, saved }.
+   */
+  const deleteEntries = useCallback((projectId, bookId, entryIds) => {
+    const wanted = new Set(entryIds)
+    const all = localEntriesAsc(bookId)
+    const gone = new Set()
+    let skipped = 0
+    const ops = []
+    const otherBooks = new Map() // bookId -> { projectId, removed: Set, from }
+
+    for (const entry of all) {
+      if (!wanted.has(entry.id)) continue
+      if (entry.transferId) {
+        const counterpart = findTransferCounterpartLocal(entriesNowRef.current, entry)
+        if (entry.type === 'transfer_in' && counterpart) { skipped++; continue }
+        if (counterpart) {
+          ops.push({ type: 'delete', ref: entryDoc(user.uid, counterpart.projectId, counterpart.bookId, counterpart.entryId) })
+          const other = otherBooks.get(counterpart.bookId) || { projectId: counterpart.projectId, removed: new Set(), from: Infinity }
+          other.removed.add(counterpart.entryId)
+          other.from = Math.min(other.from, Number(counterpart.entry.timestamp || 0))
+          otherBooks.set(counterpart.bookId, other)
+        }
+      }
+      gone.add(entry.id)
+      ops.push({ type: 'delete', ref: entryDoc(user.uid, projectId, bookId, entry.id) })
+    }
+    if (!gone.size) return { deleted: 0, skipped, saved: Promise.resolve() }
+
+    const from = Math.min(...all.filter((e) => gone.has(e.id)).map((e) => Number(e.timestamp || 0)))
+    ops.push(...balanceOps(projectId, bookId, all.filter((e) => !gone.has(e.id)), from), touchBook(projectId, bookId))
+    for (const [otherBookId, other] of otherBooks) {
+      const rest = localEntriesAsc(otherBookId).filter((e) => !other.removed.has(e.id))
+      ops.push(...balanceOps(other.projectId, otherBookId, rest, other.from), touchBook(other.projectId, otherBookId))
+    }
+    const saved = commitAll(ops).catch((err) => { throw new Error(friendlyDbError(err)) })
+    return { deleted: gone.size, skipped, saved }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.uid])
+
   const updateEntry = useCallback(async (projectId, bookId, entryId, payload) => {
     const arr = localEntriesAsc(bookId)
     const existing = arr.find((e) => e.id === entryId)
@@ -645,6 +688,7 @@ export function AppDataProvider({ children }) {
     addEntry,
     addEntries,
     deleteEntry,
+    deleteEntries,
     updateEntry,
     getBookCurrentBalance,
     updateCategories,
@@ -663,7 +707,7 @@ export function AppDataProvider({ children }) {
     loading, error, projects, booksByProject, entriesByBook, templatesByBook, trips, categories,
     createProject, updateProject, deleteProject,
     createBook, updateBook, deleteBook,
-    addEntry, addEntries, deleteEntry, updateEntry,
+    addEntry, addEntries, deleteEntry, deleteEntries, updateEntry,
     getBookCurrentBalance, updateCategories, getCategories,
     saveTemplate, deleteTemplate,
     setPinForBook, setPinForProject, transferBetweenBooks, updateTransfer,
