@@ -2313,8 +2313,8 @@
         "text": "This version of the ArthaLedger app couldn't connect to this page. Update the app and try again."
       },
       "noapp": {
-        "title": "Needs the Android app",
-        "text": "Adding entries from bank SMS works in the ArthaLedger app for Android."
+        "title": "Needs the latest Android app",
+        "text": "Adding entries from bank SMS needs the latest ArthaLedger app for Android (version 1.1 or newer). Download it below and install it. If you have an older ArthaLedger app, remove it first, then open the new one."
       },
       "timeout": {
         "title": "No messages arrived",
@@ -2382,6 +2382,35 @@
     "settingsRow": "Add from bank SMS",
     "settingsHint": "Turn bank and UPI messages into entries",
     "menuItem": "Add from bank SMS",
-    "tip": "Banks don’t always send an SMS for small UPI payments, so add those yourself. On Xiaomi, Redmi and POCO phones, open ArthaLedger’s app permissions and also allow “Service SMS” (sometimes called “Notification SMS”), or bank messages stay hidden."
+    "tip": "Banks don’t always send an SMS for small UPI payments, so add those yourself. On Xiaomi, Redmi and POCO phones, open ArthaLedger’s app permissions and also allow “Service SMS” (sometimes called “Notification SMS”), or bank messages stay hidden.",
+    "needsAppHint": "Needs the latest Android app"
+  },
+  "appLock": {
+    "groupTitle": "Security",
+    "settingsRow": "App lock",
+    "settingsHint": "Ask for a PIN every time the app opens",
+    "footerOn": "The app locks as soon as you leave it and asks for your PIN every time you come back, on all your devices.",
+    "footerOff": "Turn on to keep your money records private if someone else picks up your phone.",
+    "changePin": "Change app PIN",
+    "fingerprintRow": "Unlock with fingerprint",
+    "fingerprintHint": "Use this phone’s fingerprint or face unlock",
+    "fingerprintOn": "Fingerprint unlock is on for this phone",
+    "fingerprintError": "Couldn’t set up fingerprint on this phone",
+    "turnOffTitle": "Turn off app lock",
+    "turnOffSubtitle": "Enter your app PIN to turn the lock off",
+    "turnedOff": "App lock is off",
+    "itemName": "ArthaLedger",
+    "lockedTitle": "ArthaLedger is locked",
+    "enterPin": "Enter your app PIN to continue",
+    "useFingerprint": "Use fingerprint",
+    "fingerprintFailed": "Fingerprint not confirmed. Try again or enter your PIN.",
+    "forgot": "Forgot PIN?",
+    "forgotTitle": "Reset app lock",
+    "forgotPassword": "Enter your account password. App lock will be turned off so you can set a new PIN.",
+    "forgotGoogle": "Sign in with Google again. App lock will be turned off so you can set a new PIN.",
+    "verify": "Verify",
+    "continueGoogle": "Continue with Google",
+    "checking": "Checking…",
+    "resetDone": "App lock is off. Set a new PIN in Settings → Security."
   }
 }

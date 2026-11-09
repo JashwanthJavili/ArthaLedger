@@ -22,9 +22,21 @@ function features() {
   try { return (localStorage.getItem(KEY) || '').split(',') } catch { return [] }
 }
 
-/** True inside an Android app version that can read bank SMS. */
+export function isAndroid() {
+  return /Android/i.test(navigator.userAgent)
+}
+
+/** True once an Android app version that can read bank SMS has opened this site here. */
+export function hasSmsApp() {
+  return isAndroid() && features().includes('sms1')
+}
+
+/**
+ * Offered on every Android phone. If the app (or this version of it) isn't
+ * installed, Chrome opens /sms-import?status=noapp, which offers the download.
+ */
 export function canImportSms() {
-  return /Android/i.test(navigator.userAgent) && features().includes('sms1')
+  return isAndroid()
 }
 
 // ── Bank SMS handed over by the Android app ─────────────────────────────────

@@ -23,6 +23,7 @@ import ExpenseGroupsPage from './pages/ExpenseGroupsPage'
 import ExpenseGroupDetailPage from './pages/ExpenseGroupDetailPage'
 import AdminPage from './pages/AdminPage'
 import SmsImportPage from './pages/SmsImportPage'
+import AppLockGate from './components/AppLockGate'
 import { useAuth } from './context/AuthContext'
 import Loader from './components/common/Loader'
 import { ensurePushRegistration, syncReminderFromFirebase } from './lib/notifications'
@@ -89,6 +90,7 @@ export default function App() {
       <PushSync />
       <UpdateOnNavigate />
       <AppDataProvider>
+        <AppLockGate>
         <Routes>
           <Route path="/" element={<HomeRoute />} />
           <Route path="/privacy" element={<PrivacyPage />} />
@@ -109,6 +111,7 @@ export default function App() {
           <Route path="/projects/:projectId/books/:bookId"      element={<ProtectedRoute><BookPage /></ProtectedRoute>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+        </AppLockGate>
       </AppDataProvider>
     </AuthProvider>
   )

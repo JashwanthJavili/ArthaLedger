@@ -19,6 +19,7 @@ import FeedbackSheet from '../components/common/FeedbackSheet'
 import { isAdminUser } from '../lib/admin'
 import DownloadModal from '../components/forms/DownloadModal'
 import { Group, Row, Switch } from '../components/settings/ui'
+import AppLockSection from '../components/settings/AppLockSection'
 import {
   EditProfileSheet, ChangePasswordSheet, CurrencySheet, RemindersSheet, DiagnosticsSheet,
   FaqSheet, AboutSheet, DeleteAccountSheet, LanguageSheet,
@@ -27,7 +28,7 @@ import { useAuth } from '../context/AuthContext'
 import { useAppData } from '../context/AppDataContext'
 import { useI18n, LANGS } from '../i18n/core'
 import useChangeLanguage from '../hooks/useChangeLanguage'
-import { canImportSms, startSmsImport } from '../lib/nativeApp'
+import { hasSmsApp, isAndroid, startSmsImport } from '../lib/nativeApp'
 
 const APP_VERSION = '1.0.0'
 
@@ -437,6 +438,9 @@ export default function SettingsPage() {
           <Row icon={ShieldCheck} tint="neutral" label={t('settings.account.signInMethod')} value={isPasswordUser ? t('settings.account.emailPassword') : t('settings.account.google')} />
         </Group>
 
+        {/* ── Security: app lock ── */}
+        <AppLockSection onToast={showToast} />
+
         {/* ── Preferences ── */}
         <Group title={t('settings.groups.preferences')} delay={0.06}>
           <Row icon={Moon} label={t('settings.prefs.darkMode')} hint={darkMode ? t('settings.prefs.darkHint') : t('settings.prefs.lightHint')}
@@ -454,8 +458,8 @@ export default function SettingsPage() {
                 </button>
               } />
           )}
-          {canImportSms() && (
-            <Row icon={MessageSquareText} label={t('sms.settingsRow')} hint={t('sms.settingsHint')}
+          {isAndroid() && (
+            <Row icon={MessageSquareText} label={t('sms.settingsRow')} hint={hasSmsApp() ? t('sms.settingsHint') : t('sms.needsAppHint')}
               onClick={() => startSmsImport({ lang })} />
           )}
         </Group>

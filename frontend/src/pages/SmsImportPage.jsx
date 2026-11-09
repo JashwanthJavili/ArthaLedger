@@ -9,7 +9,7 @@ import { useI18n } from '../i18n/core'
 import { formatAmount, getCurrencySymbol } from '../lib/format'
 import { isUnlocked } from '../lib/pin'
 import { parseAll, guessCategory } from '../lib/smsParse'
-import { canImportSms, onSms, startSmsImport, takeSms } from '../lib/nativeApp'
+import { canImportSms, hasSmsApp, onSms, startSmsImport, takeSms } from '../lib/nativeApp'
 import { APK_URL } from '../components/marketing/constants'
 
 /*
@@ -142,7 +142,7 @@ export default function SmsImportPage() {
   let notice = null
   if (!payload) {
     if (status) notice = status
-    else if (timedOut) notice = canImportSms() ? 'timeout' : 'noapp'
+    else if (timedOut) notice = hasSmsApp() ? 'timeout' : 'noapp'
   }
   const days = payload?.days || 30
 
