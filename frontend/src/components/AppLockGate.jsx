@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, useSyncExternalStore } from 'react'
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { AppLockContext } from '../context/AppLockContext'
 import { onSnapshot } from 'firebase/firestore'
 import { EmailAuthProvider, GoogleAuthProvider, reauthenticateWithCredential, reauthenticateWithPopup } from 'firebase/auth'
@@ -6,8 +6,8 @@ import { Fingerprint, Lock, LogOut } from 'lucide-react'
 import { auth } from '../lib/firebase'
 import { userDoc } from '../lib/userData'
 import {
-  GUARD_ID, canUseFingerprint, hasFingerprint, lockFromUserDoc, lockSession, pauseUntilFocus, readLocalLock,
-  removeLock, verifyFingerprint, withLockPaused, writeLocalLock,
+  GUARD_ID, canUseFingerprint, hasFingerprint, lockFromUserDoc, lockSession, noteAlive, pauseUntilFocus, readLocalLock,
+  removeLock, returningFromHandoff, verifyFingerprint, withLockPaused, writeLocalLock,
 } from '../lib/appLock'
 import Toast from './common/Toast'
 import { useAuth, parseFirebaseError } from '../context/AuthContext'
@@ -47,12 +47,24 @@ export default function AppLockGate({ children }) {
   useEffect(() => {
     // Fires when the person switches to another app or tab, goes home, or the
     // screen turns off
-    const onHide = () => { if (document.visibilityState === 'hidden') lockSession.lock() }
+    const onHide = () => {
+      if (document.visibilityState !== 'hidden') return
+      noteAlive()
+      lockSession.lock()
+    }
+    // Back from the Bank SMS screens, straight from an unlocked page
+    const onShow = () => {
+      if (document.visibilityState === 'visible' && !lockSession.isUnlocked() && returningFromHandoff()) lockSession.unlock()
+    }
     document.addEventListener('visibilitychange', onHide)
+    document.addEventListener('visibilitychange', onShow)
     window.addEventListener('pagehide', onHide)
+    window.addEventListener('pageshow', onShow)
     return () => {
       document.removeEventListener('visibilitychange', onHide)
+      document.removeEventListener('visibilitychange', onShow)
       window.removeEventListener('pagehide', onHide)
+      window.removeEventListener('pageshow', onShow)
     }
   }, [])
 
@@ -70,8 +82,13 @@ export default function AppLockGate({ children }) {
     }
   }, [])
 
-  // A different person signing in starts locked
-  useEffect(() => { if (!uid) lockSession.lock() }, [uid])
+  // Signing out, or a different person signing in, starts locked. (Not the
+  // first moment of a page load, when sign-in simply hasn't loaded yet.)
+  const prevUid = useRef(uid)
+  useEffect(() => {
+    if (prevUid.current && prevUid.current !== uid) lockSession.lock()
+    prevUid.current = uid
+  }, [uid])
 
   const heard = remote.uid === uid && remote.loaded
   const config = !uid ? null : heard ? remote.config : readLocalLock(uid)
@@ -107,14 +124,24 @@ function ResetNotice() {
 function LockScreen({ uid, config }) {
   const { t } = useI18n()
   const { logout } = useAuth()
-  const [bio, setBio] = useState(false)
+  // Fingerprint first when it's set up on this phone; the PIN stays one tap away
+  const [bio, setBio] = useState(() => hasFingerprint(uid))
+  const [usePin, setUsePin] = useState(false)
   const [bioBusy, setBioBusy] = useState(false)
   const [bioMsg, setBioMsg] = useState('')
   const [forgot, setForgot] = useState(false)
 
-  // auto: the try made on opening; Chrome may refuse it until the person
-  // taps, so that one fails quietly and the button stays ready
+  // One prompt at a time; remember when the last one closed so a cancelled
+  // prompt doesn't pop straight back up
+  const busy = useRef(false)
+  const lastPrompt = useRef(0)
+
+  // auto: the tries made by the app itself (on opening, on coming back).
+  // Chrome may hold those back until the screen is touched, so they fail
+  // quietly; the first touch then starts the fingerprint.
   const tryFingerprint = useCallback(async (auto = false) => {
+    if (busy.current) return
+    busy.current = true
     setBioBusy(true)
     setBioMsg('')
     try {
@@ -123,50 +150,87 @@ function LockScreen({ uid, config }) {
     } catch {
       if (!auto) setBioMsg(t('appLock.fingerprintFailed'))
     } finally {
+      busy.current = false
+      lastPrompt.current = Date.now()
       setBioBusy(false)
     }
   }, [uid, t])
 
-  // Offer the fingerprint straight away when this phone has it set up
+  // Is a sensor really there? Checked alongside, never before, the first try
   useEffect(() => {
     let alive = true
-    ;(async () => {
-      const ok = hasFingerprint(uid) && await canUseFingerprint()
-      if (!alive) return
-      setBio(ok)
-      if (ok && document.visibilityState === 'visible') tryFingerprint(true)
-    })()
+    canUseFingerprint().then((ok) => { if (alive && !ok) setBio(false) })
     return () => { alive = false }
-  }, [uid]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Fingerprint straight away, and again every time the app comes back
+  useEffect(() => {
+    if (!bio || usePin || forgot) return undefined
+    const go = () => {
+      if (document.visibilityState !== 'visible' || busy.current) return
+      if (Date.now() - lastPrompt.current < 1500) return // the prompt that just closed
+      tryFingerprint(true)
+    }
+    go()
+    document.addEventListener('visibilitychange', go)
+    window.addEventListener('focus', go)
+    window.addEventListener('pageshow', go)
+    return () => {
+      document.removeEventListener('visibilitychange', go)
+      window.removeEventListener('focus', go)
+      window.removeEventListener('pageshow', go)
+    }
+  }, [bio, usePin, forgot, tryFingerprint])
 
   return (
-    <div className="fixed inset-0 z-[200] flex flex-col items-center justify-center overflow-y-auto bg-[var(--bg-page)] px-6 py-10">
+    <div className="fixed inset-0 z-[200] flex flex-col items-center justify-center overflow-y-auto bg-[var(--bg-page)] px-6 py-10"
+      onPointerUp={(e) => {
+        // On the fingerprint screen, a touch anywhere (not on a button) starts it
+        if (bio && !usePin && !forgot && !bioBusy && !e.target.closest?.('button, a, input')) tryFingerprint()
+      }}>
       <div className="w-full max-w-xs text-center">
         <img src="/Logo.png" alt="" className="mx-auto h-16 w-16 rounded-2xl object-contain" />
         <h1 className="font-serif-luxury mt-4 text-[22px] font-semibold text-[var(--text-main)]">{t('appLock.lockedTitle')}</h1>
-        <p className="mt-1 text-[13px] text-[var(--text-muted)]">{t('appLock.enterPin')}</p>
+        <p className="mt-1 text-[13px] text-[var(--text-muted)]">{bio && !usePin && !forgot ? t('appLock.bioSubtitle') : t('appLock.enterPin')}</p>
 
         {forgot ? (
           <ForgotPin uid={uid} onCancel={() => setForgot(false)} />
+        ) : bio && !usePin ? (
+          <>
+            <button type="button" onClick={() => tryFingerprint()} disabled={bioBusy} aria-label={t('appLock.useFingerprint')}
+              className="group mx-auto mt-10 flex flex-col items-center gap-4 cursor-pointer disabled:cursor-wait">
+              <span className={`flex h-24 w-24 items-center justify-center rounded-full border-2 border-[var(--gold-primary)]/40 bg-[var(--gold-light)] text-[var(--gold-primary)] transition-transform group-active:scale-95 ${bioBusy ? 'animate-pulse' : ''}`}>
+                <Fingerprint size={52} strokeWidth={1.5} />
+              </span>
+              <span className="text-[14px] font-semibold text-[var(--text-main)]">{t('appLock.tapToUnlock')}</span>
+            </button>
+            {bioMsg && <p className="mt-3 text-[12px] text-rose-600 dark:text-rose-400">{bioMsg}</p>}
+            <button type="button" onClick={() => { setUsePin(true); setBioMsg('') }}
+              className="mx-auto mt-10 block text-[13px] font-semibold text-[var(--gold-primary)] cursor-pointer">
+              {t('appLock.usePin')}
+            </button>
+          </>
         ) : (
           <>
             <div className="mt-6">
               <PinEntry guardId={GUARD_ID} storedHash={config.pinHash} length={config.pinLength} onSuccess={() => lockSession.unlock()} />
             </div>
             {bio && (
-              <button type="button" onClick={() => tryFingerprint()} disabled={bioBusy}
+              <button type="button" onClick={() => { setUsePin(false); tryFingerprint() }} disabled={bioBusy}
                 className="mx-auto mt-2 inline-flex items-center gap-2 rounded-full border border-[var(--border-card)] bg-[var(--bg-card)] px-4 py-2.5 text-[13px] font-semibold text-[var(--gold-primary)] disabled:opacity-60 cursor-pointer">
                 <Fingerprint size={17} /> {t('appLock.useFingerprint')}
               </button>
             )}
             {bioMsg && <p className="mt-2 text-[12px] text-rose-600 dark:text-rose-400">{bioMsg}</p>}
+          </>
+        )}
+        {!forgot && (
             <div className="mt-6 flex items-center justify-center gap-5 text-[12.5px] font-semibold">
               <button type="button" onClick={() => setForgot(true)} className="text-[var(--text-muted)] hover:text-[var(--text-main)] cursor-pointer">{t('appLock.forgot')}</button>
               <button type="button" onClick={() => logout()} className="inline-flex items-center gap-1 text-[var(--text-muted)] hover:text-[var(--text-main)] cursor-pointer">
                 <LogOut size={13} /> {t('common.signOut')}
               </button>
             </div>
-          </>
         )}
       </div>
     </div>

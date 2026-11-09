@@ -2400,7 +2400,15 @@
     "searchCategory": "Search categories",
     "noCategoryMatch": "No category matches",
     "totalOut": "{amount} out",
-    "totalIn": "{amount} in"
+    "totalIn": "{amount} in",
+    "clearName": "Clear name",
+    "pickSome": "Tick the payments to add",
+    "seeMoreCategories": "See all {count} categories",
+    "alreadyAdded": {
+      "one": "Already added (1)",
+      "other": "Already added ({count})"
+    },
+    "addedBadge": "Added"
   },
   "appLock": {
     "groupTitle": "Security",
@@ -2428,6 +2436,9 @@
     "verify": "Verify",
     "continueGoogle": "Continue with Google",
     "checking": "Checking…",
-    "resetDone": "App lock is off. Set a new PIN in Settings → Security."
+    "resetDone": "App lock is off. Set a new PIN in Settings → Security.",
+    "bioSubtitle": "Unlock with your fingerprint",
+    "tapToUnlock": "Tap to unlock",
+    "usePin": "Use PIN instead"
   }
 }

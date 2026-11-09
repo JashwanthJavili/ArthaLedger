@@ -82,7 +82,7 @@ Object.defineProperty(globalThis, 'navigator', {
 
 // appLock.js imports Firestore helpers; only the pure parts are used here
 const lib = await import('../src/lib/appLockCore.js').catch((e) => { console.log('import failed', e.message); process.exit(1) })
-const { enrollFingerprint, verifyFingerprint, hasFingerprint, removeFingerprint, lockSession, withLockPaused, pauseUntilFocus, lockFromUserDoc } = lib
+const { enrollFingerprint, verifyFingerprint, hasFingerprint, removeFingerprint, lockSession, withLockPaused, pauseUntilFocus, lockFromUserDoc, startHandoff, takeHandoffPass, noteAlive, returningFromHandoff } = lib
 
 const uid = 'u1'
 ok('no fingerprint before set-up', !hasFingerprint(uid) && (await verifyFingerprint(uid)) === false)
@@ -147,6 +147,43 @@ await new Promise((r) => setTimeout(r, 1600))
 lockSession.lock()
 ok('locks again after the file picker closed', !lockSession.isUnlocked())
 off()
+
+// ── Bank SMS hand-off: one short-lived, one-use pass ──
+await new Promise((r) => setTimeout(r, 1600))
+lockSession.lock()
+startHandoff()
+ok('no pass written while locked', localStorage.getItem('artha.lock.pass') === null)
+lockSession.unlock()
+startHandoff()
+ok('pass opens the Bank SMS page', takeHandoffPass('/sms-import'))
+ok('pass works only once', !takeHandoffPass('/sms-import'))
+startHandoff()
+ok('pass is not for other pages', !takeHandoffPass('/dashboard') && !takeHandoffPass('/sms-import'))
+localStorage.setItem('artha.lock.pass', JSON.stringify({ id: 'x', until: Date.now() - 1 }))
+ok('expired pass refused', !takeHandoffPass('/sms-import'))
+localStorage.setItem('artha.lock.pass', JSON.stringify({ id: 'x', until: Date.now() + 3600e3 }))
+ok('pass claiming a long life refused', !takeHandoffPass('/sms-import'))
+localStorage.setItem('artha.lock.pass', 'junk')
+ok('junk pass refused', !takeHandoffPass('/sms-import'))
+
+// Coming back to the page that started it
+lockSession.unlock()
+startHandoff()
+await new Promise((r) => setTimeout(r, 20))
+noteAlive() // the unlocked Bank SMS page leaves the screen
+lockSession.lock()
+ok('back straight from an unlocked page: let through', returningFromHandoff())
+ok('only once', !returningFromHandoff())
+lockSession.unlock()
+startHandoff()
+await new Promise((r) => setTimeout(r, 20))
+noteAlive()
+lockSession.lock()
+await new Promise((r) => setTimeout(r, 4200))
+ok('back after a while elsewhere: locked', !returningFromHandoff())
+lockSession.lock()
+localStorage.setItem('artha.lock.alive', String(Date.now()))
+ok('a locked page cannot mark itself alive', (noteAlive(), !returningFromHandoff()))
 
 console.log(`${pass} passed, ${fail} failed`)
 process.exit(fail ? 1 : 0)

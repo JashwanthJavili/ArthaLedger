@@ -5,6 +5,7 @@
  */
 
 import { MAX_BODY } from './smsParse.js'
+import { startHandoff } from './appLockCore.js'
 
 const KEY = 'artha.app'
 // The app sends at most 400; anything past this is ignored
@@ -105,5 +106,8 @@ export function startSmsImport({ lang = 'en', book = null, days = 30 } = {}) {
   if (book) q.set('book', book)
   // If the app isn't there any more, Chrome opens this page instead
   const fallback = `${window.location.origin}/sms-import?status=noapp`
+  // Unlocked a moment ago: the app's SMS screen and the page it reopens
+  // shouldn't ask for the app lock again
+  startHandoff()
   window.location.href = `intent://sms-import?${q}#Intent;scheme=arthaledger;package=com.arthaledger.app;S.browser_fallback_url=${encodeURIComponent(fallback)};end`
 }

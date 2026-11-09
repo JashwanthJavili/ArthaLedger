@@ -31,13 +31,15 @@ const roundBtn = 'flex h-10 w-10 flex-shrink-0 items-center justify-center round
 const goldBtn = 'inline-flex items-center justify-center gap-2 rounded-full bg-[var(--gold-primary)] px-5 py-2.5 text-[13.5px] font-semibold text-white hover:bg-[var(--gold-hover)] active:scale-[0.98] transition disabled:opacity-50 disabled:pointer-events-none cursor-pointer'
 const fieldCls = 'w-full rounded-xl border border-[var(--border-card)] bg-[var(--bg-page)] px-3 py-2 text-[13px] text-[var(--text-main)] outline-none transition-colors focus:border-[var(--gold-primary)]'
 
-// Remembered per account on this device: which messages were added or hidden
+// Remembered per account on this device: messages hidden with ×, and
+// messages already added (shown greyed out so they can't be added twice)
 const doneKey = (uid) => `artha.smsDone.${uid}`
-function readDone(uid) {
-  try { return new Set(JSON.parse(localStorage.getItem(doneKey(uid)) || '[]')) } catch { return new Set() }
+const addedKey = (uid) => `artha.smsAdded.${uid}`
+function readSet(key) {
+  try { return new Set(JSON.parse(localStorage.getItem(key) || '[]')) } catch { return new Set() }
 }
-function writeDone(uid, set) {
-  try { localStorage.setItem(doneKey(uid), JSON.stringify([...set].slice(-DONE_LIMIT))) } catch { /* storage full or blocked */ }
+function writeSet(key, set) {
+  try { localStorage.setItem(key, JSON.stringify([...set].slice(-DONE_LIMIT))) } catch { /* storage full or blocked */ }
 }
 
 export default function SmsImportPage() {
@@ -52,9 +54,11 @@ export default function SmsImportPage() {
   const status = STATUSES.includes(params.get('status')) ? params.get('status') : null
   const [payload, setPayload] = useState(() => takeSms())
   const [timedOut, setTimedOut] = useState(false)
-  const [done, setDone] = useState(() => (user ? readDone(user.uid) : new Set()))
+  const [done, setDone] = useState(() => (user ? readSet(doneKey(user.uid)) : new Set()))
+  const [added, setAdded] = useState(() => (user ? readSet(addedKey(user.uid)) : new Set()))
   const [picked, setPicked] = useState({})   // key -> true/false (ticked)
   const [edits, setEdits] = useState({})     // key -> { payee, category }
+  const [editing, setEditing] = useState(null) // key of the description being typed in
   const [bookChoice, setBook] = useState(params.get('book') || '')
   const [saving, setSaving] = useState(false)
   const [toast, setToast] = useState({ msg: '', type: 'success', visible: false })
@@ -84,15 +88,19 @@ export default function SmsImportPage() {
   const [projectId, bookId] = bookOk ? book.split('/') : [null, null]
 
   // Parsed, minus anything added before (remembered, or already in the chosen book)
-  const inBook = new Set((bookId ? entriesByBook[bookId] || [] : []).map((e) => `${Number(e.timestamp)}|${Number(e.amount)}`))
+  const bookEntries = new Map((bookId ? entriesByBook[bookId] || [] : []).map((e) => [`${Number(e.timestamp)}|${Number(e.amount)}`, e]))
+  const inBook = { has: (k) => bookEntries.has(k) }
+  // The name it was saved with in the book, if it's there
+  const savedName = (p) => bookEntries.get(`${p.timestamp}|${p.amount}`)?.description
   // Parsed once per hand-over, not on every keystroke
   const parsed = useMemo(() => (payload ? parseAll(payload.items) : []), [payload])
-  const items = payload
-    ? parsed.filter((p) => !done.has(p.key) && !inBook.has(`${p.timestamp}|${p.amount}`))
-    : []
+  const isAdded = (p) => added.has(p.key) || inBook.has(`${p.timestamp}|${p.amount}`)
+  const items = payload ? parsed.filter((p) => !isAdded(p) && !done.has(p.key)) : []
+  // Already added: still listed, greyed out, can't be picked again
+  const addedItems = payload ? parsed.filter(isAdded) : []
 
-  // ATM cash and transfers between your own accounts start unticked
-  const isTicked = (p) => picked[p.key] ?? (p.kind !== 'atm' && p.kind !== 'transfer')
+  // Nothing is ticked to start with: the person picks what to add
+  const isTicked = (p) => picked[p.key] ?? false
   const chosen = items.filter(isTicked)
   const totals = chosen.reduce((sum, p) => {
     sum[p.type === 'income' ? 'in' : 'out'] += p.amount
@@ -106,6 +114,14 @@ export default function SmsImportPage() {
     ? t(p.kind === 'refund' ? 'sms.desc.refund' : p.kind === 'salary' ? 'sms.desc.salary' : 'sms.desc.received')
     : t(`sms.desc.${p.kind === 'atm' ? 'atm' : p.channel}`))
   const descriptionOf = (p) => typedOf(p).trim() || fallbackOf(p)
+  // Most-used categories across all books, for the short list in the picker
+  const topCategories = useMemo(() => {
+    const counts = new Map()
+    Object.values(entriesByBook || {}).forEach((list) => (list || []).forEach((e) => {
+      if (e?.category) counts.set(e.category, (counts.get(e.category) || 0) + 1)
+    }))
+    return [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([name]) => name)
+  }, [entriesByBook])
   const categoryOf = (p) => edits[p.key]?.category ?? guessCategory(p, categories)
   const edit = (key, field, value) => setEdits((e) => ({ ...e, [key]: { ...e[key], [field]: value } }))
 
@@ -118,8 +134,15 @@ export default function SmsImportPage() {
     if (!user) return
     const next = new Set(done)
     keys.forEach((k) => next.add(k))
-    writeDone(user.uid, next)
+    writeSet(doneKey(user.uid), next)
     setDone(next)
+  }
+  const rememberAdded = (keys) => {
+    if (!user) return
+    const next = new Set(added)
+    keys.forEach((k) => next.add(k))
+    writeSet(addedKey(user.uid), next)
+    setAdded(next)
   }
 
   const add = () => {
@@ -137,7 +160,7 @@ export default function SmsImportPage() {
         notes: t('sms.note', { details: details(p) }),
       })))
       saved.catch(() => showToast(t('sms.addError'), 'error'))
-      remember(chosen.map((p) => p.key))
+      rememberAdded(chosen.map((p) => p.key))
       navigate(`/projects/${projectId}/books/${bookId}`, { state: { toast: t('sms.added', { count: chosen.length }) } })
     } catch {
       setSaving(false)
@@ -259,25 +282,37 @@ export default function SmsImportPage() {
                               <span className={`flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full ${income ? 'bg-emerald-500/12 text-emerald-600' : 'bg-rose-500/12 text-rose-600'}`}>
                                 {income ? <ArrowDownLeft size={13} /> : <ArrowUpRight size={13} />}
                               </span>
-                              <input value={typedOf(p)} onChange={(e) => edit(p.key, 'payee', e.target.value)} maxLength={80}
-                                placeholder={fallbackOf(p)} aria-label={t('sms.description')}
-                                enterKeyHint="done" autoCapitalize="words" autoComplete="off" spellCheck={false}
-                                onFocus={(e) => {
-                                  // Whole name selected, so one tap on delete clears it
-                                  const el = e.currentTarget
-                                  el.select()
-                                  requestAnimationFrame(() => { try { el.setSelectionRange(0, el.value.length) } catch { /* not a text field */ } })
-                                  keepInView(el.closest('li'))
-                                }}
-                                onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur() }}
-                                className="-mx-1.5 min-w-0 flex-1 truncate rounded-lg bg-transparent px-1.5 py-0.5 text-[14px] font-semibold text-[var(--text-main)] outline-none transition-colors placeholder:font-medium placeholder:text-[var(--text-subtle)] focus:bg-[var(--bg-page)] focus:ring-1 focus:ring-[var(--gold-primary)]" />
+                              <span className="relative -mx-1.5 flex min-w-0 flex-1 items-center">
+                                <input value={typedOf(p)} onChange={(e) => edit(p.key, 'payee', e.target.value)} maxLength={80}
+                                  placeholder={fallbackOf(p)} aria-label={t('sms.description')}
+                                  enterKeyHint="done" autoCapitalize="words" autoComplete="off" spellCheck={false}
+                                  onFocus={(e) => {
+                                    // Cursor at the end (no selection, so no copy/paste bar); the × clears it
+                                    const el = e.currentTarget
+                                    setEditing(p.key)
+                                    requestAnimationFrame(() => { try { el.setSelectionRange(el.value.length, el.value.length) } catch { /* not a text field */ } })
+                                    keepInView(el.closest('li'))
+                                  }}
+                                  onBlur={() => setEditing((k) => (k === p.key ? null : k))}
+                                  onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur() }}
+                                  className={`peer min-w-0 flex-1 truncate rounded-lg bg-transparent py-0.5 pl-1.5 text-[14px] font-semibold text-[var(--text-main)] outline-none transition-colors placeholder:font-medium placeholder:text-[var(--text-subtle)] focus:bg-[var(--bg-page)] focus:ring-1 focus:ring-[var(--gold-primary)] ${editing === p.key && typedOf(p) ? 'pr-8' : 'pr-1.5'}`} />
+                                {editing === p.key && typedOf(p) && (
+                                  <button type="button" aria-label={t('sms.clearName')} title={t('sms.clearName')}
+                                    // Keep the keyboard open: don't take focus from the field
+                                    onPointerDown={(e) => e.preventDefault()} onMouseDown={(e) => e.preventDefault()}
+                                    onClick={() => edit(p.key, 'payee', '')}
+                                    className="absolute right-1 flex h-6 w-6 items-center justify-center rounded-full bg-[var(--border-subtle)] text-[var(--text-muted)] hover:text-[var(--text-main)] cursor-pointer">
+                                    <X size={13} strokeWidth={2.5} />
+                                  </button>
+                                )}
+                              </span>
                               <span className={`flex-shrink-0 text-[14px] font-semibold tabular-nums ${income ? 'text-emerald-600' : 'text-rose-600'}`}>
                                 {income ? '+' : '−'}{symbol}{formatAmount(p.amount)}
                               </span>
                             </div>
                             <p className="mt-1 truncate text-[11.5px] text-[var(--text-muted)]">{meta}</p>
                             <div className="mt-2 flex items-center gap-2">
-                              <CategoryPicker value={categoryOf(p)} categories={categories} label={t('sms.category')}
+                              <CategoryPicker value={categoryOf(p)} categories={categories} top={topCategories} label={t('sms.category')}
                                 onChange={(v) => edit(p.key, 'category', v)} />
                               {p.kind && <span className="min-w-0 truncate rounded-full bg-[var(--gold-light)] px-2 py-0.5 text-[11px] font-medium text-[var(--gold-primary)]">{t(`sms.kind.${p.kind}`)}</span>}
                               <button type="button" onClick={() => remember([p.key])} aria-label={t('sms.hide')} title={t('sms.hide')}
@@ -294,6 +329,34 @@ export default function SmsImportPage() {
                 <p className="mt-4 px-1 text-[11.5px] leading-relaxed text-[var(--text-subtle)]">{t('sms.tip')}</p>
               </>
             )}
+
+            {addedItems.length > 0 && (
+              <section className="mt-6" aria-label={t('sms.alreadyAdded', { count: addedItems.length })}>
+                <p className="flex items-center gap-1.5 px-1 text-[12.5px] font-semibold text-[var(--text-muted)]">
+                  <Check size={14} className="text-emerald-600" /> {t('sms.alreadyAdded', { count: addedItems.length })}
+                </p>
+                <ul className="mt-2 space-y-2">
+                  {addedItems.map((p) => {
+                    const income = p.type === 'income'
+                    const when = new Date(p.timestamp)
+                    return (
+                      <li key={p.key} className={`${card} flex items-center gap-3 px-3.5 py-2.5 opacity-60`}>
+                        <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-md bg-emerald-500/15 text-emerald-600"><Check size={12} strokeWidth={3} /></span>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-[13.5px] font-semibold text-[var(--text-main)]">{savedName(p) || descriptionOf(p)}</p>
+                          <p className="truncate text-[11px] text-[var(--text-muted)]">
+                            {[when.toLocaleDateString(intl, { day: 'numeric', month: 'short' }), p.bank, t('sms.addedBadge')].filter(Boolean).join(' · ')}
+                          </p>
+                        </div>
+                        <span className={`flex-shrink-0 text-[13.5px] font-semibold tabular-nums ${income ? 'text-emerald-600' : 'text-rose-600'}`}>
+                          {income ? '+' : '−'}{symbol}{formatAmount(p.amount)}
+                        </span>
+                      </li>
+                    )
+                  })}
+                </ul>
+              </section>
+            )}
           </>
         )}
       </div>
@@ -302,7 +365,7 @@ export default function SmsImportPage() {
         <div className="fixed inset-x-0 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-30 px-4 sm:bottom-6">
           <div className="mx-auto max-w-2xl">
             <button type="button" onClick={add} disabled={!bookOk || !chosen.length || saving} className={`${goldBtn} w-full py-3.5 text-[15px] shadow-lg`}>
-              {!bookOk ? t('sms.chooseBook') : t('sms.add', { count: chosen.length })}
+              {!bookOk ? t('sms.chooseBook') : chosen.length ? t('sms.add', { count: chosen.length }) : t('sms.pickSome')}
               {bookOk && chosen.length > 0 && (
                 <span className="font-medium opacity-85">· {[
                   totals.out && t('sms.totalOut', { amount: `${symbol}${formatAmount(totals.out)}` }),

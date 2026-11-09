@@ -142,14 +142,14 @@ function BookHeaderMenu({ onEdit, onDelete, onSetPin, onManageCategories, onTran
       <AnimatePresence>
         {open && (
           <DropdownMotion className={`${menuPanel} mt-2 w-52`}>
-            {onTransfer && (
-              <button onClick={() => { onTransfer(); setOpen(false) }} className={menuItem}>
-                <ArrowLeftRight size={14} className="text-[var(--text-muted)]" /> {t('book.menu.transferMoney')}
-              </button>
-            )}
             {onSmsImport && (
               <button onClick={() => { onSmsImport(); setOpen(false) }} className={menuItem}>
                 <MessageSquareText size={14} className="text-[var(--text-muted)]" /> {t('sms.menuItem')}
+              </button>
+            )}
+            {onTransfer && (
+              <button onClick={() => { onTransfer(); setOpen(false) }} className={menuItem}>
+                <ArrowLeftRight size={14} className="text-[var(--text-muted)]" /> {t('book.menu.transferMoney')}
               </button>
             )}
             <button onClick={() => { onManageCategories(); setOpen(false) }} className={menuItem}>

@@ -2400,7 +2400,15 @@
     "searchCategory": "వర్గాలను వెతకండి",
     "noCategoryMatch": "సరిపోయే వర్గం లేదు",
     "totalOut": "{amount} ఖర్చు",
-    "totalIn": "{amount} జమ"
+    "totalIn": "{amount} జమ",
+    "clearName": "పేరు తొలగించండి",
+    "pickSome": "జోడించాల్సిన చెల్లింపులను ఎంచుకోండి",
+    "seeMoreCategories": "మొత్తం {count} వర్గాలు చూడండి",
+    "alreadyAdded": {
+      "one": "ఇప్పటికే జోడించినవి (1)",
+      "other": "ఇప్పటికే జోడించినవి ({count})"
+    },
+    "addedBadge": "జోడించబడింది"
   },
   "appLock": {
     "groupTitle": "భద్రత",
@@ -2428,6 +2436,9 @@
     "verify": "ధృవీకరించండి",
     "continueGoogle": "Googleతో కొనసాగండి",
     "checking": "తనిఖీ చేస్తోంది…",
-    "resetDone": "యాప్ లాక్ ఆఫ్‌లో ఉంది. సెట్టింగ్‌లు → భద్రతలో కొత్త PIN సెట్ చేయండి."
+    "resetDone": "యాప్ లాక్ ఆఫ్‌లో ఉంది. సెట్టింగ్‌లు → భద్రతలో కొత్త PIN సెట్ చేయండి.",
+    "bioSubtitle": "మీ వేలిముద్రతో అన్‌లాక్ చేయండి",
+    "tapToUnlock": "అన్‌లాక్ చేయడానికి తాకండి",
+    "usePin": "బదులుగా PIN వాడండి"
   }
 }

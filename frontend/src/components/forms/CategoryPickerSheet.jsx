@@ -5,13 +5,14 @@ import { Check, ChevronDown, Search, X } from 'lucide-react'
 import { useI18n } from '../../i18n/core'
 import { useKeyboard } from '../../hooks/useKeyboard'
 
+const SHORT = 5
 const nameOf = (c) => (typeof c === 'string' ? c : c?.name) || ''
 
 /**
  * A compact category chip (name with the arrow right beside it) that opens a
  * scrollable, searchable list to choose from.
  */
-export default function CategoryPicker({ value, categories, onChange, allowNone = true, label }) {
+export default function CategoryPicker({ value, categories, top = [], onChange, allowNone = true, label }) {
   const { t } = useI18n()
   const [open, setOpen] = useState(false)
   return (
@@ -21,18 +22,20 @@ export default function CategoryPicker({ value, categories, onChange, allowNone 
         <span className={`truncate ${value ? '' : 'text-[var(--text-muted)]'}`}>{value || t('sms.noCategory')}</span>
         <ChevronDown size={13} className="flex-shrink-0 text-[var(--text-muted)]" />
       </button>
-      <CategoryPickerSheet open={open} onClose={() => setOpen(false)} value={value} categories={categories}
+      <CategoryPickerSheet open={open} onClose={() => setOpen(false)} value={value} categories={categories} top={top}
         allowNone={allowNone} title={label} onPick={(v) => { onChange(v); setOpen(false) }} />
     </>
   )
 }
 
-function CategoryPickerSheet({ open, onClose: close, value, categories, allowNone, title, onPick: pick }) {
+function CategoryPickerSheet({ open, onClose: close, value, categories, top, allowNone, title, onPick: pick }) {
   const { t } = useI18n()
   const [query, setQuery] = useState('')
   // The search starts empty each time the list opens
-  const onClose = () => { setQuery(''); close() }
-  const onPick = (v) => { setQuery(''); pick(v) }
+  // Short list first (the current choice and the most used); "See more" shows all
+  const [all, setAll] = useState(false)
+  const onClose = () => { setQuery(''); setAll(false); close() }
+  const onPick = (v) => { setQuery(''); setAll(false); pick(v) }
   const listRef = useRef(null)
   // With the keyboard up, the sheet fits in the part of the screen above it
   const keyboard = useKeyboard()
@@ -41,8 +44,10 @@ function CategoryPickerSheet({ open, onClose: close, value, categories, allowNon
   const names = useMemo(() => [...new Set([...categories.map(nameOf), value].filter(Boolean))], [categories, value])
   const noneLabel = t('sms.noCategory')
   const showNone = allowNone && !names.includes(noneLabel)
+  const short = useMemo(() => [...new Set([value, ...top.filter((n) => names.includes(n)), ...names].filter(Boolean))].slice(0, SHORT), [value, top, names])
   const q = query.trim().toLowerCase()
-  const shown = q ? names.filter((n) => n.toLowerCase().includes(q)) : names
+  const shown = q ? names.filter((n) => n.toLowerCase().includes(q)) : all ? names : short
+  const more = !all && !q && names.length > short.length
 
   useEffect(() => {
     if (!open) return undefined
@@ -83,7 +88,7 @@ function CategoryPickerSheet({ open, onClose: close, value, categories, allowNon
                 <X size={16} />
               </button>
             </div>
-            {names.length > 6 && (
+            {all && names.length > SHORT && (
               <div className="px-4 pb-2">
                 <label className="flex items-center gap-2 rounded-xl border border-[var(--border-card)] bg-[var(--bg-page)] px-3 py-2.5 focus-within:border-[var(--gold-primary)]">
                   <Search size={15} className="flex-shrink-0 text-[var(--text-muted)]" />
@@ -95,8 +100,16 @@ function CategoryPickerSheet({ open, onClose: close, value, categories, allowNon
               </div>
             )}
             <ul ref={listRef} role="listbox" className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-2 pb-3">
-              {showNone && !q && item('__none', noneLabel, !value, () => onPick(''), true)}
+              {showNone && !q && all && item('__none', noneLabel, !value, () => onPick(''), true)}
               {shown.map((n) => item(n, n, n === value, () => onPick(n)))}
+              {more && (
+                <li>
+                  <button type="button" onClick={() => setAll(true)}
+                    className="flex w-full items-center justify-center gap-1.5 rounded-xl px-3 py-3 text-[13.5px] font-semibold text-[var(--gold-primary)] hover:bg-[var(--border-subtle)] cursor-pointer">
+                    {t('sms.seeMoreCategories', { count: names.length })} <ChevronDown size={15} />
+                  </button>
+                </li>
+              )}
               {q && !shown.length && <li className="px-3 py-6 text-center text-[13px] text-[var(--text-muted)]">{t('sms.noCategoryMatch')}</li>}
             </ul>
           </motion.div>

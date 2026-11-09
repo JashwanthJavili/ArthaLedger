@@ -28,6 +28,63 @@ export const lockSession = {
   subscribe(fn) { listeners.add(fn); return () => listeners.delete(fn) },
 }
 
+// ── Bank SMS hand-off ───────────────────────────────────────────────────────
+// Reading bank SMS leaves this page for the phone's own screens, and the app
+// then reopens on a fresh /sms-import page. Both are the person's own doing
+// a moment after unlocking, so they shouldn't meet the lock again:
+// - a one-time pass, good for a few minutes, lets that fresh page open unlocked;
+// - going back to the page they started from is let through only if another
+//   unlocked page of the app was on screen a moment ago.
+const PASS_KEY = 'artha.lock.pass'
+const ALIVE_KEY = 'artha.lock.alive'
+const PASS_MS = 3 * 60 * 1000
+const RETURN_MS = 4000
+let handoffAt = 0
+
+function randomId() {
+  const b = new Uint8Array(16)
+  crypto.getRandomValues(b)
+  return Array.from(b, (x) => x.toString(16).padStart(2, '0')).join('')
+}
+
+/** Call just before leaving for the app's SMS screen. */
+export function startHandoff() {
+  if (!unlocked) return
+  handoffAt = Date.now()
+  try { localStorage.setItem(PASS_KEY, JSON.stringify({ id: randomId(), until: Date.now() + PASS_MS })) } catch { /* the lock just asks again */ }
+}
+
+/** Used once, by the /sms-import page the app opens. */
+export function takeHandoffPass(path) {
+  try {
+    const raw = localStorage.getItem(PASS_KEY)
+    if (!raw) return false
+    localStorage.removeItem(PASS_KEY) // one use only, valid or not
+    const pass = JSON.parse(raw)
+    return path === '/sms-import' && typeof pass?.id === 'string' && Number(pass.until) > Date.now() && Number(pass.until) - Date.now() <= PASS_MS
+  } catch { return false }
+}
+
+/** An unlocked page is leaving the screen: note the moment. */
+export function noteAlive() {
+  if (!unlocked) return
+  try { localStorage.setItem(ALIVE_KEY, String(Date.now())) } catch { /* ignore */ }
+}
+
+/** Back on the page that started the hand-off, straight from an unlocked page? */
+export function returningFromHandoff() {
+  if (!handoffAt || Date.now() - handoffAt > 30 * 60 * 1000) return false
+  try {
+    const alive = Number(localStorage.getItem(ALIVE_KEY) || 0)
+    return alive > handoffAt && Date.now() - alive < RETURN_MS
+  } catch { return false } finally {
+    handoffAt = 0 // decided once per hand-off, either way
+  }
+}
+
+// The page the app opens after reading SMS starts unlocked if it carries a pass
+if (typeof window !== 'undefined' && window.location && takeHandoffPass(window.location.pathname)) unlocked = true
+
 /** Runs fn without locking when the screen briefly hides (e.g. a system fingerprint prompt). */
 export async function withLockPaused(fn) {
   paused += 1

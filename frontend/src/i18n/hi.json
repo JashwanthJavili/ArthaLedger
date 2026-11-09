@@ -2400,7 +2400,15 @@
     "searchCategory": "श्रेणियाँ खोजें",
     "noCategoryMatch": "कोई मिलती श्रेणी नहीं",
     "totalOut": "{amount} ख़र्च",
-    "totalIn": "{amount} जमा"
+    "totalIn": "{amount} जमा",
+    "clearName": "नाम मिटाएँ",
+    "pickSome": "जोड़ने के लिए भुगतान चुनें",
+    "seeMoreCategories": "सभी {count} श्रेणियाँ देखें",
+    "alreadyAdded": {
+      "one": "पहले से जोड़े गए (1)",
+      "other": "पहले से जोड़े गए ({count})"
+    },
+    "addedBadge": "जोड़ा गया"
   },
   "appLock": {
     "groupTitle": "सुरक्षा",
@@ -2428,6 +2436,9 @@
     "verify": "पुष्टि करें",
     "continueGoogle": "Google से जारी रखें",
     "checking": "जाँच रहे हैं…",
-    "resetDone": "ऐप लॉक बंद है. सेटिंग्स → सुरक्षा में नया PIN सेट करें."
+    "resetDone": "ऐप लॉक बंद है. सेटिंग्स → सुरक्षा में नया PIN सेट करें.",
+    "bioSubtitle": "अपने फ़िंगरप्रिंट से अनलॉक करें",
+    "tapToUnlock": "अनलॉक करने के लिए टैप करें",
+    "usePin": "इसके बजाय PIN इस्तेमाल करें"
   }
 }

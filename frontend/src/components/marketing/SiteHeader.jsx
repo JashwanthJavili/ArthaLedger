@@ -105,7 +105,7 @@ export default function SiteHeader() {
           </div>
 
           <div className="ml-auto flex shrink-0 items-center gap-2 lg:ml-0">
-            <LanguageMenu full size="sm" />
+            <LanguageMenu full size="sm" guide />
             {signedIn ? (
               <Link to="/dashboard" className="hidden min-h-9 items-center whitespace-nowrap gap-1.5 rounded-full px-4 text-[13.5px] font-semibold hover:brightness-105 min-[420px]:inline-flex" style={goldBtn}>
                 {t('common.openApp')} <ArrowRight size={15} />

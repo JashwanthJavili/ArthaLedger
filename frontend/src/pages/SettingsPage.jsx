@@ -432,6 +432,14 @@ export default function SettingsPage() {
           </div>
         </motion.section>
 
+        {/* ── Bank SMS: first, so it's found without scrolling ── */}
+        {isAndroid() && (
+          <Group delay={0.02}>
+            <Row icon={MessageSquareText} label={t('sms.settingsRow')} hint={hasSmsApp() ? t('sms.settingsHint') : t('sms.needsAppHint')}
+              onClick={() => startSmsImport({ lang })} />
+          </Group>
+        )}
+
         {/* ── Account ── */}
         <Group title={t('settings.groups.account')} delay={0.03}>
           {isPasswordUser && <Row icon={KeyRound} label={t('settings.account.changePassword')} onClick={() => setSheet('password')} />}
@@ -457,10 +465,6 @@ export default function SettingsPage() {
                   {t('settings.prefs.install')}
                 </button>
               } />
-          )}
-          {isAndroid() && (
-            <Row icon={MessageSquareText} label={t('sms.settingsRow')} hint={hasSmsApp() ? t('sms.settingsHint') : t('sms.needsAppHint')}
-              onClick={() => startSmsImport({ lang })} />
           )}
         </Group>
 
