@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Check, ChevronDown, Search, X } from 'lucide-react'
 import { useI18n } from '../../i18n/core'
+import { useKeyboard } from '../../hooks/useKeyboard'
 
 const nameOf = (c) => (typeof c === 'string' ? c : c?.name) || ''
 
@@ -33,6 +34,9 @@ function CategoryPickerSheet({ open, onClose: close, value, categories, allowNon
   const onClose = () => { setQuery(''); close() }
   const onPick = (v) => { setQuery(''); pick(v) }
   const listRef = useRef(null)
+  // With the keyboard up, the sheet fits in the part of the screen above it
+  const keyboard = useKeyboard()
+  const frame = keyboard.open ? { top: keyboard.top, height: keyboard.height, bottom: 'auto' } : undefined
   // The current choice is always offered, even if it isn't in the saved list
   const names = useMemo(() => [...new Set([...categories.map(nameOf), value].filter(Boolean))], [categories, value])
   const noneLabel = t('sms.noCategory')
@@ -64,12 +68,13 @@ function CategoryPickerSheet({ open, onClose: close, value, categories, allowNon
   return createPortal(
     <AnimatePresence>
       {open && (
-        <div className="fixed inset-0 z-[120] flex items-end justify-center sm:items-center sm:p-4">
+        <div className="fixed inset-0 z-[120] flex items-end justify-center sm:items-center sm:p-4" style={frame}>
           <motion.div className="absolute inset-0 bg-black/45" onClick={onClose}
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} />
           <motion.div role="dialog" aria-modal="true" aria-label={title}
             initial={{ y: 40, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 40, opacity: 0 }}
             transition={{ type: 'spring', damping: 30, stiffness: 340 }}
+            style={keyboard.open ? { maxHeight: keyboard.height - 8 } : undefined}
             className="relative flex max-h-[78vh] w-full max-w-md flex-col rounded-t-3xl border border-[var(--border-card)] bg-[var(--bg-page)] pb-[env(safe-area-inset-bottom)] shadow-[0_30px_80px_-20px_rgba(0,0,0,0.45)] sm:rounded-3xl">
             <div className="flex items-center justify-between gap-3 px-5 pb-2 pt-4">
               <p className="text-[15px] font-semibold text-[var(--text-main)]">{title}</p>
@@ -83,7 +88,9 @@ function CategoryPickerSheet({ open, onClose: close, value, categories, allowNon
                 <label className="flex items-center gap-2 rounded-xl border border-[var(--border-card)] bg-[var(--bg-page)] px-3 py-2.5 focus-within:border-[var(--gold-primary)]">
                   <Search size={15} className="flex-shrink-0 text-[var(--text-muted)]" />
                   <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t('sms.searchCategory')}
-                    aria-label={t('sms.searchCategory')} className="min-w-0 flex-1 bg-transparent text-[14px] text-[var(--text-main)] outline-none" />
+                    aria-label={t('sms.searchCategory')} enterKeyHint="done"
+                    onKeyDown={(e) => { if (e.key === 'Enter' && q && shown.length) onPick(shown[0]) }}
+                    className="min-w-0 flex-1 bg-transparent text-[14px] text-[var(--text-main)] outline-none" />
                 </label>
               </div>
             )}

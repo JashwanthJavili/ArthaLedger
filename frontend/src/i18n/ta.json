@@ -2398,7 +2398,9 @@
     "tip": "சிறிய UPI பணப்பரிமாற்றங்களுக்கு வங்கிகள் எப்போதும் SMS அனுப்புவதில்லை, எனவே அவற்றை நீங்களே சேர்க்கவும். Xiaomi, Redmi, POCO ஃபோன்களில் ArthaLedger ஆப் அனுமதிகளைத் திறந்து “Service SMS” (சில நேரங்களில் “Notification SMS”) என்பதையும் அனுமதிக்கவும், இல்லையெனில் வங்கிச் செய்திகள் தெரியாது.",
     "needsAppHint": "புதிய Android ஆப் தேவை",
     "searchCategory": "வகைகளைத் தேடுங்கள்",
-    "noCategoryMatch": "பொருந்தும் வகை இல்லை"
+    "noCategoryMatch": "பொருந்தும் வகை இல்லை",
+    "totalOut": "{amount} செலவு",
+    "totalIn": "{amount} வரவு"
   },
   "appLock": {
     "groupTitle": "பாதுகாப்பு",

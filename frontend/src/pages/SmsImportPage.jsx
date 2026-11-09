@@ -12,6 +12,7 @@ import { parseAll, guessCategory } from '../lib/smsParse'
 import { canImportSms, hasSmsApp, onSms, startSmsImport, takeSms } from '../lib/nativeApp'
 import { APK_URL } from '../components/marketing/constants'
 import CategoryPicker from '../components/forms/CategoryPickerSheet'
+import { keepInView, useKeyboard } from '../hooks/useKeyboard'
 
 /*
  * Review page for "Add from bank SMS". The Android app reads recent bank and
@@ -46,6 +47,7 @@ export default function SmsImportPage() {
   const { projects, booksByProject, entriesByBook, categories, addEntries } = useAppData()
   const { t, lang, intl } = useI18n()
   const symbol = getCurrencySymbol()
+  const keyboard = useKeyboard()
 
   const status = STATUSES.includes(params.get('status')) ? params.get('status') : null
   const [payload, setPayload] = useState(() => takeSms())
@@ -92,6 +94,10 @@ export default function SmsImportPage() {
   // ATM cash and transfers between your own accounts start unticked
   const isTicked = (p) => picked[p.key] ?? (p.kind !== 'atm' && p.kind !== 'transfer')
   const chosen = items.filter(isTicked)
+  const totals = chosen.reduce((sum, p) => {
+    sum[p.type === 'income' ? 'in' : 'out'] += p.amount
+    return sum
+  }, { in: 0, out: 0 })
 
   // What's typed in the box (may be cleared to empty while editing) ...
   const typedOf = (p) => edits[p.key]?.payee ?? (p.kind === 'atm' ? '' : p.payee || '')
@@ -255,7 +261,16 @@ export default function SmsImportPage() {
                               </span>
                               <input value={typedOf(p)} onChange={(e) => edit(p.key, 'payee', e.target.value)} maxLength={80}
                                 placeholder={fallbackOf(p)} aria-label={t('sms.description')}
-                                className="min-w-0 flex-1 truncate bg-transparent text-[14px] font-semibold text-[var(--text-main)] outline-none placeholder:font-medium placeholder:text-[var(--text-subtle)]" />
+                                enterKeyHint="done" autoCapitalize="words" autoComplete="off" spellCheck={false}
+                                onFocus={(e) => {
+                                  // Whole name selected, so one tap on delete clears it
+                                  const el = e.currentTarget
+                                  el.select()
+                                  requestAnimationFrame(() => { try { el.setSelectionRange(0, el.value.length) } catch { /* not a text field */ } })
+                                  keepInView(el.closest('li'))
+                                }}
+                                onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur() }}
+                                className="-mx-1.5 min-w-0 flex-1 truncate rounded-lg bg-transparent px-1.5 py-0.5 text-[14px] font-semibold text-[var(--text-main)] outline-none transition-colors placeholder:font-medium placeholder:text-[var(--text-subtle)] focus:bg-[var(--bg-page)] focus:ring-1 focus:ring-[var(--gold-primary)]" />
                               <span className={`flex-shrink-0 text-[14px] font-semibold tabular-nums ${income ? 'text-emerald-600' : 'text-rose-600'}`}>
                                 {income ? '+' : '−'}{symbol}{formatAmount(p.amount)}
                               </span>
@@ -283,11 +298,17 @@ export default function SmsImportPage() {
         )}
       </div>
 
-      {payload && items.length > 0 && (
+      {payload && items.length > 0 && !keyboard.open && (
         <div className="fixed inset-x-0 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-30 px-4 sm:bottom-6">
           <div className="mx-auto max-w-2xl">
             <button type="button" onClick={add} disabled={!bookOk || !chosen.length || saving} className={`${goldBtn} w-full py-3.5 text-[15px] shadow-lg`}>
               {!bookOk ? t('sms.chooseBook') : t('sms.add', { count: chosen.length })}
+              {bookOk && chosen.length > 0 && (
+                <span className="font-medium opacity-85">· {[
+                  totals.out && t('sms.totalOut', { amount: `${symbol}${formatAmount(totals.out)}` }),
+                  totals.in && t('sms.totalIn', { amount: `${symbol}${formatAmount(totals.in)}` }),
+                ].filter(Boolean).join(' · ')}</span>
+              )}
             </button>
           </div>
         </div>

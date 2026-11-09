@@ -1,6 +1,7 @@
 import { NavLink } from 'react-router-dom'
 import { Home, BarChart3, Compass, Settings } from 'lucide-react'
 import { useI18n } from '../i18n/core'
+import { useKeyboard } from '../hooks/useKeyboard'
 
 const navItems = [
   { to: '/dashboard', labelKey: 'nav.home', icon: Home },
@@ -17,6 +18,8 @@ const navItems = [
 // eslint-disable-next-line no-unused-vars
 export default function LayoutShell({ children, hideHeader }) {
   const { t } = useI18n()
+  // Out of the way while typing; it would only float over the page
+  const keyboard = useKeyboard()
   return (
     <div className="min-h-screen flex flex-col bg-[var(--bg-page)] text-[var(--text-main)] transition-colors duration-300">
       <main
@@ -28,6 +31,7 @@ export default function LayoutShell({ children, hideHeader }) {
 
       <nav
         aria-label={t('nav.primary')}
+        hidden={keyboard.open}
         className="fixed inset-x-0 bottom-0 z-40 border-t border-[var(--border-card)] bg-[var(--bg-page)]/95 backdrop-blur-xl"
         style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
       >

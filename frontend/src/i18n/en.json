@@ -2398,7 +2398,9 @@
     "tip": "Banks don’t always send an SMS for small UPI payments, so add those yourself. On Xiaomi, Redmi and POCO phones, open ArthaLedger’s app permissions and also allow “Service SMS” (sometimes called “Notification SMS”), or bank messages stay hidden.",
     "needsAppHint": "Needs the latest Android app",
     "searchCategory": "Search categories",
-    "noCategoryMatch": "No category matches"
+    "noCategoryMatch": "No category matches",
+    "totalOut": "{amount} out",
+    "totalIn": "{amount} in"
   },
   "appLock": {
     "groupTitle": "Security",

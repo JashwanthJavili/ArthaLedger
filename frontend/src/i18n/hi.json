@@ -2398,7 +2398,9 @@
     "tip": "छोटे UPI पेमेंट के लिए बैंक हमेशा SMS नहीं भेजते, इसलिए उन्हें ख़ुद जोड़ें. Xiaomi, Redmi और POCO फ़ोन में ArthaLedger की ऐप अनुमतियाँ खोलकर “Service SMS” (कभी-कभी “Notification SMS”) भी चालू करें, वरना बैंक मैसेज नहीं दिखेंगे.",
     "needsAppHint": "नया Android ऐप ज़रूरी है",
     "searchCategory": "श्रेणियाँ खोजें",
-    "noCategoryMatch": "कोई मिलती श्रेणी नहीं"
+    "noCategoryMatch": "कोई मिलती श्रेणी नहीं",
+    "totalOut": "{amount} ख़र्च",
+    "totalIn": "{amount} जमा"
   },
   "appLock": {
     "groupTitle": "सुरक्षा",
