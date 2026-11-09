@@ -1,10 +1,11 @@
-import { useState } from 'react'
-import { Lock, KeyRound, Eye, EyeOff, ShieldCheck } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { Lock, KeyRound, Eye, EyeOff, ShieldCheck, Fingerprint } from 'lucide-react'
 import { EmailAuthProvider, GoogleAuthProvider, reauthenticateWithCredential, reauthenticateWithPopup } from 'firebase/auth'
 import { useAuth } from '../../context/AuthContext'
 import { auth } from '../../lib/firebase'
 import { hashPin, needsRehash } from '../../lib/pin'
 import { clearGuard } from '../../lib/pinGuard'
+import { canUseFingerprint, hasFingerprint, verifyFingerprint } from '../../lib/appLockCore'
 import PinDialog from './PinDialog'
 import PinEntry from './PinEntry'
 import { useI18n } from '../../i18n/core'
@@ -39,6 +40,35 @@ function PinUnlock({ onClose, onUnlock, storedHash, pinLength, guardId, itemName
   const providers = user?.providerData?.map((p) => p.providerId) || []
   const isPasswordUser = providers.includes('password')
   const isGoogleUser = providers.includes('google.com')
+
+  // The fingerprint set up for app lock on this phone opens it too; the
+  // dialog opens from a tap, so the prompt can come up straight away
+  const [bio, setBio] = useState(() => Boolean(user?.uid && hasFingerprint(user.uid)))
+  const [bioBusy, setBioBusy] = useState(false)
+  const [bioMsg, setBioMsg] = useState('')
+  const bioRun = useRef(false)
+  const tryFingerprint = async (auto = false) => {
+    if (bioRun.current || !user?.uid) return
+    bioRun.current = true
+    setBioBusy(true)
+    setBioMsg('')
+    try {
+      if (await verifyFingerprint(user.uid)) { onUnlock(); onClose(); return }
+      if (!auto) setBioMsg(t('appLock.fingerprintFailed'))
+    } catch {
+      if (!auto) setBioMsg(t('appLock.fingerprintFailed'))
+    } finally {
+      bioRun.current = false
+      setBioBusy(false)
+    }
+  }
+  useEffect(() => {
+    if (!bio) return undefined
+    let alive = true
+    canUseFingerprint().then((ok) => { if (alive && !ok) setBio(false) })
+    const start = setTimeout(() => tryFingerprint(true), 0)
+    return () => { alive = false; clearTimeout(start) }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSuccess = async (pin, length) => {
     // Upgrade older PINs (unsalted hash or unknown length) silently in the background.
@@ -147,6 +177,15 @@ function PinUnlock({ onClose, onUnlock, storedHash, pinLength, guardId, itemName
       }
     >
       <PinEntry guardId={guardId} storedHash={storedHash} length={pinLength} onSuccess={handleSuccess} />
+      {bio && (
+        <div className="mt-3 flex flex-col items-center">
+          <button type="button" onClick={() => tryFingerprint()} disabled={bioBusy}
+            className="inline-flex items-center gap-2 rounded-full border border-[var(--border-card)] bg-[var(--bg-card)] px-4 py-2.5 text-[13px] font-semibold text-[var(--gold-primary)] disabled:opacity-60 cursor-pointer">
+            <Fingerprint size={17} className={bioBusy ? 'animate-pulse' : ''} /> {t('appLock.useFingerprint')}
+          </button>
+          {bioMsg && <p className="mt-2 text-[12px] text-rose-600 dark:text-rose-400">{bioMsg}</p>}
+        </div>
+      )}
     </PinDialog>
   )
 }
